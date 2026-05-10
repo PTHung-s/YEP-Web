@@ -1,0 +1,588 @@
+import React, { useState } from 'react';
+import { School, Users, CheckCircle, ShoppingCart, ArrowRight, ArrowLeft, Ticket, Shirt, AlertTriangle, Clock, Zap } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { useCart, TICKET_PRICE_EARLY, TICKET_PRICE_VINNUNIAN, TICKET_PRICE_NON_VINNUNIAN, type UserType, type UserCategory } from '../store/CartContext';
+import { useEventConfig } from '../store/EventConfigContext';
+import { cn } from './Layout';
+
+function formatVND(amount: number): string {
+  return amount.toLocaleString('vi-VN') + ' VND';
+}
+
+function StepIndicator({ current }: { current: number }) {
+  const steps = ['Chọn loại vé', 'Thông tin cá nhân', 'Số lượng & Merch'];
+  return (
+    <div className="flex items-center justify-center gap-2 md:gap-4 mb-10">
+      {steps.map((label, i) => (
+        <React.Fragment key={i}>
+          <div className="flex items-center gap-2">
+            <span className={cn(
+              'w-8 h-8 md:w-10 md:h-10 rounded-full border-2 border-primary flex items-center justify-center font-display font-black text-sm',
+              i + 1 <= current ? 'bg-primary text-background' : 'bg-surface text-primary'
+            )}>
+              {i + 1 < current ? '✓' : i + 1}
+            </span>
+            <span className={cn(
+              'hidden md:block font-display text-xs font-bold uppercase tracking-widest',
+              i + 1 <= current ? 'text-primary' : 'text-on-surface-variant'
+            )}>
+              {label}
+            </span>
+          </div>
+          {i < steps.length - 1 && (
+            <div className={cn('h-0.5 w-8 md:w-12', i + 1 < current ? 'bg-primary' : 'bg-outline-variant')} />
+          )}
+        </React.Fragment>
+      ))}
+    </div>
+  );
+}
+
+export function Tickets() {
+  const { state, dispatch, getTicketPrice, getMerchTotal, getSubtotal, getServiceFee, getTotal } = useCart();
+  const { config, dispatch: configDispatch } = useEventConfig();
+  const navigate = useNavigate();
+  const [step, setStep] = useState(1);
+
+  const isLocked = config.soldOut || config.salesNotStarted;
+  const effectiveTicketPrice = (userType: UserType): number => {
+    if (config.earlyBirdEnabled && userType === 'vinnunian') return config.earlyBirdPrice;
+    if (userType === 'vinnunian') return TICKET_PRICE_VINNUNIAN;
+    return TICKET_PRICE_NON_VINNUNIAN;
+  };
+
+  const ticketPrice = effectiveTicketPrice(state.userType);
+  const merchTotal = getMerchTotal();
+  const subtotal = getSubtotal();
+  const serviceFee = getServiceFee();
+  const total = getTotal();
+
+  const canNextStep1 = state.userType !== null && !isLocked;
+  const canNextStep2 = (() => {
+    if (isLocked) return false;
+    if (!state.fullName.trim() || !state.email.trim() || !state.phone.trim()) return false;
+    if (state.userType === 'vinnunian') {
+      if (!state.userCategory) return false;
+      if (!state.email.toLowerCase().endsWith('@vinuni.edu.vn')) return false;
+    } else {
+      if (!state.workplace.trim()) return false;
+    }
+    return true;
+  })();
+  const canNextStep3 = state.ticketQuantity >= 1 && !isLocked;
+
+  const nextStep = () => {
+    if (step === 1 && !canNextStep1) return;
+    if (step === 2 && !canNextStep2) return;
+    if (step === 3 && !canNextStep3) return;
+    if (step < 3) {
+      setStep(step + 1);
+    } else {
+      navigate('/confirmation');
+    }
+    window.scrollTo(0, 0);
+  };
+
+  const prevStep = () => {
+    if (step > 1) {
+      setStep(step - 1);
+      window.scrollTo(0, 0);
+    }
+  };
+
+  return (
+    <div className="w-full max-w-7xl mx-auto px-6 md:px-12 py-12 md:py-16">
+      <div className="mb-8 md:mb-12">
+        <h1 className="font-display text-5xl md:text-7xl lg:text-8xl font-black uppercase tracking-tighter leading-[0.85] mb-4">
+          SELECT YOUR <br /> ACCESS LEVEL.
+        </h1>
+        <p className="font-body text-lg md:text-xl max-w-2xl text-on-surface-variant font-medium leading-relaxed">
+          Secure your entry to the most anticipated year-end party at VinUni.
+        </p>
+      </div>
+
+      <StepIndicator current={step} />
+
+      {/* Empty State Banners */}
+      {config.soldOut && (
+        <div className="bg-secondary text-white border-4 border-primary p-4 md:p-6 mb-8 flex items-center gap-4">
+          <AlertTriangle className="w-8 h-8 md:w-10 md:h-10 shrink-0" />
+          <div>
+            <h3 className="font-display text-xl md:text-2xl font-black uppercase tracking-wider">SOLD OUT</h3>
+            <p className="font-body text-sm font-bold uppercase tracking-wider opacity-90">All tickets have been sold. Thank you for your overwhelming support!</p>
+          </div>
+        </div>
+      )}
+
+      {!config.soldOut && config.salesNotStarted && (
+        <div className="bg-tertiary text-white border-4 border-primary p-4 md:p-6 mb-8 flex items-center gap-4">
+          <Clock className="w-8 h-8 md:w-10 md:h-10 shrink-0" />
+          <div>
+            <h3 className="font-display text-xl md:text-2xl font-black uppercase tracking-wider">SALES NOT OPEN YET</h3>
+            <p className="font-body text-sm font-bold uppercase tracking-wider opacity-90">
+              Ticket sales start on December 1, 2024. Come back then!
+            </p>
+          </div>
+        </div>
+      )}
+
+      {!isLocked && config.earlyBirdEnabled && (
+        <div className="bg-primary-container border-4 border-primary p-4 md:p-6 mb-8 flex items-center gap-4">
+          <Zap className="w-8 h-8 md:w-10 md:h-10 shrink-0 text-secondary" />
+          <div className="flex-1">
+            <h3 className="font-display text-xl md:text-2xl font-black uppercase tracking-wider flex items-center gap-3">
+              🎟 EARLY BIRD ACTIVE
+              <span className="bg-secondary text-white px-2 py-0.5 text-xs font-black tracking-widest border-2 border-primary">LIMITED</span>
+            </h3>
+            <p className="font-body text-sm font-bold uppercase tracking-wider text-on-surface-variant mt-1">
+              VINNUNIAN tickets only {formatVND(config.earlyBirdPrice)}! Exclusive for VinUni community. Non-Vinnunian tickets open after Early Bird ends.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {!isLocked && !config.earlyBirdEnabled && (
+        <div className="bg-surface border-4 border-primary p-4 mb-8 flex items-center gap-4">
+          <Clock className="w-6 h-6 shrink-0" />
+          <p className="font-body text-sm font-bold uppercase tracking-wider">Regular pricing. Tickets available for both Vinnunian and Non-Vinnunian.</p>
+        </div>
+      )}
+
+      {/* Admin Controls (Dev toggle) */}
+      <div className="bg-surface-dim border-2 border-primary p-4 mb-8 rounded-sm">
+        <div className="flex flex-wrap items-center gap-4">
+          <span className="font-display text-xs font-black uppercase tracking-widest text-on-surface-variant">Admin:</span>
+          <label className="flex items-center gap-2 cursor-pointer font-display text-xs font-bold uppercase tracking-wider">
+            <input
+              type="checkbox"
+              checked={config.earlyBirdEnabled}
+              onChange={() => configDispatch({ type: 'TOGGLE_EARLY_BIRD' })}
+              className="w-4 h-4 border-2 border-primary accent-primary"
+            />
+            Early Bird
+          </label>
+          <label className="flex items-center gap-2 cursor-pointer font-display text-xs font-bold uppercase tracking-wider">
+            <input
+              type="checkbox"
+              checked={config.soldOut}
+              onChange={() => configDispatch({ type: 'TOGGLE_SOLD_OUT' })}
+              className="w-4 h-4 border-2 border-primary accent-primary"
+            />
+            Sold Out
+          </label>
+          <label className="flex items-center gap-2 cursor-pointer font-display text-xs font-bold uppercase tracking-wider">
+            <input
+              type="checkbox"
+              checked={config.salesNotStarted}
+              onChange={() => configDispatch({ type: 'TOGGLE_SALES_NOT_STARTED' })}
+              className="w-4 h-4 border-2 border-primary accent-primary"
+            />
+            Sales Not Started
+          </label>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-10 lg:gap-12">
+        {/* Main content */}
+        <div className="lg:col-span-3 space-y-8">
+
+          {/* ===== STEP 1: User Type Selection ===== */}
+          {step === 1 && (
+            <div className="space-y-6">
+              <h3 className="font-display text-2xl md:text-3xl font-black uppercase flex items-center gap-3">
+                <span className="bg-primary text-background w-10 h-10 flex items-center justify-center font-bold text-xl">01</span>
+                SELECT YOUR IDENTITY
+              </h3>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <button
+                  onClick={() => dispatch({ type: 'SET_USER_TYPE_PRICE', userType: 'vinnunian', ticketPrice: effectiveTicketPrice('vinnunian') })}
+                  disabled={isLocked}
+                  className={cn(
+                    'relative border-4 border-primary p-6 md:p-8 text-left transition-all duration-300',
+                    isLocked
+                      ? 'opacity-50 cursor-not-allowed'
+                      : 'hover:-translate-y-1',
+                    state.userType === 'vinnunian'
+                      ? 'bg-primary-container neo-shadow'
+                      : 'bg-surface hover:bg-surface-container'
+                  )}
+                >
+                  {config.earlyBirdEnabled && (
+                    <div className="absolute -top-4 -right-4 z-10 -rotate-12 bg-secondary text-white px-3 py-1.5 border-2 border-primary neo-shadow-sm">
+                      <span className="font-display font-black text-sm tracking-tighter italic uppercase">EARLY BIRD</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between items-start mb-4">
+                    <h4 className="font-display text-xl md:text-2xl font-black uppercase tracking-tight">VINNUNIAN</h4>
+                    <School className="w-7 h-7" />
+                  </div>
+                  <div className="mb-3">
+                    <span className="font-display text-4xl md:text-5xl font-black tracking-tighter">
+                      {config.earlyBirdEnabled ? formatVND(config.earlyBirdPrice) : formatVND(TICKET_PRICE_VINNUNIAN)}
+                    </span>
+                    {config.earlyBirdEnabled && (
+                      <span className="ml-2 text-sm font-display font-bold text-on-surface-variant line-through">{formatVND(TICKET_PRICE_VINNUNIAN)}</span>
+                    )}
+                  </div>
+                  <p className="font-display text-xs font-black uppercase tracking-widest text-secondary">
+                    STUDENTS · FACULTY · STAFF · ALUMNI
+                  </p>
+                  <ul className="mt-4 space-y-2">
+                    <li className="flex items-start gap-2 text-sm font-medium">
+                      <CheckCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                      Full venue access including VIP lounge
+                    </li>
+                    <li className="flex items-start gap-2 text-sm font-medium">
+                      <CheckCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                      2 Complimentary drink vouchers
+                    </li>
+                    <li className="flex items-start gap-2 text-sm font-medium">
+                      <CheckCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                      Commemorative YEP Wristband
+                    </li>
+                  </ul>
+                </button>
+
+                <button
+                  onClick={() => dispatch({ type: 'SET_USER_TYPE_PRICE', userType: 'non-vinnunian', ticketPrice: TICKET_PRICE_NON_VINNUNIAN })}
+                  disabled={config.earlyBirdEnabled || isLocked}
+                  className={cn(
+                    'border-4 border-primary p-6 md:p-8 text-left transition-all duration-300',
+                    (config.earlyBirdEnabled || isLocked)
+                      ? 'opacity-50 cursor-not-allowed'
+                      : 'hover:-translate-y-1',
+                    state.userType === 'non-vinnunian'
+                      ? 'bg-primary-container neo-shadow'
+                      : 'bg-surface hover:bg-surface-container'
+                  )}
+                >
+                  {config.earlyBirdEnabled && (
+                    <div className="absolute -top-4 -right-4 z-10 bg-surface-dim border-2 border-primary px-3 py-1.5">
+                      <span className="font-display font-black text-xs text-on-surface-variant tracking-tighter uppercase">LOCKED</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between items-start mb-4">
+                    <h4 className="font-display text-xl md:text-2xl font-black uppercase tracking-tight">NON-VINNUNIAN</h4>
+                    <Users className="w-7 h-7" />
+                  </div>
+                  <div className="mb-3">
+                    <span className="font-display text-4xl md:text-5xl font-black tracking-tighter">{formatVND(TICKET_PRICE_NON_VINNUNIAN)}</span>
+                  </div>
+                  <p className="font-display text-xs font-black uppercase tracking-widest text-on-surface-variant">
+                    GUEST ENTRANCE PASS
+                  </p>
+                  <ul className="mt-4 space-y-2">
+                    <li className="flex items-start gap-2 text-sm font-medium">
+                      <CheckCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                      Full venue access
+                    </li>
+                    <li className="flex items-start gap-2 text-sm font-medium">
+                      <CheckCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                      1 Complimentary drink voucher
+                    </li>
+                    <li className="flex items-start gap-2 text-sm font-medium">
+                      <CheckCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                      YEP Attendee Wristband
+                    </li>
+                  </ul>
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* ===== STEP 2: Personal Information ===== */}
+          {step === 2 && (
+            <div className="space-y-6">
+              <h3 className="font-display text-2xl md:text-3xl font-black uppercase flex items-center gap-3">
+                <span className="bg-primary text-background w-10 h-10 flex items-center justify-center font-bold text-xl">02</span>
+                ATTENDEE INFORMATION
+              </h3>
+
+              <div className="bg-surface border-4 border-primary p-6 md:p-8 space-y-6">
+                <div className="space-y-3">
+                  <label className="block font-display text-xs md:text-sm font-black uppercase tracking-widest text-primary">FULL NAME *</label>
+                  <input
+                    type="text"
+                    value={state.fullName}
+                    onChange={e => dispatch({ type: 'SET_FIELD', field: 'fullName', value: e.target.value })}
+                    placeholder="NGUYEN VAN A"
+                    className="w-full bg-white border-2 border-primary py-3 px-4 font-display text-lg focus:outline-none focus:border-secondary transition-colors placeholder-primary/30 font-bold"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-3">
+                    <label className="block font-display text-xs md:text-sm font-black uppercase tracking-widest text-primary">
+                      EMAIL *
+                      {state.userType === 'vinnunian' && <span className="text-secondary ml-1">(@vinuni.edu.vn)</span>}
+                    </label>
+                    <input
+                      type="email"
+                      value={state.email}
+                      onChange={e => dispatch({ type: 'SET_FIELD', field: 'email', value: e.target.value })}
+                      placeholder={state.userType === 'vinnunian' ? 'name@vinuni.edu.vn' : 'email@example.com'}
+                      className="w-full bg-white border-2 border-primary py-3 px-4 font-display text-lg focus:outline-none focus:border-secondary transition-colors placeholder-primary/30 font-bold"
+                    />
+                    {state.userType === 'vinnunian' && state.email && !state.email.toLowerCase().endsWith('@vinuni.edu.vn') && (
+                      <p className="text-secondary font-display text-xs font-bold uppercase tracking-wider">
+                        Email must end with @vinuni.edu.vn
+                      </p>
+                    )}
+                  </div>
+                  <div className="space-y-3">
+                    <label className="block font-display text-xs md:text-sm font-black uppercase tracking-widest text-primary">PHONE NUMBER *</label>
+                    <input
+                      type="tel"
+                      value={state.phone}
+                      onChange={e => dispatch({ type: 'SET_FIELD', field: 'phone', value: e.target.value })}
+                      placeholder="0123 456 789"
+                      className="w-full bg-white border-2 border-primary py-3 px-4 font-display text-lg focus:outline-none focus:border-secondary transition-colors placeholder-primary/30 font-bold"
+                    />
+                  </div>
+                </div>
+
+                {state.userType === 'vinnunian' && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-3">
+                      <label className="block font-display text-xs md:text-sm font-black uppercase tracking-widest text-primary">CATEGORY *</label>
+                      <div className="relative">
+                        <select
+                          value={state.userCategory || ''}
+                          onChange={e => dispatch({ type: 'SET_USER_CATEGORY', payload: (e.target.value || null) as UserCategory })}
+                          className="w-full bg-white border-2 border-primary py-3 px-4 font-display text-lg font-bold focus:outline-none focus:border-secondary transition-colors appearance-none cursor-pointer"
+                        >
+                          <option value="">-- SELECT --</option>
+                          <option value="student">STUDENT</option>
+                          <option value="faculty">FACULTY</option>
+                          <option value="staff">STAFF</option>
+                          <option value="alumni">ALUMNI</option>
+                        </select>
+                        <div className="absolute inset-y-0 right-0 flex items-center px-4 pointer-events-none border-l-2 border-primary bg-surface">
+                          <svg className="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="square" strokeLinejoin="miter" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="space-y-3">
+                      <label className="block font-display text-xs md:text-sm font-black uppercase tracking-widest text-primary">STUDENT ID</label>
+                      <input
+                        type="text"
+                        value={state.studentId}
+                        onChange={e => dispatch({ type: 'SET_FIELD', field: 'studentId', value: e.target.value })}
+                        placeholder="2004XXXX"
+                        className="w-full bg-white border-2 border-primary py-3 px-4 font-display text-lg focus:outline-none focus:border-secondary transition-colors placeholder-primary/30 font-bold"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {state.userType === 'non-vinnunian' && (
+                  <div className="space-y-3">
+                    <label className="block font-display text-xs md:text-sm font-black uppercase tracking-widest text-primary">WORKPLACE / ADDRESS *</label>
+                    <input
+                      type="text"
+                      value={state.workplace}
+                      onChange={e => dispatch({ type: 'SET_FIELD', field: 'workplace', value: e.target.value })}
+                      placeholder="ABC Company / 123 Nguyen Trai, District 1..."
+                      className="w-full bg-white border-2 border-primary py-3 px-4 font-display text-lg focus:outline-none focus:border-secondary transition-colors placeholder-primary/30 font-bold"
+                    />
+                  </div>
+                )}
+
+                <div className="bg-primary-container border-4 border-primary p-4 flex items-start gap-3">
+                  <CheckCircle className="w-5 h-5 shrink-0 mt-0.5 text-primary" />
+                  <p className="font-body text-xs md:text-sm font-bold uppercase tracking-wider leading-relaxed">
+                    Vé sẽ được gửi về email của bạn. Vui lòng kiểm tra kỹ thông tin trước khi tiếp tục.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ===== STEP 3: Ticket Quantity & Merch ===== */}
+          {step === 3 && (
+            <div className="space-y-6">
+              <h3 className="font-display text-2xl md:text-3xl font-black uppercase flex items-center gap-3">
+                <span className="bg-primary text-background w-10 h-10 flex items-center justify-center font-bold text-xl">03</span>
+                QUANTITY & MERCH
+              </h3>
+
+              {/* Ticket Quantity */}
+              <div className="bg-surface border-4 border-primary p-6 md:p-8 space-y-6">
+                <div className="flex items-center gap-3 mb-4">
+                  <Ticket className="w-6 h-6" />
+                  <h4 className="font-display text-xl font-black uppercase tracking-tight">
+                    {state.userType === 'vinnunian' ? 'VINNUNIAN TICKET' : 'NON-VINNUNIAN TICKET'}
+                  </h4>
+                </div>
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
+                  <div>
+                    <p className="font-display text-3xl font-black tracking-tighter">{formatVND(ticketPrice)}</p>
+                    <p className="font-body text-sm text-on-surface-variant font-medium mt-1">per ticket</p>
+                  </div>
+                  <div className="flex items-center border-4 border-primary bg-background">
+                    <button
+                      onClick={() => dispatch({ type: 'SET_TICKET_QUANTITY', payload: state.ticketQuantity - 1 })}
+                      className="px-4 py-3 hover:bg-primary-container transition-colors border-r-4 border-primary font-display font-black text-xl"
+                    >
+                      -
+                    </button>
+                    <span className="px-6 py-3 font-display font-black text-xl min-w-[60px] text-center">{state.ticketQuantity}</span>
+                    <button
+                      onClick={() => dispatch({ type: 'SET_TICKET_QUANTITY', payload: state.ticketQuantity + 1 })}
+                      className="px-4 py-3 hover:bg-primary-container transition-colors border-l-4 border-primary font-display font-black text-xl"
+                    >
+                      +
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Merch Selection */}
+              <div className="bg-primary text-background border-4 border-primary p-6 md:p-8 space-y-6">
+                <div className="flex items-center gap-3 mb-4">
+                  <Shirt className="w-6 h-6 text-background" />
+                  <h4 className="font-display text-xl font-black uppercase tracking-tight">EXCLUSIVE MERCH</h4>
+                </div>
+                <p className="font-body text-xs font-bold uppercase tracking-wider opacity-80">
+                  Nhận merch tại booth vào ngày sự kiện. Mang theo Student ID hoặc Email xác nhận.
+                </p>
+
+                {state.merch.map(item => (
+                  <div key={item.id} className="flex flex-col md:flex-row items-center gap-4 p-4 bg-surface text-primary border-4 border-primary">
+                    <div className="flex-grow text-center md:text-left">
+                      <h5 className="font-display font-black uppercase text-lg tracking-tight">{item.name}</h5>
+                      <p className="font-display text-xl font-black mt-1">{formatVND(item.price)}</p>
+                    </div>
+                    <div className="flex items-center border-4 border-primary bg-background">
+                      <button
+                        onClick={() => dispatch({ type: 'SET_MERCH_QUANTITY', id: item.id, quantity: item.quantity - 1 })}
+                        className="px-3 py-2 hover:bg-primary-container transition-colors border-r-4 border-primary font-display font-black text-lg"
+                      >
+                        -
+                      </button>
+                      <span className="px-5 py-2 font-display font-black text-lg min-w-[50px] text-center">{item.quantity}</span>
+                      <button
+                        onClick={() => dispatch({ type: 'SET_MERCH_QUANTITY', id: item.id, quantity: item.quantity + 1 })}
+                        className="px-3 py-2 hover:bg-primary-container transition-colors border-l-4 border-primary font-display font-black text-lg"
+                      >
+                        +
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Navigation Buttons */}
+          <div className="flex justify-between items-center pt-4">
+            {step > 1 ? (
+              <button
+                onClick={prevStep}
+                className="flex items-center gap-2 bg-surface border-4 border-primary px-6 py-3 font-display font-black text-lg uppercase tracking-widest hover:bg-primary-container transition-colors"
+              >
+                <ArrowLeft className="w-5 h-5" />
+                BACK
+              </button>
+            ) : (
+              <Link
+                to="/"
+                className="flex items-center gap-2 bg-surface border-4 border-primary px-6 py-3 font-display font-black text-lg uppercase tracking-widest hover:bg-primary-container transition-colors"
+              >
+                <ArrowLeft className="w-5 h-5" />
+                HOME
+              </Link>
+            )}
+
+            <button
+              onClick={nextStep}
+              disabled={(step === 1 && !canNextStep1) || (step === 2 && !canNextStep2) || (step === 3 && !canNextStep3)}
+              className={cn(
+                'flex items-center gap-2 border-4 border-primary px-6 py-3 font-display font-black text-lg uppercase tracking-widest transition-all',
+                ((step === 1 && canNextStep1) || (step === 2 && canNextStep2) || (step === 3 && canNextStep3))
+                  ? 'bg-primary text-background hover:bg-background hover:text-primary neo-shadow-sm active:translate-y-1 active:shadow-none'
+                  : 'bg-surface-dim text-on-surface-variant cursor-not-allowed'
+              )}
+            >
+              {step === 3 ? 'REVIEW ORDER' : 'NEXT STEP'}
+              <ArrowRight className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
+
+        {/* Sidebar: Order Preview */}
+        <div className="lg:col-span-2">
+          <div className="lg:sticky lg:top-32 space-y-6">
+            <div className="bg-surface border-4 border-primary p-6 md:p-8">
+              <h3 className="font-display text-xl md:text-2xl font-black uppercase mb-6 border-b-4 border-primary pb-3">
+                ORDER SUMMARY
+              </h3>
+
+              {state.userType && (
+                <div className="space-y-3 mb-6">
+                  <div className="flex justify-between text-sm font-display font-bold uppercase tracking-wider">
+                    <span>{state.userType === 'vinnunian' ? 'VINNUNIAN' : 'NON-VINNUNIAN'} TICKET</span>
+                    <span>x{state.ticketQuantity}</span>
+                  </div>
+                  <div className="flex justify-between text-sm font-display font-bold">
+                    <span className="uppercase tracking-wider">Ticket price</span>
+                    <span>
+                      {formatVND(getTicketPrice() * state.ticketQuantity)}
+                    </span>
+                  </div>
+                  {config.earlyBirdEnabled && state.userType === 'vinnunian' && (
+                    <div className="text-xs font-display font-bold text-secondary uppercase tracking-wider">
+                      EARLY BIRD DISCOUNT APPLIED
+                    </div>
+                  )}
+
+                  {state.merch.filter(m => m.quantity > 0).map(m => (
+                    <div key={m.id} className="flex justify-between text-sm font-display font-bold">
+                      <span className="uppercase tracking-wider">{m.name}</span>
+                      <span>{formatVND(m.price * m.quantity)}</span>
+                    </div>
+                  ))}
+
+                  <div className="border-t-2 border-primary pt-3 flex justify-between text-xs font-display font-bold uppercase tracking-widest text-on-surface-variant">
+                    <span>SERVICE FEE (3%)</span>
+                    <span>{formatVND(serviceFee)}</span>
+                  </div>
+                </div>
+              )}
+
+              {!state.userType && (
+                <p className="font-body text-sm text-on-surface-variant font-medium mb-6">
+                  Select your ticket type to see pricing.
+                </p>
+              )}
+
+              <div className="bg-primary-container border-3 border-primary p-4 flex justify-between items-end">
+                <span className="font-display font-black text-lg uppercase tracking-widest">TOTAL</span>
+                <span className="font-display text-2xl md:text-3xl font-black tracking-tighter">
+                  {state.userType ? formatVND(total) : '---'}
+                </span>
+              </div>
+            </div>
+
+            {state.userType && (
+              <div className="bg-primary-container border-4 border-primary p-4 flex items-start gap-3">
+                <CheckCircle className="w-5 h-5 shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-body text-xs font-bold uppercase tracking-wider leading-relaxed">
+                    Vé điện tử sẽ được gửi về email sau khi thanh toán thành công.
+                  </p>
+                  {state.merch.some(m => m.quantity > 0) && (
+                    <p className="font-body text-xs font-bold uppercase tracking-wider leading-relaxed mt-2 text-secondary">
+                      Mang theo Email xác nhận để nhận Merch tại booth sự kiện.
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
