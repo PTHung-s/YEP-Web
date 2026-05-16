@@ -28,6 +28,9 @@ const faqs = [
 ];
 
 export function Home() {
+  const timelineSplitIndex = Math.ceil(timeline.length / 2);
+  const timelineColumns = [timeline.slice(0, timelineSplitIndex), timeline.slice(timelineSplitIndex)];
+
   return (
     <div className="w-full">
       {/* Hero Section */}
@@ -162,18 +165,22 @@ export function Home() {
             </div>
           </div>
 
-          <div className="flex flex-col gap-0 border-2 border-primary bg-surface">
-            {timeline.map((item, i) => (
-              <div key={i} className="flex flex-col md:flex-row border-b-2 border-primary hover:bg-surface-container transition-colors cursor-default last:border-b-0">
-                <div className="px-3 py-2 md:w-32 border-b-2 md:border-b-0 md:border-r-2 border-primary bg-primary text-background font-display text-base md:text-lg font-bold flex items-center justify-center tracking-tight">
-                  {item.time}
-                </div>
-                <div className="px-3 py-2 md:px-4 md:py-2.5 flex-grow">
-                  <div>
-                    <h4 className="font-display text-sm md:text-base font-black uppercase tracking-tight mb-0.5">{item.title}</h4>
-                    <p className="font-display uppercase text-[10px] md:text-[11px] font-bold text-secondary tracking-widest">{item.desc}</p>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
+            {timelineColumns.map((column, columnIndex) => (
+              <div key={columnIndex} className="flex flex-col gap-0 border-2 border-primary bg-surface">
+                {column.map((item, itemIndex) => (
+                  <div key={`${columnIndex}-${itemIndex}`} className="flex flex-col lg:flex-row border-b-2 border-primary hover:bg-surface-container transition-colors cursor-default last:border-b-0">
+                    <div className="px-3 py-2 lg:w-52 lg:min-w-[13rem] border-b-2 lg:border-b-0 lg:border-r-2 border-primary bg-primary text-background font-display text-sm lg:text-base font-bold flex items-center justify-center tracking-tight whitespace-nowrap">
+                      {item.time}
+                    </div>
+                    <div className="px-3 py-2 lg:px-4 lg:py-2.5 flex-grow">
+                      <div>
+                        <h4 className="font-display text-sm lg:text-base font-black uppercase tracking-tight mb-0.5">{item.title}</h4>
+                        <p className="font-display uppercase text-[10px] lg:text-[11px] font-bold text-secondary tracking-widest">{item.desc}</p>
+                      </div>
+                    </div>
                   </div>
-                </div>
+                ))}
               </div>
             ))}
           </div>
