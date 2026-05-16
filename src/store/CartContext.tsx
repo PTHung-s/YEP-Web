@@ -30,6 +30,12 @@ const TICKET_PRICE_EARLY = 250000;
 const TICKET_PRICE_VINNUNIAN = 300000;
 const TICKET_PRICE_NON_VINNUNIAN = 400000;
 const SERVICE_FEE_RATE = 0.03;
+const BULK_TICKET_DISCOUNT_TIERS = [
+  { minQty: 5, rate: 0.1 },
+  { minQty: 3, rate: 0.05 },
+] as const;
+const MERCH_DISCOUNT_MIN_TICKETS = 3;
+const MERCH_DISCOUNT_RATE = 0.1;
 
 const INITIAL_MERCH: MerchItem[] = [
   { id: 'rebels-tee', name: '"REBELS" OVERSIZED TEE', price: 200000, quantity: 0 },
@@ -100,6 +106,18 @@ function getMerchTotal(state: CartState): number {
   return state.merch.reduce((sum, m) => sum + m.price * m.quantity, 0);
 }
 
+function getTicketBulkDiscount(state: CartState): number {
+  const tier = BULK_TICKET_DISCOUNT_TIERS.find(item => state.ticketQuantity >= item.minQty);
+  if (!tier) return 0;
+  const ticketSubtotal = getTicketPrice(state) * state.ticketQuantity;
+  return Math.round(ticketSubtotal * tier.rate);
+}
+
+function getMerchBulkDiscount(state: CartState): number {
+  if (state.ticketQuantity < MERCH_DISCOUNT_MIN_TICKETS) return 0;
+  return Math.round(getMerchTotal(state) * MERCH_DISCOUNT_RATE);
+}
+
 function getSubtotal(state: CartState): number {
   return getTicketPrice(state) * state.ticketQuantity + getMerchTotal(state);
 }
@@ -109,7 +127,8 @@ function getServiceFee(state: CartState): number {
 }
 
 function getTotal(state: CartState): number {
-  return Math.max(0, getSubtotal(state) + getServiceFee(state) - state.discountAmount);
+  const autoDiscount = getTicketBulkDiscount(state) + getMerchBulkDiscount(state);
+  return Math.max(0, getSubtotal(state) + getServiceFee(state) - state.discountAmount - autoDiscount);
 }
 
 interface CartContextValue {
@@ -120,6 +139,8 @@ interface CartContextValue {
   getSubtotal: () => number;
   getServiceFee: () => number;
   getTotal: () => number;
+  getTicketBulkDiscount: () => number;
+  getMerchBulkDiscount: () => number;
 }
 
 const CartContext = createContext<CartContextValue | null>(null);
@@ -135,6 +156,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
     getSubtotal: () => getSubtotal(state),
     getServiceFee: () => getServiceFee(state),
     getTotal: () => getTotal(state),
+    getTicketBulkDiscount: () => getTicketBulkDiscount(state),
+    getMerchBulkDiscount: () => getMerchBulkDiscount(state),
   };
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;

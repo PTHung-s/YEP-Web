@@ -1,5 +1,5 @@
 import React from 'react';
-import { ArrowRight, Ticket, PartyPopper, Info, Mail, MapPin, Music, Camera, GlassWater, Heart, ChevronDown } from 'lucide-react';
+import { Ticket, PartyPopper, Info, Mail, MapPin, Music, Camera, GlassWater, Heart, ChevronDown } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 const timeline = [
@@ -137,33 +137,46 @@ export function Home() {
 
       {/* Timeline */}
       <section className="py-16 md:py-24 px-6 md:px-12 bg-surface border-b-2 border-primary max-w-7xl mx-auto w-full">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-16">
-          <div className="lg:col-span-4">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10">
+          <div className="lg:col-span-3">
             <h2 className="font-display text-5xl md:text-6xl font-bold uppercase mb-6 leading-[0.9] tracking-tighter">
               TIMING IS<br /><span className="text-secondary">EVERYTHING</span>
             </h2>
             <p className="font-body text-base md:text-lg max-w-xs mb-10 font-medium text-on-surface-variant">
               June 27, 2026 — Amphitheatre, VinUni Campus.
             </p>
-            <div className="bg-tertiary text-white p-6 md:p-8 border-2 border-primary neo-shadow-blue inline-block w-full">
+            <div className="bg-tertiary text-white p-5 md:p-6 border-2 border-primary neo-shadow-blue inline-block w-full">
               <p className="font-display font-black text-2xl uppercase tracking-wider mb-1">MAIN STAGE</p>
               <p className="font-display opacity-90 uppercase tracking-widest text-xs md:text-sm font-bold">THE AMPHITHEATRE</p>
             </div>
           </div>
-          <div className="lg:col-span-8">
-            <div className="flex flex-col gap-0 border-2 border-primary bg-surface/50">
+          <div className="lg:col-span-5">
+            <div className="flex flex-col gap-0 border-2 border-primary bg-surface">
               {timeline.map((item, i) => (
-                <div key={i} className="flex flex-col md:flex-row border-b-2 border-primary hover:bg-surface transition-colors group cursor-default last:border-b-0">
-                  <div className="p-6 md:w-48 lg:w-56 border-b-2 md:border-b-0 md:border-r-2 border-primary bg-primary text-background font-display text-2xl md:text-3xl font-bold flex items-center justify-center tracking-tighter">{item.time}</div>
-                  <div className="p-6 md:p-8 flex-grow flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div key={i} className="flex flex-col md:flex-row border-b-2 border-primary hover:bg-surface-container transition-colors cursor-default last:border-b-0">
+                  <div className="p-4 md:w-40 border-b-2 md:border-b-0 md:border-r-2 border-primary bg-primary text-background font-display text-lg md:text-xl font-bold flex items-center justify-center tracking-tight">
+                    {item.time}
+                  </div>
+                  <div className="p-4 md:p-5 flex-grow">
                     <div>
-                      <h4 className="font-display text-xl md:text-2xl font-black uppercase tracking-tight mb-1">{item.title}</h4>
-                      <p className="font-display uppercase text-xs md:text-sm font-bold text-secondary tracking-widest">{item.desc}</p>
+                      <h4 className="font-display text-base md:text-lg font-black uppercase tracking-tight mb-1">{item.title}</h4>
+                      <p className="font-display uppercase text-[10px] md:text-xs font-bold text-secondary tracking-widest">{item.desc}</p>
                     </div>
-                    <ArrowRight className="w-8 h-8 group-hover:translate-x-2 transition-transform hidden md:block text-primary" />
                   </div>
                 </div>
               ))}
+            </div>
+          </div>
+          <div className="lg:col-span-4">
+            <div className="border-2 border-primary bg-background p-5 h-full min-h-[320px] flex flex-col">
+              <span className="font-display text-xs font-bold uppercase tracking-widest text-tertiary mb-3">// VENUE MAP</span>
+              <h3 className="font-display text-2xl md:text-3xl font-black uppercase tracking-tight mb-4">MAP COMING BACK SOON</h3>
+              <p className="font-body text-sm text-on-surface-variant font-medium leading-relaxed mb-4">
+                Khu vực sơ đồ sự kiện đang được cập nhật. Tạm thời vui lòng theo dõi timeline bên cạnh để nắm luồng chương trình.
+              </p>
+              <div className="mt-auto border-2 border-dashed border-primary p-6 bg-surface text-center">
+                <p className="font-display text-sm font-bold uppercase tracking-wider text-primary">AMPHITHEATRE / BOOTH / CHECK-IN / STAGE MAP</p>
+              </div>
             </div>
           </div>
         </div>
@@ -177,24 +190,21 @@ export function Home() {
             <h2 className="font-display text-5xl md:text-6xl lg:text-7xl font-bold uppercase tracking-tighter leading-none">YEP ICONS</h2>
           </div>
           <Link to="/vote" className="inline-block bg-background text-primary border-2 border-primary px-6 py-3 font-display font-bold text-lg uppercase tracking-widest hover:bg-secondary hover:text-white transition-colors neo-shadow active:translate-x-1 active:translate-y-1 active:shadow-none">
-            VIEW DETAILS
+            REGISTER AND VOTE NOW!
           </Link>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-0 border-2 border-primary">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-0 border-2 border-primary">
           <div className="border-b-2 md:border-b-0 md:border-r-2 border-primary p-6">
-            <span className="font-display text-4xl font-black text-tertiary">01</span>
-            <h3 className="font-display text-2xl font-extrabold uppercase mt-2 mb-1">Vòng Tuyển chọn</h3>
-            <p className="font-body text-xs text-on-surface-variant font-medium">Giáo sư & SAM chọn Top 8 cặp đôi từ hồ sơ đăng ký. Thời gian từ đầu tháng 05/2026.</p>
-          </div>
-          <div className="border-b-2 md:border-b-0 md:border-r-2 border-primary p-6">
-            <span className="font-display text-4xl font-black text-secondary">02</span>
-            <h3 className="font-display text-2xl font-extrabold uppercase mt-2 mb-1">Chiến dịch Truyền thông</h3>
-            <p className="font-body text-xs text-on-surface-variant font-medium">Bình chọn công khai qua mạng xã hội. 1 Like = 3đ, 1 Cmt = 1đ, 1 Share = 5đ.</p>
+            <h3 className="font-display text-2xl font-extrabold uppercase mb-3">TỔNG QUAN CUỘC THI</h3>
+            <p className="font-body text-sm text-on-surface-variant font-medium leading-relaxed">
+              YEP ICONS là sân chơi tôn vinh những cặp đôi tỏa sáng của VinUni, tập trung vào tinh thần kết nối, cá tính và dấu ấn sân khấu trong đêm sự kiện.
+            </p>
           </div>
           <div className="p-6">
-            <span className="font-display text-4xl font-black text-primary">03</span>
-            <h3 className="font-display text-2xl font-extrabold uppercase mt-2 mb-1">Chung kết D-Day</h3>
-            <p className="font-body text-xs text-on-surface-variant font-medium">Top 4 cặp đôi biểu diễn trực tiếp. Bình chọn 100% qua Microsoft Forms tại sự kiện.</p>
+            <h3 className="font-display text-2xl font-extrabold uppercase mb-3">THAM GIA NGAY</h3>
+            <p className="font-body text-sm text-on-surface-variant font-medium leading-relaxed">
+              Chi tiết thể lệ, đăng ký và bình chọn được mở tại trang VOTE. BTC cập nhật thông tin chính thức tại fanpage VinUni Student Council.
+            </p>
           </div>
         </div>
       </section>
@@ -288,7 +298,7 @@ export function Home() {
             </div>
             <h3 className="font-display text-xl font-black uppercase tracking-tight">MERCH PICKUP</h3>
             <p className="font-body text-sm font-medium text-on-surface-variant leading-relaxed">
-              Mang theo Email xác nhận hoặc Student ID đến Booth Merch tại sự kiện vào ngày 27/06/2026 để nhận vật phẩm.
+              Nhận merch tại booth của VinUni Student Council hoặc nhận trực tiếp trong sự kiện.
             </p>
           </div>
         </div>

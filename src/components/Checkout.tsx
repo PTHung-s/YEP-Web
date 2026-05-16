@@ -9,15 +9,16 @@ function formatVND(amount: number): string {
 }
 
 export function Checkout() {
-  const { state, dispatch, getTicketPrice, getMerchTotal, getServiceFee, getTotal } = useCart();
+  const { state, dispatch, getTicketPrice, getServiceFee, getTotal, getTicketBulkDiscount, getMerchBulkDiscount } = useCart();
   const navigate = useNavigate();
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState('');
 
   const ticketPrice = getTicketPrice();
-  const merchTotal = getMerchTotal();
   const serviceFee = getServiceFee();
   const total = getTotal();
+  const ticketBulkDiscount = getTicketBulkDiscount();
+  const merchBulkDiscount = getMerchBulkDiscount();
 
   const handlePay = async () => {
     if (processing || !state.paymentMethod) return;
@@ -46,6 +47,8 @@ export function Checkout() {
           discountCode: state.discountCode,
           discountAmount: state.discountAmount,
           totalAmount: total,
+          ticketBulkDiscount,
+          merchBulkDiscount,
           paymentMethod: state.paymentMethod,
         }),
       });
@@ -73,7 +76,7 @@ export function Checkout() {
           PAYMENT <br /> CHECKOUT.
         </h1>
         <p className="font-body text-lg md:text-xl max-w-2xl text-on-surface-variant font-medium leading-relaxed">
-          Complete your payment to secure your spot at YEP VinUni 2024.
+          Complete your payment to secure your spot at YEP'26: The Kaleido Soul.
         </p>
       </div>
 
@@ -184,7 +187,7 @@ export function Checkout() {
                 <div>
                   <p className="font-display font-black text-lg uppercase tracking-wider">Bank Transfer Details</p>
                   <p className="font-body text-sm font-medium mt-2">After clicking "PAY NOW", you will receive bank transfer instructions via email.</p>
-                  <p className="font-body text-xs text-on-surface-variant mt-4 font-bold">YEP VINUNI · MB Bank · 0123456789 · Tran Ngoc Minh</p>
+                  <p className="font-body text-xs text-on-surface-variant mt-4 font-bold">YEP'26: THE KALEIDO SOUL · MB Bank · 0123456789 · Tran Ngoc Minh</p>
                 </div>
               </div>
             )}
@@ -225,6 +228,20 @@ export function Checkout() {
                   <span>SERVICE FEE (3%)</span>
                   <span>{formatVND(serviceFee)}</span>
                 </div>
+
+                {ticketBulkDiscount > 0 && (
+                  <div className="flex justify-between text-xs font-display font-bold uppercase tracking-widest text-secondary">
+                    <span>TICKET BULK DISCOUNT</span>
+                    <span>-{formatVND(ticketBulkDiscount)}</span>
+                  </div>
+                )}
+
+                {merchBulkDiscount > 0 && (
+                  <div className="flex justify-between text-xs font-display font-bold uppercase tracking-widest text-secondary">
+                    <span>MERCH BUNDLE DISCOUNT</span>
+                    <span>-{formatVND(merchBulkDiscount)}</span>
+                  </div>
+                )}
 
                 {state.discountAmount > 0 && (
                   <div className="flex justify-between text-xs font-display font-bold uppercase tracking-widest text-secondary">
@@ -278,7 +295,7 @@ export function Checkout() {
                     ? 'Thanh toán qua thẻ tín dụng. Vé sẽ được gửi về email sau khi giao dịch thành công.'
                     : state.paymentMethod === 'bank'
                       ? 'Bạn sẽ nhận hướng dẫn chuyển khoản qua email. Vé được gửi sau khi nhận thanh toán.'
-                      : 'BY CLICKING PAY, YOU AGREE TO THE VINUNI YEP 2024 TERMS OF ATTENDANCE.'}
+                      : "BY CLICKING PAY, YOU AGREE TO THE YEP'26 TERMS OF ATTENDANCE."}
                 </p>
               </div>
             </div>

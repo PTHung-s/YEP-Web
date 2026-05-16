@@ -9,6 +9,7 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export function Layout({ children }: { children: React.ReactNode }) {
+  const BRAND_NAME = "YEP'26: THE KALEIDO SOUL";
   const location = useLocation();
   const path = location.pathname;
 
@@ -17,8 +18,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
       <header className="fixed top-0 w-full z-50 flex justify-between items-center px-4 md:px-12 h-16 md:h-20 bg-surface border-b border-primary">
         <Link to="/" className="flex items-center gap-3 md:gap-4">
           <Menu className="w-6 h-6 md:w-8 md:h-8 text-primary cursor-pointer" />
-            <h1 className="font-display text-xl md:text-2xl font-extrabold tracking-widest uppercase text-primary leading-none">
-              YEP VINUNI
+            <h1 className="font-display text-sm md:text-base lg:text-lg font-extrabold tracking-wider uppercase text-primary leading-none">
+              {BRAND_NAME}
             </h1>
           </Link>
           <nav className="hidden md:flex gap-6 lg:gap-8 items-center">
@@ -74,20 +75,14 @@ export function Layout({ children }: { children: React.ReactNode }) {
       <footer className="w-full py-12 px-6 md:px-12 flex flex-col gap-8 md:flex-row justify-between items-start bg-surface border-t border-primary mt-auto">
         <div className="flex flex-col gap-3">
             <h2 className="font-display text-xl md:text-2xl font-bold tracking-tighter uppercase text-primary">
-              YEP VINUNI
+              {BRAND_NAME}
             </h2>
             <p className="font-display text-[10px] md:text-xs uppercase tracking-widest text-primary/60 font-bold max-w-sm leading-relaxed">
-              YEAR END PARTY. BUILT FOR THE BOLD. DESIGNED FOR THE CURIOUS.
+              YEAR END PARTY BY VINUNI STUDENT COUNCIL.
             </p>
             <p className="font-display text-[10px] md:text-xs uppercase tracking-widest text-primary/60 mt-2">
-              © 2026 YEP VINUNI. ALL RIGHTS RESERVED.
+              © 2026 VINUNI STUDENT COUNCIL. ALL RIGHTS RESERVED.
             </p>
-            <p className="font-body text-[10px] md:text-xs tracking-widest text-primary/60 mt-2">
-              © 2026 YEP VINUNI. ALL RIGHTS RESERVED.
-            </p>
-          <p className="font-display text-[10px] md:text-xs uppercase tracking-widest text-primary/60 mt-2">
-            © 2024 YEP VINUNI. ALL RIGHTS RESERVED.
-          </p>
         </div>
         <div className="flex flex-wrap gap-x-12 gap-y-8">
           <nav className="flex flex-col gap-4">

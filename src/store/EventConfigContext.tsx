@@ -13,7 +13,7 @@ const initialState: EventConfigState = {
   earlyBirdPrice: 250000,
   soldOut: false,
   salesNotStarted: false,
-  salesStartDate: '2024-12-01T00:00:00',
+  salesStartDate: '2026-06-01T00:00:00',
 };
 
 type ConfigAction =

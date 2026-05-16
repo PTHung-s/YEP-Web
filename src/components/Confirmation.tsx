@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ArrowLeft, ArrowRight, CheckCircle, Ticket, ShoppingBag, Percent } from 'lucide-react';
+import { ArrowLeft, ArrowRight, CheckCircle, Ticket, Percent } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useCart } from '../store/CartContext';
 import { cn } from './Layout';
@@ -9,22 +9,22 @@ function formatVND(amount: number): string {
 }
 
 const VALID_DISCOUNTS: Record<string, { amount: number; label: string }> = {
-  'VINUNI_YEP_2024': { amount: 50000, label: 'YEP 2024 Welcome Discount' },
+  'VINUNI_YEP_26': { amount: 50000, label: "YEP'26 Welcome Discount" },
   'EARLYBIRD': { amount: 100000, label: 'Early Bird 100K Off' },
 };
 
 export function Confirmation() {
-  const { state, dispatch, getTicketPrice, getMerchTotal, getSubtotal, getServiceFee, getTotal } = useCart();
+  const { state, dispatch, getTicketPrice, getServiceFee, getTotal, getTicketBulkDiscount, getMerchBulkDiscount } = useCart();
   const navigate = useNavigate();
   const [discountInput, setDiscountInput] = useState(state.discountCode);
   const [discountError, setDiscountError] = useState('');
   const [emailConfirm, setEmailConfirm] = useState(state.email);
 
   const ticketPrice = getTicketPrice();
-  const merchTotal = getMerchTotal();
-  const subtotal = getSubtotal();
   const serviceFee = getServiceFee();
   const total = getTotal();
+  const ticketBulkDiscount = getTicketBulkDiscount();
+  const merchBulkDiscount = getMerchBulkDiscount();
 
   const applyDiscount = () => {
     const code = discountInput.trim().toUpperCase();
@@ -185,7 +185,7 @@ export function Confirmation() {
               </div>
             )}
             <p className="font-body text-xs text-on-surface-variant font-medium mt-3">
-              Try codes: <span className="font-display font-bold">VINUNI_YEP_2024</span> (50K off) or <span className="font-display font-bold">EARLYBIRD</span> (100K off)
+              Try codes: <span className="font-display font-bold">VINUNI_YEP_26</span> (50K off) or <span className="font-display font-bold">EARLYBIRD</span> (100K off)
             </p>
           </div>
         </div>
@@ -215,6 +215,20 @@ export function Confirmation() {
                   <span>SERVICE FEE (3%)</span>
                   <span>{formatVND(serviceFee)}</span>
                 </div>
+
+                {ticketBulkDiscount > 0 && (
+                  <div className="flex justify-between text-xs font-display font-bold uppercase tracking-widest text-secondary">
+                    <span>TICKET BULK DISCOUNT</span>
+                    <span>-{formatVND(ticketBulkDiscount)}</span>
+                  </div>
+                )}
+
+                {merchBulkDiscount > 0 && (
+                  <div className="flex justify-between text-xs font-display font-bold uppercase tracking-widest text-secondary">
+                    <span>MERCH BUNDLE DISCOUNT</span>
+                    <span>-{formatVND(merchBulkDiscount)}</span>
+                  </div>
+                )}
 
                 {state.discountAmount > 0 && (
                   <div className="flex justify-between text-xs font-display font-bold uppercase tracking-widest text-secondary">
@@ -248,7 +262,7 @@ export function Confirmation() {
               <div className="bg-primary-container border-4 border-primary p-4 flex items-start gap-3">
                 <CheckCircle className="w-5 h-5 shrink-0 mt-0.5" />
                 <p className="font-body text-[10px] md:text-xs font-bold uppercase tracking-wider leading-relaxed">
-                  Vé điện tử sẽ được gửi về email {state.email || 'của bạn'} sau khi thanh toán thành công. Nhận merch tại booth vào ngày sự kiện.
+                  Vé điện tử sẽ được gửi về email {state.email || 'của bạn'} sau khi thanh toán thành công. Nhận merch tại booth của VinUni Student Council hoặc nhận trực tiếp trong sự kiện.
                 </p>
               </div>
             </div>

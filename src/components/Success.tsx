@@ -8,9 +8,12 @@ function formatVND(amount: number): string {
 }
 
 export function Success() {
-  const { state, dispatch, getTotal } = useCart();
+  const { state, dispatch, getTotal, getTicketPrice, getTicketBulkDiscount, getMerchBulkDiscount } = useCart();
   const location = useLocation();
   const total = getTotal();
+  const ticketPrice = getTicketPrice();
+  const ticketBulkDiscount = getTicketBulkDiscount();
+  const merchBulkDiscount = getMerchBulkDiscount();
   const ticketId = (location.state as any)?.ticketId || 'N/A';
   const storedIn = (location.state as any)?.storedIn || 'csv';
 
@@ -35,7 +38,7 @@ export function Success() {
       </h1>
 
       <p className="font-body text-lg md:text-xl text-on-surface-variant font-medium leading-relaxed max-w-xl mx-auto mb-12">
-        Your payment has been processed successfully. You're all set for YEP VinUni 2024!
+        Your payment has been processed successfully. You're all set for YEP'26: The Kaleido Soul!
       </p>
 
       {/* Order Recap */}
@@ -46,7 +49,7 @@ export function Success() {
         <div className="space-y-3 mb-6">
           <div className="flex justify-between text-sm font-display font-bold uppercase tracking-wider">
             <span>{state.userType === 'vinnunian' ? 'VINNUNIAN' : 'NON-VINNUNIAN'} TICKET ×{state.ticketQuantity}</span>
-            <span>{formatVND(state.userType === 'vinnunian' ? 250000 : 450000)}</span>
+            <span>{formatVND(ticketPrice * state.ticketQuantity)}</span>
           </div>
           {state.merch.filter(m => m.quantity > 0).map(m => (
             <div key={m.id} className="flex justify-between text-sm font-display font-bold">
@@ -54,6 +57,18 @@ export function Success() {
               <span>{formatVND(m.price * m.quantity)}</span>
             </div>
           ))}
+          {ticketBulkDiscount > 0 && (
+            <div className="flex justify-between text-xs font-display font-bold uppercase tracking-widest text-secondary">
+              <span>Ticket Bulk Discount</span>
+              <span>-{formatVND(ticketBulkDiscount)}</span>
+            </div>
+          )}
+          {merchBulkDiscount > 0 && (
+            <div className="flex justify-between text-xs font-display font-bold uppercase tracking-widest text-secondary">
+              <span>Merch Bundle Discount</span>
+              <span>-{formatVND(merchBulkDiscount)}</span>
+            </div>
+          )}
           <div className="border-t-2 border-primary pt-3 flex justify-between text-sm font-display font-black uppercase tracking-widest">
             <span>TOTAL PAID</span>
             <span>{formatVND(total)}</span>
@@ -96,8 +111,8 @@ export function Success() {
             <h4 className="font-display text-lg font-black uppercase tracking-wider mb-2">MERCH PICKUP</h4>
             <p className="font-body text-sm font-medium leading-relaxed">
               {hasMerch
-                ? 'Mang theo Email xác nhận hoặc Student ID đến Booth Merch tại sự kiện để nhận vật phẩm.'
-                : 'Bạn không đặt mua Merch. Nếu đổi ý, có thể mua trực tiếp tại Booth sự kiện.'}
+                ? 'Nhận merch tại booth của VinUni Student Council hoặc nhận trực tiếp trong sự kiện.'
+                : 'Bạn không đặt mua Merch. Nếu đổi ý, có thể mua trực tiếp tại booth của VinUni Student Council trong sự kiện.'}
             </p>
           </div>
         </div>
