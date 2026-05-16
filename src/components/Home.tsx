@@ -137,47 +137,45 @@ export function Home() {
 
       {/* Timeline */}
       <section className="py-16 md:py-24 px-6 md:px-12 bg-surface border-b-2 border-primary max-w-7xl mx-auto w-full">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10">
-          <div className="lg:col-span-3">
-            <h2 className="font-display text-5xl md:text-6xl font-bold uppercase mb-6 leading-[0.9] tracking-tighter">
+        <div className="flex flex-col gap-8">
+          <div>
+            <h2 className="font-display text-5xl md:text-6xl font-bold uppercase mb-4 leading-[0.9] tracking-tighter">
               TIMING IS<br /><span className="text-secondary">EVERYTHING</span>
             </h2>
-            <p className="font-body text-base md:text-lg max-w-xs mb-10 font-medium text-on-surface-variant">
+            <p className="font-body text-base md:text-lg mb-6 font-medium text-on-surface-variant">
               June 27, 2026 — Amphitheatre, VinUni Campus.
             </p>
-            <div className="bg-tertiary text-white p-5 md:p-6 border-2 border-primary neo-shadow-blue inline-block w-full">
-              <p className="font-display font-black text-2xl uppercase tracking-wider mb-1">MAIN STAGE</p>
+            <div className="bg-tertiary text-white p-4 md:p-5 border-2 border-primary neo-shadow-blue inline-block w-full md:w-auto">
+              <p className="font-display font-black text-xl md:text-2xl uppercase tracking-wider mb-1">MAIN STAGE</p>
               <p className="font-display opacity-90 uppercase tracking-widest text-xs md:text-sm font-bold">THE AMPHITHEATRE</p>
             </div>
           </div>
-          <div className="lg:col-span-5">
-            <div className="flex flex-col gap-0 border-2 border-primary bg-surface">
-              {timeline.map((item, i) => (
-                <div key={i} className="flex flex-col md:flex-row border-b-2 border-primary hover:bg-surface-container transition-colors cursor-default last:border-b-0">
-                  <div className="p-4 md:w-40 border-b-2 md:border-b-0 md:border-r-2 border-primary bg-primary text-background font-display text-lg md:text-xl font-bold flex items-center justify-center tracking-tight">
-                    {item.time}
-                  </div>
-                  <div className="p-4 md:p-5 flex-grow">
-                    <div>
-                      <h4 className="font-display text-base md:text-lg font-black uppercase tracking-tight mb-1">{item.title}</h4>
-                      <p className="font-display uppercase text-[10px] md:text-xs font-bold text-secondary tracking-widest">{item.desc}</p>
-                    </div>
-                  </div>
-                </div>
-              ))}
+
+          <div className="border-2 border-primary bg-background p-5 min-h-[240px] flex flex-col">
+            <span className="font-display text-xs font-bold uppercase tracking-widest text-tertiary mb-3">// VENUE MAP</span>
+            <h3 className="font-display text-2xl md:text-3xl font-black uppercase tracking-tight mb-4">MAP COMING BACK SOON</h3>
+            <p className="font-body text-sm text-on-surface-variant font-medium leading-relaxed mb-4">
+              Khu vực sơ đồ sự kiện đang được cập nhật. Tạm thời vui lòng theo dõi timeline bên dưới để nắm luồng chương trình.
+            </p>
+            <div className="mt-auto border-2 border-dashed border-primary p-5 bg-surface text-center">
+              <p className="font-display text-sm font-bold uppercase tracking-wider text-primary">AMPHITHEATRE / BOOTH / CHECK-IN / STAGE MAP</p>
             </div>
           </div>
-          <div className="lg:col-span-4">
-            <div className="border-2 border-primary bg-background p-5 h-full min-h-[320px] flex flex-col">
-              <span className="font-display text-xs font-bold uppercase tracking-widest text-tertiary mb-3">// VENUE MAP</span>
-              <h3 className="font-display text-2xl md:text-3xl font-black uppercase tracking-tight mb-4">MAP COMING BACK SOON</h3>
-              <p className="font-body text-sm text-on-surface-variant font-medium leading-relaxed mb-4">
-                Khu vực sơ đồ sự kiện đang được cập nhật. Tạm thời vui lòng theo dõi timeline bên cạnh để nắm luồng chương trình.
-              </p>
-              <div className="mt-auto border-2 border-dashed border-primary p-6 bg-surface text-center">
-                <p className="font-display text-sm font-bold uppercase tracking-wider text-primary">AMPHITHEATRE / BOOTH / CHECK-IN / STAGE MAP</p>
+
+          <div className="flex flex-col gap-0 border-2 border-primary bg-surface">
+            {timeline.map((item, i) => (
+              <div key={i} className="flex flex-col md:flex-row border-b-2 border-primary hover:bg-surface-container transition-colors cursor-default last:border-b-0">
+                <div className="px-3 py-2 md:w-32 border-b-2 md:border-b-0 md:border-r-2 border-primary bg-primary text-background font-display text-base md:text-lg font-bold flex items-center justify-center tracking-tight">
+                  {item.time}
+                </div>
+                <div className="px-3 py-2 md:px-4 md:py-2.5 flex-grow">
+                  <div>
+                    <h4 className="font-display text-sm md:text-base font-black uppercase tracking-tight mb-0.5">{item.title}</h4>
+                    <p className="font-display uppercase text-[10px] md:text-[11px] font-bold text-secondary tracking-widest">{item.desc}</p>
+                  </div>
+                </div>
               </div>
-            </div>
+            ))}
           </div>
         </div>
       </section>
