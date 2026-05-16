@@ -170,7 +170,7 @@ export function Home() {
               <div key={columnIndex} className="flex flex-col gap-0 border-2 border-primary bg-surface">
                 {column.map((item, itemIndex) => (
                   <div key={`${columnIndex}-${itemIndex}`} className="flex flex-col lg:flex-row border-b-2 border-primary hover:bg-surface-container transition-colors cursor-default last:border-b-0">
-                    <div className="px-3 py-2 lg:w-52 lg:min-w-[13rem] border-b-2 lg:border-b-0 lg:border-r-2 border-primary bg-primary text-background font-display text-sm lg:text-base font-bold flex items-center justify-center tracking-tight whitespace-nowrap">
+                    <div className="px-3 py-2 lg:w-44 lg:min-w-[11rem] border-b-2 lg:border-b-0 lg:border-r-2 border-primary bg-primary text-background font-display text-sm lg:text-base font-bold flex items-center justify-center tracking-tight whitespace-nowrap">
                       {item.time}
                     </div>
                     <div className="px-3 py-2 lg:px-4 lg:py-2.5 flex-grow">
