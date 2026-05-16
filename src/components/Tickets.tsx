@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { School, Users, CheckCircle, ShoppingCart, ArrowRight, ArrowLeft, Ticket, Shirt, AlertTriangle, Clock, Zap } from 'lucide-react';
+import { School, Users, CheckCircle, ArrowRight, ArrowLeft, Ticket, Shirt, AlertTriangle, Clock, Zap } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useCart, TICKET_PRICE_EARLY, TICKET_PRICE_VINNUNIAN, TICKET_PRICE_NON_VINNUNIAN, type UserType, type UserCategory } from '../store/CartContext';
+import { useCart, TICKET_PRICE_VINNUNIAN, TICKET_PRICE_NON_VINNUNIAN, type UserType, type UserCategory } from '../store/CartContext';
 import { useEventConfig } from '../store/EventConfigContext';
 import { cn } from './Layout';
 
@@ -39,8 +39,8 @@ function StepIndicator({ current }: { current: number }) {
 }
 
 export function Tickets() {
-  const { state, dispatch, getTicketPrice, getMerchTotal, getSubtotal, getServiceFee, getTotal } = useCart();
-  const { config, dispatch: configDispatch } = useEventConfig();
+  const { state, dispatch, getTicketBulkDiscount, getMerchBulkDiscount } = useCart();
+  const { config } = useEventConfig();
   const navigate = useNavigate();
   const [step, setStep] = useState(1);
 
@@ -52,10 +52,8 @@ export function Tickets() {
   };
 
   const ticketPrice = effectiveTicketPrice(state.userType);
-  const merchTotal = getMerchTotal();
-  const subtotal = getSubtotal();
-  const serviceFee = getServiceFee();
-  const total = getTotal();
+  const ticketBulkDiscount = getTicketBulkDiscount();
+  const merchBulkDiscount = getMerchBulkDiscount();
 
   const canNextStep1 = state.userType !== null && !isLocked;
   const canNextStep2 = (() => {
@@ -120,7 +118,7 @@ export function Tickets() {
           <div>
             <h3 className="font-display text-xl md:text-2xl font-black uppercase tracking-wider">SALES NOT OPEN YET</h3>
             <p className="font-body text-sm font-bold uppercase tracking-wider opacity-90">
-              Ticket sales start on December 1, 2024. Come back then!
+              Ticket sales start on June 1, 2026. Come back then!
             </p>
           </div>
         </div>
@@ -148,43 +146,9 @@ export function Tickets() {
         </div>
       )}
 
-      {/* Admin Controls (Dev toggle) */}
-      <div className="bg-surface-dim border-2 border-primary p-4 mb-8 rounded-sm">
-        <div className="flex flex-wrap items-center gap-4">
-          <span className="font-display text-xs font-black uppercase tracking-widest text-on-surface-variant">Admin:</span>
-          <label className="flex items-center gap-2 cursor-pointer font-display text-xs font-bold uppercase tracking-wider">
-            <input
-              type="checkbox"
-              checked={config.earlyBirdEnabled}
-              onChange={() => configDispatch({ type: 'TOGGLE_EARLY_BIRD' })}
-              className="w-4 h-4 border-2 border-primary accent-primary"
-            />
-            Early Bird
-          </label>
-          <label className="flex items-center gap-2 cursor-pointer font-display text-xs font-bold uppercase tracking-wider">
-            <input
-              type="checkbox"
-              checked={config.soldOut}
-              onChange={() => configDispatch({ type: 'TOGGLE_SOLD_OUT' })}
-              className="w-4 h-4 border-2 border-primary accent-primary"
-            />
-            Sold Out
-          </label>
-          <label className="flex items-center gap-2 cursor-pointer font-display text-xs font-bold uppercase tracking-wider">
-            <input
-              type="checkbox"
-              checked={config.salesNotStarted}
-              onChange={() => configDispatch({ type: 'TOGGLE_SALES_NOT_STARTED' })}
-              className="w-4 h-4 border-2 border-primary accent-primary"
-            />
-            Sales Not Started
-          </label>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-10 lg:gap-12">
+      <div className="max-w-5xl">
         {/* Main content */}
-        <div className="lg:col-span-3 space-y-8">
+        <div className="space-y-8">
 
           {/* ===== STEP 1: User Type Selection ===== */}
           {step === 1 && (
@@ -436,6 +400,13 @@ export function Tickets() {
                     </button>
                   </div>
                 </div>
+                {ticketBulkDiscount > 0 && (
+                  <div className="bg-primary-container border-2 border-primary p-3">
+                    <p className="font-body text-xs font-bold uppercase tracking-wider text-secondary">
+                      Bulk ticket discount applied: -{formatVND(ticketBulkDiscount)}
+                    </p>
+                  </div>
+                )}
               </div>
 
               {/* Merch Selection */}
@@ -445,8 +416,15 @@ export function Tickets() {
                   <h4 className="font-display text-xl font-black uppercase tracking-tight">EXCLUSIVE MERCH</h4>
                 </div>
                 <p className="font-body text-xs font-bold uppercase tracking-wider opacity-80">
-                  Nhận merch tại booth vào ngày sự kiện. Mang theo Student ID hoặc Email xác nhận.
+                  Nhận merch tại booth của VinUni Student Council hoặc nhận trực tiếp trong sự kiện.
                 </p>
+                {state.ticketQuantity >= 3 && (
+                  <div className="bg-background text-primary border-2 border-primary px-3 py-2 inline-flex items-center">
+                    <span className="font-display text-xs font-black uppercase tracking-wider">
+                      Merch discount active: -{formatVND(merchBulkDiscount)}
+                    </span>
+                  </div>
+                )}
 
                 {state.merch.map(item => (
                   <div key={item.id} className="flex flex-col md:flex-row items-center gap-4 p-4 bg-surface text-primary border-4 border-primary">
@@ -508,78 +486,6 @@ export function Tickets() {
               {step === 3 ? 'REVIEW ORDER' : 'NEXT STEP'}
               <ArrowRight className="w-5 h-5" />
             </button>
-          </div>
-        </div>
-
-        {/* Sidebar: Order Preview */}
-        <div className="lg:col-span-2">
-          <div className="lg:sticky lg:top-32 space-y-6">
-            <div className="bg-surface border-4 border-primary p-6 md:p-8">
-              <h3 className="font-display text-xl md:text-2xl font-black uppercase mb-6 border-b-4 border-primary pb-3">
-                ORDER SUMMARY
-              </h3>
-
-              {state.userType && (
-                <div className="space-y-3 mb-6">
-                  <div className="flex justify-between text-sm font-display font-bold uppercase tracking-wider">
-                    <span>{state.userType === 'vinnunian' ? 'VINNUNIAN' : 'NON-VINNUNIAN'} TICKET</span>
-                    <span>x{state.ticketQuantity}</span>
-                  </div>
-                  <div className="flex justify-between text-sm font-display font-bold">
-                    <span className="uppercase tracking-wider">Ticket price</span>
-                    <span>
-                      {formatVND(getTicketPrice() * state.ticketQuantity)}
-                    </span>
-                  </div>
-                  {config.earlyBirdEnabled && state.userType === 'vinnunian' && (
-                    <div className="text-xs font-display font-bold text-secondary uppercase tracking-wider">
-                      EARLY BIRD DISCOUNT APPLIED
-                    </div>
-                  )}
-
-                  {state.merch.filter(m => m.quantity > 0).map(m => (
-                    <div key={m.id} className="flex justify-between text-sm font-display font-bold">
-                      <span className="uppercase tracking-wider">{m.name}</span>
-                      <span>{formatVND(m.price * m.quantity)}</span>
-                    </div>
-                  ))}
-
-                  <div className="border-t-2 border-primary pt-3 flex justify-between text-xs font-display font-bold uppercase tracking-widest text-on-surface-variant">
-                    <span>SERVICE FEE (3%)</span>
-                    <span>{formatVND(serviceFee)}</span>
-                  </div>
-                </div>
-              )}
-
-              {!state.userType && (
-                <p className="font-body text-sm text-on-surface-variant font-medium mb-6">
-                  Select your ticket type to see pricing.
-                </p>
-              )}
-
-              <div className="bg-primary-container border-3 border-primary p-4 flex justify-between items-end">
-                <span className="font-display font-black text-lg uppercase tracking-widest">TOTAL</span>
-                <span className="font-display text-2xl md:text-3xl font-black tracking-tighter">
-                  {state.userType ? formatVND(total) : '---'}
-                </span>
-              </div>
-            </div>
-
-            {state.userType && (
-              <div className="bg-primary-container border-4 border-primary p-4 flex items-start gap-3">
-                <CheckCircle className="w-5 h-5 shrink-0 mt-0.5" />
-                <div>
-                  <p className="font-body text-xs font-bold uppercase tracking-wider leading-relaxed">
-                    Vé điện tử sẽ được gửi về email sau khi thanh toán thành công.
-                  </p>
-                  {state.merch.some(m => m.quantity > 0) && (
-                    <p className="font-body text-xs font-bold uppercase tracking-wider leading-relaxed mt-2 text-secondary">
-                      Mang theo Email xác nhận để nhận Merch tại booth sự kiện.
-                    </p>
-                  )}
-                </div>
-              </div>
-            )}
           </div>
         </div>
       </div>
