@@ -1,5 +1,5 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { Camera, CheckCircle, Lock, Search, StopCircle, XCircle } from 'lucide-react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { Camera, CheckCircle, Lock, StopCircle, XCircle } from 'lucide-react';
 import { cn } from './Layout';
 
 interface TicketItem {
@@ -28,6 +28,7 @@ interface CheckinResult {
   ticket?: TicketItem;
   status?: 'valid' | 'checked_in';
   checkedIn?: CheckinRecord;
+  success?: boolean;
   error?: string;
 }
 
@@ -45,6 +46,7 @@ export function Checkin() {
   const [loading, setLoading] = useState(false);
   const [scannerActive, setScannerActive] = useState(false);
   const scannerRef = useRef<any>(null);
+  const scanInFlightRef = useRef(false);
 
   const authHeaders = token ? { Authorization: `Bearer ${token}` } : {};
 
@@ -70,26 +72,8 @@ export function Checkin() {
     }
   };
 
-  const searchTicket = async (value = query) => {
-    const code = value.trim();
-    if (!code) return;
-    setLoading(true);
-    setMessage('');
-    try {
-      const res = await fetch(`/api/checkin/search?q=${encodeURIComponent(code)}`, { headers: authHeaders });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data.error || 'Ticket not found');
-      setResult(data);
-      setQuery(data.ticket?.ticketCode || code);
-    } catch (err: any) {
-      setResult({ error: err.message || 'Ticket not found' });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const checkIn = async () => {
-    const ticketCode = result?.ticket?.ticketCode || query.trim();
+  const checkInTicket = useCallback(async (value = query) => {
+    const ticketCode = value.trim();
     if (!ticketCode) return;
     sessionStorage.setItem('yep-checkin-staff', staffName);
     setLoading(true);
@@ -101,18 +85,23 @@ export function Checkin() {
         body: JSON.stringify({ ticketCode, checkedInBy: staffName }),
       });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        setResult(data);
-        throw new Error(data.error || 'Cannot check in');
-      }
       setResult(data);
+      setQuery(data.ticket?.ticketCode || ticketCode);
+
+      if (res.status === 409) {
+        setMessage('Ticket was already checked in.');
+        return;
+      }
+
+      if (!res.ok) throw new Error(data.error || 'Cannot check in');
       setMessage('Checked in successfully.');
     } catch (err: any) {
+      setResult(current => current?.ticket ? current : { error: err.message || 'Cannot check in' });
       setMessage(err.message || 'Cannot check in');
     } finally {
       setLoading(false);
     }
-  };
+  }, [authHeaders, query, staffName]);
 
   const startScanner = async () => {
     setMessage('');
@@ -124,11 +113,17 @@ export function Checkin() {
         { facingMode: 'environment' },
         { fps: 10, qrbox: { width: 260, height: 260 } },
         async (decodedText: string) => {
+          if (scanInFlightRef.current) return;
+          scanInFlightRef.current = true;
           setQuery(decodedText);
-          await scanner.stop();
-          scannerRef.current = null;
-          setScannerActive(false);
-          searchTicket(decodedText);
+          try {
+            await scanner.stop();
+          } finally {
+            scannerRef.current = null;
+            setScannerActive(false);
+            scanInFlightRef.current = false;
+          }
+          checkInTicket(decodedText);
         },
         () => {},
       );
@@ -147,7 +142,7 @@ export function Checkin() {
   };
 
   useEffect(() => {
-    if (token && query) searchTicket(query);
+    if (token && query) checkInTicket(query);
     return () => {
       if (scannerRef.current) scannerRef.current.stop().catch(() => {});
     };
@@ -208,17 +203,17 @@ export function Checkin() {
               <input
                 value={query}
                 onChange={event => setQuery(event.target.value)}
-                onKeyDown={event => event.key === 'Enter' && searchTicket()}
+                onKeyDown={event => event.key === 'Enter' && checkInTicket()}
                 placeholder="YEP-..."
                 className="flex-1 bg-white border-2 border-primary px-4 py-3 font-display font-bold focus:outline-none focus:border-secondary"
               />
               <button
-                onClick={() => searchTicket()}
+                onClick={() => checkInTicket()}
                 disabled={loading || !query.trim()}
                 className="inline-flex items-center justify-center gap-2 bg-primary text-white border-4 border-primary px-5 py-3 font-display font-black uppercase tracking-widest disabled:opacity-50"
               >
-                <Search className="w-4 h-4" />
-                Search
+                <CheckCircle className="w-4 h-4" />
+                Check In
               </button>
             </div>
           </label>
@@ -244,7 +239,7 @@ export function Checkin() {
         <aside className="lg:col-span-2">
           <div className="bg-surface border-4 border-primary p-6 md:p-8 sticky top-28">
             {!result && (
-              <p className="font-body text-sm font-bold text-on-surface-variant">Search or scan a ticket to see check-in status.</p>
+              <p className="font-body text-sm font-bold text-on-surface-variant">Scan a ticket to check in immediately.</p>
             )}
 
             {result?.error && (
@@ -262,7 +257,7 @@ export function Checkin() {
                     {isCheckedIn ? <XCircle className="w-8 h-8" /> : <CheckCircle className="w-8 h-8" />}
                     <div>
                       <span className="font-display text-xs font-black uppercase tracking-widest">
-                        {isCheckedIn ? 'Already Checked In' : 'Valid Ticket'}
+                        {result.success ? 'Checked In' : isCheckedIn ? 'Already Checked In' : 'Valid Ticket'}
                       </span>
                       <p className="font-display text-xl font-black uppercase">
                         {result.ticket.ticketNo}/{result.ticket.orderTicketQuantity}
@@ -298,17 +293,11 @@ export function Checkin() {
                     <p className="font-body text-sm font-bold">By {result.checkedIn.checkedInBy}</p>
                   </div>
                 )}
-
-                <button
-                  onClick={checkIn}
-                  disabled={!isValid || loading}
-                  className={cn(
-                    'w-full border-4 border-primary py-4 font-display font-black uppercase tracking-widest transition-all',
-                    isValid ? 'bg-primary text-white hover:bg-secondary' : 'bg-surface-dim text-on-surface-variant cursor-not-allowed',
-                  )}
-                >
-                  {loading ? 'Processing...' : 'Check In'}
-                </button>
+                {isValid && (
+                  <div className="border-4 border-primary bg-primary-container p-4 font-display font-black uppercase tracking-wider">
+                    Ready for automatic check-in.
+                  </div>
+                )}
               </div>
             )}
           </div>
