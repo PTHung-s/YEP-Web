@@ -32,6 +32,8 @@ interface CheckinResult {
   error?: string;
 }
 
+type ScanVisualState = 'idle' | 'success' | 'warning' | 'error';
+
 function getTicketFromUrl(): string {
   return new URLSearchParams(window.location.search).get('ticket') || '';
 }
@@ -70,9 +72,11 @@ export function Checkin() {
   const [scannerActive, setScannerActive] = useState(false);
   const [continuousScan, setContinuousScan] = useState(() => sessionStorage.getItem('yep-continuous-scan') !== 'off');
   const [recentCheckins, setRecentCheckins] = useState<CheckinRecord[]>([]);
+  const [scanVisualState, setScanVisualState] = useState<ScanVisualState>('idle');
   const scannerRef = useRef<any>(null);
   const scanInFlightRef = useRef(false);
   const scanCooldownRef = useRef<number | null>(null);
+  const visualResetRef = useRef<number | null>(null);
 
   const authHeaders = token ? { Authorization: `Bearer ${token}` } : {};
 
@@ -81,6 +85,17 @@ export function Checkin() {
     setToken('');
     setResult(null);
     setMessage('Session expired. Please enter admin passcode again.');
+  };
+
+  const showScanVisual = (state: ScanVisualState) => {
+    if (visualResetRef.current) window.clearTimeout(visualResetRef.current);
+    setScanVisualState(state);
+    if (state !== 'idle') {
+      visualResetRef.current = window.setTimeout(() => {
+        setScanVisualState('idle');
+        visualResetRef.current = null;
+      }, 2200);
+    }
   };
 
   const fetchRecentCheckins = useCallback(async () => {
@@ -147,6 +162,7 @@ export function Checkin() {
 
       if (res.status === 409) {
         setMessage('Ticket was already checked in.');
+        showScanVisual('warning');
         playTone('warning');
         return;
       }
@@ -156,10 +172,12 @@ export function Checkin() {
       if (data.checkedIn) {
         setRecentCheckins(current => [data.checkedIn, ...current.filter(item => item.ticketCode !== data.checkedIn.ticketCode)].slice(0, 10));
       }
+      showScanVisual('success');
       playTone('success');
     } catch (err: any) {
       setResult(current => current?.ticket ? current : { error: err.message || 'Cannot check in' });
       setMessage(err.message || 'Cannot check in');
+      showScanVisual('error');
       playTone('error');
     } finally {
       setLoading(false);
@@ -168,6 +186,7 @@ export function Checkin() {
 
   const startScanner = async () => {
     setMessage('');
+    showScanVisual('idle');
     try {
       const { Html5Qrcode } = await import('html5-qrcode');
       const scanner = new Html5Qrcode('qr-reader');
@@ -220,6 +239,7 @@ export function Checkin() {
     if (token) fetchRecentCheckins();
     return () => {
       if (scanCooldownRef.current) window.clearTimeout(scanCooldownRef.current);
+      if (visualResetRef.current) window.clearTimeout(visualResetRef.current);
       if (scannerRef.current) scannerRef.current.stop().catch(() => {});
     };
   }, [token]);
@@ -258,12 +278,30 @@ export function Checkin() {
   const hasError = Boolean(result?.error);
   const statusLabel = isSuccess ? 'Checked In' : isCheckedIn ? 'Already Checked In' : hasError ? 'Not Found' : scannerActive ? 'Scanning' : 'Ready';
   const statusClass = isSuccess
-    ? 'bg-emerald-500 text-white'
+    ? 'bg-emerald-500 text-white border-emerald-950 shadow-[0_0_28px_rgba(16,185,129,0.75)]'
     : isCheckedIn
-      ? 'bg-amber-400 text-primary'
+      ? 'bg-amber-400 text-primary border-amber-950 shadow-[0_0_24px_rgba(251,191,36,0.65)]'
       : hasError
-        ? 'bg-secondary text-white'
+        ? 'bg-secondary text-white shadow-[0_0_24px_rgba(236,72,153,0.65)]'
         : 'bg-primary-container text-primary';
+  const cameraFrameClass = scanVisualState === 'success'
+    ? 'border-emerald-500 shadow-[0_0_0_4px_rgba(16,185,129,0.22),0_0_38px_rgba(16,185,129,0.9)] bg-emerald-950/10'
+    : scanVisualState === 'warning'
+      ? 'border-amber-400 shadow-[0_0_0_4px_rgba(251,191,36,0.24),0_0_34px_rgba(251,191,36,0.75)] bg-amber-950/10'
+      : scanVisualState === 'error'
+        ? 'border-secondary shadow-[0_0_0_4px_rgba(236,72,153,0.24),0_0_34px_rgba(236,72,153,0.8)] bg-secondary/10'
+        : scannerActive
+          ? 'border-primary shadow-[0_0_24px_rgba(34,211,238,0.28)]'
+          : 'border-primary';
+  const overlayClass = scanVisualState === 'success'
+    ? 'bg-emerald-500 text-white border-emerald-950'
+    : scanVisualState === 'warning'
+      ? 'bg-amber-400 text-primary border-amber-950'
+      : 'bg-secondary text-white border-primary';
+  const overlayLabel = scanVisualState === 'success' ? 'Checked In' : scanVisualState === 'warning' ? 'Already In' : 'Not Found';
+  const overlayIcon = scanVisualState === 'success'
+    ? <CheckCircle className="w-16 h-16 md:w-20 md:h-20" />
+    : <XCircle className="w-16 h-16 md:w-20 md:h-20" />;
 
   const statusPanel = (
     <div className={cn('border-4 border-primary p-4 md:p-5 text-center', statusClass)}>
@@ -421,8 +459,19 @@ export function Checkin() {
             </div>
           </label>
 
-          <div className="border-4 border-primary bg-background p-4">
+          <div className={cn('relative border-4 bg-background p-4 transition-all duration-300', cameraFrameClass)}>
             <div id="qr-reader" className={cn('overflow-hidden [&_video]:!w-full [&_video]:!max-h-[52vh] [&_video]:object-cover', scannerActive ? 'min-h-[260px] sm:min-h-[280px]' : 'min-h-0')} />
+            {scanVisualState !== 'idle' && (
+              <div className="pointer-events-none absolute inset-4 flex items-center justify-center">
+                <div className={cn('border-4 px-6 py-5 text-center shadow-[8px_8px_0_rgba(7,7,23,0.35)]', overlayClass)}>
+                  <div className="flex justify-center">{overlayIcon}</div>
+                  <p className="mt-2 font-display text-2xl md:text-4xl font-black uppercase leading-none tracking-tight">{overlayLabel}</p>
+                  {result?.ticket?.buyerName && (
+                    <p className="mt-2 max-w-[240px] truncate font-display text-sm md:text-base font-black uppercase">{result.ticket.buyerName}</p>
+                  )}
+                </div>
+              </div>
+            )}
             <div className="mt-3 flex flex-col sm:flex-row gap-3">
               <button
                 onClick={scannerActive ? stopScanner : startScanner}
