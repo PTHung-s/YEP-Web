@@ -39,6 +39,7 @@ import { sendTicketEmail } from './mailer';
 
 const app = express();
 const PORT = process.env.PORT || process.env.API_PORT || 3001;
+const ADMIN_TOKEN_TTL_MS = 1000 * 60 * 60 * 18;
 
 app.use(cors());
 app.use(express.json());
@@ -70,10 +71,43 @@ function getAdminPasscode(): string {
   return process.env.ADMIN_PASSCODE || '';
 }
 
+function signAdminToken(payload: string, passcode: string): string {
+  return crypto.createHmac('sha256', passcode).update(payload).digest('hex');
+}
+
+function createAdminToken(passcode: string): string {
+  const issuedAt = Date.now().toString(36);
+  const nonce = crypto.randomBytes(16).toString('hex');
+  const payload = `${issuedAt}.${nonce}`;
+  return `${payload}.${signAdminToken(payload, passcode)}`;
+}
+
+function isSignedAdminTokenValid(token: string, passcode: string): boolean {
+  const parts = token.split('.');
+  if (parts.length !== 3) return false;
+
+  const [issuedAt, nonce, signature] = parts;
+  const payload = `${issuedAt}.${nonce}`;
+  const expected = signAdminToken(payload, passcode);
+  const tokenAge = Date.now() - parseInt(issuedAt, 36);
+  const signatureBuffer = Buffer.from(signature);
+  const expectedBuffer = Buffer.from(expected);
+
+  return (
+    Number.isFinite(tokenAge) &&
+    tokenAge >= 0 &&
+    tokenAge <= ADMIN_TOKEN_TTL_MS &&
+    signatureBuffer.length === expectedBuffer.length &&
+    crypto.timingSafeEqual(signatureBuffer, expectedBuffer)
+  );
+}
+
 function requireAdmin(req: express.Request, res: express.Response, next: express.NextFunction) {
   const auth = req.header('authorization') || '';
   const token = auth.startsWith('Bearer ') ? auth.slice(7) : '';
-  if (!token || !adminTokens.has(token)) {
+  const passcode = getAdminPasscode();
+
+  if (!token || (!adminTokens.has(token) && (!passcode || !isSignedAdminTokenValid(token, passcode)))) {
     res.status(401).json({ error: 'Unauthorized' });
     return;
   }
@@ -140,7 +174,7 @@ app.post('/api/admin/login', (req, res) => {
     return;
   }
 
-  const token = crypto.randomBytes(24).toString('hex');
+  const token = createAdminToken(passcode);
   adminTokens.add(token);
   res.json({ token });
 });
