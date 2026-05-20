@@ -265,15 +265,116 @@ export function Checkin() {
         ? 'bg-secondary text-white'
         : 'bg-primary-container text-primary';
 
+  const statusPanel = (
+    <div className={cn('border-4 border-primary p-4 md:p-5 text-center', statusClass)}>
+      <span className="block font-display text-[10px] md:text-xs font-black uppercase tracking-widest">Status</span>
+      <p className="font-display text-2xl md:text-4xl font-black uppercase leading-none mt-2">{statusLabel}</p>
+    </div>
+  );
+
+  const resultPanel = (
+    <>
+      {!result && (
+        <p className="font-body text-sm font-bold text-on-surface-variant">Scan a ticket to check in immediately.</p>
+      )}
+
+      {result?.error && !result.ticket && (
+        <div className="space-y-3 md:space-y-4">
+          <XCircle className="w-10 h-10 md:w-12 md:h-12 text-secondary" />
+          <h2 className="font-display text-xl md:text-2xl font-black uppercase">Not Found</h2>
+          <p className="font-body text-sm font-bold text-on-surface-variant">{result.error}</p>
+        </div>
+      )}
+
+      {result?.ticket && (
+        <div className="space-y-4 md:space-y-5">
+          <div className={cn('border-4 border-primary p-4', isCheckedIn ? 'bg-secondary text-white' : 'bg-primary-container')}>
+            <div className="flex items-center gap-3">
+              {isCheckedIn ? <XCircle className="w-7 h-7 md:w-8 md:h-8 shrink-0" /> : <CheckCircle className="w-7 h-7 md:w-8 md:h-8 shrink-0" />}
+              <div className="min-w-0">
+                <span className="font-display text-[10px] md:text-xs font-black uppercase tracking-widest">
+                  {result.success ? 'Checked In' : isCheckedIn ? 'Already Checked In' : 'Valid Ticket'}
+                </span>
+                <p className="font-display text-lg md:text-xl font-black uppercase">
+                  {result.ticket.ticketNo}/{result.ticket.orderTicketQuantity}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-3 text-sm">
+            <div className="sm:col-span-2 lg:col-span-1">
+              <span className="block font-display text-[10px] font-black uppercase tracking-widest text-on-surface-variant">Buyer</span>
+              <p className="font-display text-xl md:text-base font-black uppercase leading-tight">{result.ticket.buyerName}</p>
+            </div>
+            <div>
+              <span className="block font-display text-[10px] font-black uppercase tracking-widest text-on-surface-variant">Ticket Type</span>
+              <p className="font-display font-black">{result.ticket.ticketType}</p>
+            </div>
+            <div>
+              <span className="block font-display text-[10px] font-black uppercase tracking-widest text-on-surface-variant">Contact</span>
+              <p className="font-body font-bold break-all">{result.ticket.email}</p>
+              <p className="font-body font-bold">{result.ticket.phone}</p>
+            </div>
+            <div className="sm:col-span-2 lg:col-span-1">
+              <span className="block font-display text-[10px] font-black uppercase tracking-widest text-on-surface-variant">Ticket Code</span>
+              <p className="font-display text-xs md:text-sm font-black break-all">{result.ticket.ticketCode}</p>
+            </div>
+          </div>
+
+          {isCheckedIn && result.checkedIn && (
+            <div className="border-2 border-primary bg-background p-3">
+              <span className="block font-display text-[10px] font-black uppercase tracking-widest text-on-surface-variant">Previous Check-in</span>
+              <p className="font-body text-sm font-bold">{result.checkedIn.checkedInAt}</p>
+              <p className="font-body text-sm font-bold">By {result.checkedIn.checkedInBy}</p>
+            </div>
+          )}
+          {isValid && (
+            <div className="border-4 border-primary bg-primary-container p-4 font-display font-black uppercase tracking-wider">
+              Ready for automatic check-in.
+            </div>
+          )}
+        </div>
+      )}
+    </>
+  );
+
+  const recentPanel = recentCheckins.length > 0 && (
+    <div className="border-t-4 border-primary pt-4 md:pt-5">
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <h2 className="font-display text-lg md:text-xl font-black uppercase">Recent</h2>
+        <button
+          onClick={fetchRecentCheckins}
+          className="border-2 border-primary px-3 py-2 md:py-1 font-display text-xs font-black uppercase hover:bg-primary-container"
+        >
+          Refresh
+        </button>
+      </div>
+      <div className="max-h-64 md:max-h-none overflow-y-auto space-y-2 pr-1">
+        {recentCheckins.slice(0, 8).map(item => (
+          <div key={`${item.ticketCode}-${item.checkedInAt}`} className="border-2 border-primary bg-background p-3">
+            <p className="font-display text-sm font-black uppercase leading-tight">{item.buyerName || 'Unknown'}</p>
+            <p className="font-body text-xs font-bold text-on-surface-variant">{item.ticketType} - {item.checkedInAt}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+
   return (
-    <div className="w-full max-w-5xl mx-auto px-6 md:px-12 py-10 md:py-14">
-      <div className="mb-8">
+    <div className="w-full max-w-5xl mx-auto px-4 sm:px-6 md:px-12 py-6 md:py-14">
+      <div className="mb-5 md:mb-8">
         <span className="font-display text-xs font-black uppercase tracking-widest text-secondary">Gate Ops</span>
-        <h1 className="font-display text-5xl md:text-7xl font-black uppercase tracking-tighter leading-none">Check-in</h1>
+        <h1 className="font-display text-4xl md:text-7xl font-black uppercase tracking-tighter leading-none">Check-in</h1>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
-        <section className="lg:col-span-3 bg-surface border-4 border-primary p-6 md:p-8 space-y-5">
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-5 md:gap-8">
+        <section className="lg:col-span-3 bg-surface border-4 border-primary p-4 md:p-8 space-y-4 md:space-y-5">
+          <div className="lg:hidden space-y-4">
+            {statusPanel}
+            {resultPanel}
+          </div>
+
           <label className="block">
             <span className="block font-display text-xs font-black uppercase tracking-widest mb-2">Staff Name</span>
             <input
@@ -286,7 +387,7 @@ export function Checkin() {
           <label className="flex items-center justify-between gap-4 border-4 border-primary bg-background px-4 py-3">
             <div>
               <span className="block font-display text-xs font-black uppercase tracking-widest">Continuous Scan</span>
-              <span className="block font-body text-xs font-bold text-on-surface-variant">Auto-ready for the next QR after each result.</span>
+              <span className="hidden sm:block font-body text-xs font-bold text-on-surface-variant">Auto-ready for the next QR after each result.</span>
             </div>
             <input
               type="checkbox"
@@ -301,13 +402,13 @@ export function Checkin() {
 
           <label className="block">
             <span className="block font-display text-xs font-black uppercase tracking-widest mb-2">Ticket Code / QR URL</span>
-            <div className="flex flex-col md:flex-row gap-3">
+            <div className="flex flex-col sm:flex-row gap-3">
               <input
                 value={query}
                 onChange={event => setQuery(event.target.value)}
                 onKeyDown={event => event.key === 'Enter' && checkInTicket()}
                 placeholder="YEP-..."
-                className="flex-1 bg-white border-2 border-primary px-4 py-3 font-display font-bold focus:outline-none focus:border-secondary"
+                className="min-w-0 flex-1 bg-white border-2 border-primary px-3 md:px-4 py-3 font-display text-sm md:text-base font-bold focus:outline-none focus:border-secondary"
               />
               <button
                 onClick={() => checkInTicket()}
@@ -321,11 +422,11 @@ export function Checkin() {
           </label>
 
           <div className="border-4 border-primary bg-background p-4">
-            <div id="qr-reader" className={cn('overflow-hidden', scannerActive ? 'min-h-[280px]' : 'min-h-0')} />
+            <div id="qr-reader" className={cn('overflow-hidden [&_video]:!w-full [&_video]:!max-h-[52vh] [&_video]:object-cover', scannerActive ? 'min-h-[260px] sm:min-h-[280px]' : 'min-h-0')} />
             <div className="mt-3 flex flex-col sm:flex-row gap-3">
               <button
                 onClick={scannerActive ? stopScanner : startScanner}
-                className="inline-flex items-center justify-center gap-2 bg-surface border-4 border-primary px-5 py-3 font-display font-black uppercase tracking-widest hover:bg-primary-container"
+                className="inline-flex min-h-14 items-center justify-center gap-2 bg-surface border-4 border-primary px-5 py-3 font-display font-black uppercase tracking-widest hover:bg-primary-container"
               >
                 {scannerActive ? <StopCircle className="w-4 h-4" /> : <Camera className="w-4 h-4" />}
                 {scannerActive ? 'Stop Scanner' : 'Scan QR'}
@@ -333,7 +434,7 @@ export function Checkin() {
               {!scannerActive && result && (
                 <button
                   onClick={startScanner}
-                  className="inline-flex items-center justify-center gap-2 bg-primary text-white border-4 border-primary px-5 py-3 font-display font-black uppercase tracking-widest"
+                  className="inline-flex min-h-14 items-center justify-center gap-2 bg-primary text-white border-4 border-primary px-5 py-3 font-display font-black uppercase tracking-widest"
                 >
                   <RotateCw className="w-4 h-4" />
                   Scan Next
@@ -343,103 +444,21 @@ export function Checkin() {
           </div>
 
           {message && (
-            <div className={cn('border-4 border-primary p-4 font-display font-black uppercase tracking-wider', message.includes('success') ? 'bg-primary-container' : 'bg-secondary text-white')}>
+            <div className={cn('border-4 border-primary p-3 md:p-4 font-display text-sm md:text-base font-black uppercase tracking-wider', message.includes('success') ? 'bg-primary-container' : 'bg-secondary text-white')}>
               {message}
             </div>
           )}
+
+          <div className="lg:hidden">
+            {recentPanel}
+          </div>
         </section>
 
         <aside className="lg:col-span-2">
-          <div className="bg-surface border-4 border-primary p-6 md:p-8 sticky top-28 space-y-6">
-            <div className={cn('border-4 border-primary p-5 text-center', statusClass)}>
-              <span className="block font-display text-xs font-black uppercase tracking-widest">Status</span>
-              <p className="font-display text-3xl md:text-4xl font-black uppercase leading-none mt-2">{statusLabel}</p>
-            </div>
-
-            {!result && (
-              <p className="font-body text-sm font-bold text-on-surface-variant">Scan a ticket to check in immediately.</p>
-            )}
-
-            {result?.error && !result.ticket && (
-              <div className="space-y-4">
-                <XCircle className="w-12 h-12 text-secondary" />
-                <h2 className="font-display text-2xl font-black uppercase">Not Found</h2>
-                <p className="font-body text-sm font-bold text-on-surface-variant">{result.error}</p>
-              </div>
-            )}
-
-            {result?.ticket && (
-              <div className="space-y-5">
-                <div className={cn('border-4 border-primary p-4', isCheckedIn ? 'bg-secondary text-white' : 'bg-primary-container')}>
-                  <div className="flex items-center gap-3">
-                    {isCheckedIn ? <XCircle className="w-8 h-8" /> : <CheckCircle className="w-8 h-8" />}
-                    <div>
-                      <span className="font-display text-xs font-black uppercase tracking-widest">
-                        {result.success ? 'Checked In' : isCheckedIn ? 'Already Checked In' : 'Valid Ticket'}
-                      </span>
-                      <p className="font-display text-xl font-black uppercase">
-                        {result.ticket.ticketNo}/{result.ticket.orderTicketQuantity}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="space-y-3 text-sm">
-                  <div>
-                    <span className="block font-display text-[10px] font-black uppercase tracking-widest text-on-surface-variant">Ticket Code</span>
-                    <p className="font-display font-black break-all">{result.ticket.ticketCode}</p>
-                  </div>
-                  <div>
-                    <span className="block font-display text-[10px] font-black uppercase tracking-widest text-on-surface-variant">Buyer</span>
-                    <p className="font-display font-black uppercase">{result.ticket.buyerName}</p>
-                  </div>
-                  <div>
-                    <span className="block font-display text-[10px] font-black uppercase tracking-widest text-on-surface-variant">Contact</span>
-                    <p className="font-body font-bold">{result.ticket.email}</p>
-                    <p className="font-body font-bold">{result.ticket.phone}</p>
-                  </div>
-                  <div>
-                    <span className="block font-display text-[10px] font-black uppercase tracking-widest text-on-surface-variant">Ticket Type</span>
-                    <p className="font-display font-black">{result.ticket.ticketType}</p>
-                  </div>
-                </div>
-
-                {isCheckedIn && result.checkedIn && (
-                  <div className="border-2 border-primary bg-background p-3">
-                    <span className="block font-display text-[10px] font-black uppercase tracking-widest text-on-surface-variant">Previous Check-in</span>
-                    <p className="font-body text-sm font-bold">{result.checkedIn.checkedInAt}</p>
-                    <p className="font-body text-sm font-bold">By {result.checkedIn.checkedInBy}</p>
-                  </div>
-                )}
-                {isValid && (
-                  <div className="border-4 border-primary bg-primary-container p-4 font-display font-black uppercase tracking-wider">
-                    Ready for automatic check-in.
-                  </div>
-                )}
-              </div>
-            )}
-
-            {recentCheckins.length > 0 && (
-              <div className="border-t-4 border-primary pt-5">
-                <div className="mb-3 flex items-center justify-between gap-3">
-                  <h2 className="font-display text-xl font-black uppercase">Recent</h2>
-                  <button
-                    onClick={fetchRecentCheckins}
-                    className="border-2 border-primary px-3 py-1 font-display text-xs font-black uppercase hover:bg-primary-container"
-                  >
-                    Refresh
-                  </button>
-                </div>
-                <div className="space-y-2">
-                  {recentCheckins.slice(0, 8).map(item => (
-                    <div key={`${item.ticketCode}-${item.checkedInAt}`} className="border-2 border-primary bg-background p-3">
-                      <p className="font-display text-sm font-black uppercase">{item.buyerName || 'Unknown'}</p>
-                      <p className="font-body text-xs font-bold text-on-surface-variant">{item.ticketType} - {item.checkedInAt}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
+          <div className="hidden lg:block bg-surface border-4 border-primary p-6 md:p-8 sticky top-28 space-y-6">
+            {statusPanel}
+            {resultPanel}
+            {recentPanel}
           </div>
         </aside>
       </div>
