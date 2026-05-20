@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ArrowLeft, ArrowRight, CheckCircle, Ticket, Percent } from 'lucide-react';
+import { ArrowLeft, ArrowRight, CheckCircle, Ticket } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useCart } from '../store/CartContext';
 import { cn } from './Layout';
@@ -8,16 +8,9 @@ function formatVND(amount: number): string {
   return amount.toLocaleString('vi-VN') + ' VND';
 }
 
-const VALID_DISCOUNTS: Record<string, { amount: number; label: string }> = {
-  'VINUNI_YEP_26': { amount: 50000, label: "YEP'26 Welcome Discount" },
-  'EARLYBIRD': { amount: 100000, label: 'Early Bird 100K Off' },
-};
-
 export function Confirmation() {
-  const { state, dispatch, getTicketPrice, getServiceFee, getTotal, getTicketBulkDiscount, getMerchBulkDiscount } = useCart();
+  const { state, getTicketPrice, getServiceFee, getTotal, getTicketBulkDiscount, getMerchBulkDiscount } = useCart();
   const navigate = useNavigate();
-  const [discountInput, setDiscountInput] = useState(state.discountCode);
-  const [discountError, setDiscountError] = useState('');
   const [emailConfirm, setEmailConfirm] = useState(state.email);
 
   const ticketPrice = getTicketPrice();
@@ -25,22 +18,6 @@ export function Confirmation() {
   const total = getTotal();
   const ticketBulkDiscount = getTicketBulkDiscount();
   const merchBulkDiscount = getMerchBulkDiscount();
-
-  const applyDiscount = () => {
-    const code = discountInput.trim().toUpperCase();
-    if (!code) {
-      dispatch({ type: 'APPLY_DISCOUNT', code: '', amount: 0 });
-      setDiscountError('');
-      return;
-    }
-    const match = VALID_DISCOUNTS[code];
-    if (match) {
-      dispatch({ type: 'APPLY_DISCOUNT', code, amount: match.amount });
-      setDiscountError('');
-    } else {
-      setDiscountError('Invalid discount code');
-    }
-  };
 
   const emailMismatch = emailConfirm.trim().toLowerCase() !== state.email.trim().toLowerCase();
 
@@ -87,7 +64,7 @@ export function Confirmation() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-10 lg:gap-12">
-        {/* Left: Order Details + Discount */}
+        {/* Left: Order Details */}
         <div className="lg:col-span-3 space-y-8">
           {/* Attendee Info Summary */}
           <div className="bg-surface border-4 border-primary p-6 md:p-8">
@@ -148,46 +125,6 @@ export function Confirmation() {
             </div>
           </div>
 
-          {/* Discount Code */}
-          <div className="bg-surface border-4 border-primary p-6 md:p-8">
-            <h3 className="font-display text-xl md:text-2xl font-black uppercase mb-6 flex items-center gap-3">
-              <Percent className="w-6 h-6" />
-              DISCOUNT CODE
-            </h3>
-            <div className="flex flex-col md:flex-row gap-3">
-              <input
-                type="text"
-                value={discountInput}
-                onChange={e => setDiscountInput(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && applyDiscount()}
-                placeholder="Enter code..."
-                className="flex-grow bg-white border-2 border-primary py-3 px-4 font-display text-lg font-bold focus:outline-none focus:border-secondary transition-colors placeholder-primary/30 uppercase"
-              />
-              <button
-                onClick={applyDiscount}
-                className="bg-primary text-background border-4 border-primary px-6 py-3 font-display font-black text-lg uppercase tracking-widest hover:bg-background hover:text-primary transition-colors"
-              >
-                APPLY
-              </button>
-            </div>
-            {discountError && (
-              <p className="text-secondary font-display text-xs font-bold uppercase tracking-wider mt-2">{discountError}</p>
-            )}
-            {state.discountAmount > 0 && (
-              <div className="mt-4 bg-primary-container border-3 border-primary p-3 flex justify-between items-center">
-                <div>
-                  <span className="font-display text-sm font-black uppercase tracking-wider">{state.discountCode}</span>
-                  <p className="font-body text-xs font-bold uppercase tracking-wider text-on-surface-variant">
-                    {VALID_DISCOUNTS[state.discountCode]?.label || 'Discount applied'}
-                  </p>
-                </div>
-                <span className="font-display text-lg font-black text-secondary">-{formatVND(state.discountAmount)}</span>
-              </div>
-            )}
-            <p className="font-body text-xs text-on-surface-variant font-medium mt-3">
-              Try codes: <span className="font-display font-bold">VINUNI_YEP_26</span> (50K off) or <span className="font-display font-bold">EARLYBIRD</span> (100K off)
-            </p>
-          </div>
         </div>
 
         {/* Right: Order Summary */}
@@ -230,12 +167,6 @@ export function Confirmation() {
                   </div>
                 )}
 
-                {state.discountAmount > 0 && (
-                  <div className="flex justify-between text-xs font-display font-bold uppercase tracking-widest text-secondary">
-                    <span>DISCOUNT</span>
-                    <span>-{formatVND(state.discountAmount)}</span>
-                  </div>
-                )}
               </div>
 
               <div className="bg-primary-container border-3 border-primary p-4 flex justify-between items-end mb-8">

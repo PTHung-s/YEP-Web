@@ -60,13 +60,20 @@ export function Vote() {
     <div className="w-full max-w-7xl mx-auto px-6 md:px-12 py-12 md:py-16">
       {/* Header */}
       <section className="mb-12 md:mb-16 relative">
-        <div className="border-4 border-primary p-6 md:p-10 bg-primary-container neo-shadow relative overflow-hidden">
+        <div className="border-4 border-primary p-6 md:p-10 bg-primary text-white neo-shadow relative overflow-hidden min-h-[360px] flex items-end">
+          <img
+            src="/assets/yep/background-stage-light.png"
+            alt=""
+            aria-hidden="true"
+            className="absolute inset-0 h-full w-full object-cover opacity-70"
+          />
+          <div className="absolute inset-0 bg-primary/55" />
           <div className="relative z-10">
-            <h2 className="font-display text-5xl md:text-7xl lg:text-[8rem] font-black uppercase leading-[0.8] tracking-tighter text-primary">
+            <h2 className="font-display text-5xl md:text-7xl lg:text-[8rem] font-black uppercase leading-[0.8] tracking-tighter text-white">
               YEP ICONS<br />THE CONSTELLATIONS
             </h2>
-            <div className="mt-6 md:mt-8 border-l-8 border-primary pl-4 md:pl-6">
-              <p className="font-display text-lg md:text-xl font-bold max-w-2xl text-primary uppercase leading-tight">
+            <div className="mt-6 md:mt-8 border-l-8 border-primary-container pl-4 md:pl-6">
+              <p className="font-display text-lg md:text-xl font-bold max-w-2xl text-white/85 uppercase leading-tight">
                 HÀNH TRÌNH TÌM KIẾM CẶP ĐÔI TỎA SÁNG NHẤT VINUNI 2026
               </p>
             </div>

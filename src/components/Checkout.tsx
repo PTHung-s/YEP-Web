@@ -9,7 +9,7 @@ function formatVND(amount: number): string {
 }
 
 export function Checkout() {
-  const { state, dispatch, getTicketPrice, getServiceFee, getTotal, getTicketBulkDiscount, getMerchBulkDiscount } = useCart();
+  const { state, dispatch, getTicketPrice, getMerchTotal, getServiceFee, getTotal, getTicketBulkDiscount, getMerchBulkDiscount } = useCart();
   const navigate = useNavigate();
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState('');
@@ -17,6 +17,7 @@ export function Checkout() {
   const ticketPrice = getTicketPrice();
   const serviceFee = getServiceFee();
   const total = getTotal();
+  const merchTotal = getMerchTotal();
   const ticketBulkDiscount = getTicketBulkDiscount();
   const merchBulkDiscount = getMerchBulkDiscount();
 
@@ -44,8 +45,7 @@ export function Checkout() {
           ticketQuantity: state.ticketQuantity,
           ticketPrice: ticketPrice,
           merchItems: merchData.join('; '),
-          discountCode: state.discountCode,
-          discountAmount: state.discountAmount,
+          merchTotal,
           totalAmount: total,
           ticketBulkDiscount,
           merchBulkDiscount,
@@ -243,12 +243,6 @@ export function Checkout() {
                   </div>
                 )}
 
-                {state.discountAmount > 0 && (
-                  <div className="flex justify-between text-xs font-display font-bold uppercase tracking-widest text-secondary">
-                    <span>DISCOUNT ({state.discountCode})</span>
-                    <span>-{formatVND(state.discountAmount)}</span>
-                  </div>
-                )}
               </div>
 
               <div className="bg-primary-container border-3 border-primary p-4 flex justify-between items-end mb-6">

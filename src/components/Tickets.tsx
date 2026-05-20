@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { School, Users, CheckCircle, ArrowRight, ArrowLeft, Ticket, Shirt, AlertTriangle, Clock, Zap } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useCart, TICKET_PRICE_VINNUNIAN, TICKET_PRICE_NON_VINNUNIAN, type UserType, type UserCategory } from '../store/CartContext';
+import { useCart, type UserType, type UserCategory } from '../store/CartContext';
 import { useEventConfig } from '../store/EventConfigContext';
 import { cn } from './Layout';
 
@@ -44,11 +44,11 @@ export function Tickets() {
   const navigate = useNavigate();
   const [step, setStep] = useState(1);
 
-  const isLocked = config.soldOut || config.salesNotStarted;
+  const isLocked = config.salesStatus === 'sold_out' || config.salesStatus === 'not_started';
   const effectiveTicketPrice = (userType: UserType): number => {
-    if (config.earlyBirdEnabled && userType === 'vinnunian') return config.earlyBirdPrice;
-    if (userType === 'vinnunian') return TICKET_PRICE_VINNUNIAN;
-    return TICKET_PRICE_NON_VINNUNIAN;
+    if (config.earlyBirdEnabled && userType === 'vinnunian') return config.prices.earlyBird;
+    if (userType === 'vinnunian') return config.prices.vinnunian;
+    return config.prices.guest;
   };
 
   const ticketPrice = effectiveTicketPrice(state.userType);
@@ -90,19 +90,28 @@ export function Tickets() {
 
   return (
     <div className="w-full max-w-7xl mx-auto px-6 md:px-12 py-12 md:py-16">
-      <div className="mb-8 md:mb-12">
+      <div className="relative mb-8 md:mb-12 border-4 border-primary overflow-hidden bg-primary text-white p-6 md:p-10 min-h-[320px] flex flex-col justify-end">
+        <img
+          src="/assets/yep/background-kaleido.png"
+          alt=""
+          aria-hidden="true"
+          className="absolute inset-0 h-full w-full object-cover opacity-60"
+        />
+        <div className="absolute inset-0 bg-primary/60" />
+        <div className="relative z-10">
         <h1 className="font-display text-5xl md:text-7xl lg:text-8xl font-black uppercase tracking-tighter leading-[0.85] mb-4">
           SELECT YOUR <br /> ACCESS LEVEL.
         </h1>
-        <p className="font-body text-lg md:text-xl max-w-2xl text-on-surface-variant font-medium leading-relaxed">
+        <p className="font-body text-lg md:text-xl max-w-2xl text-white/80 font-medium leading-relaxed">
           Secure your entry to the most anticipated year-end party at VinUni.
         </p>
+        </div>
       </div>
 
       <StepIndicator current={step} />
 
       {/* Empty State Banners */}
-      {config.soldOut && (
+      {config.salesStatus === 'sold_out' && (
         <div className="bg-secondary text-white border-4 border-primary p-4 md:p-6 mb-8 flex items-center gap-4">
           <AlertTriangle className="w-8 h-8 md:w-10 md:h-10 shrink-0" />
           <div>
@@ -112,13 +121,13 @@ export function Tickets() {
         </div>
       )}
 
-      {!config.soldOut && config.salesNotStarted && (
+      {config.salesStatus !== 'sold_out' && config.salesStatus === 'not_started' && (
         <div className="bg-tertiary text-white border-4 border-primary p-4 md:p-6 mb-8 flex items-center gap-4">
           <Clock className="w-8 h-8 md:w-10 md:h-10 shrink-0" />
           <div>
             <h3 className="font-display text-xl md:text-2xl font-black uppercase tracking-wider">SALES NOT OPEN YET</h3>
             <p className="font-body text-sm font-bold uppercase tracking-wider opacity-90">
-              Ticket sales start on June 1, 2026. Come back then!
+              Ticket sales start on {new Date(config.salesStartDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}. Come back then!
             </p>
           </div>
         </div>
@@ -133,7 +142,7 @@ export function Tickets() {
               <span className="bg-secondary text-white px-2 py-0.5 text-xs font-black tracking-widest border-2 border-primary">LIMITED</span>
             </h3>
             <p className="font-body text-sm font-bold uppercase tracking-wider text-on-surface-variant mt-1">
-              VINNUNIAN tickets only {formatVND(config.earlyBirdPrice)}! Exclusive for VinUni community. Non-Vinnunian tickets open after Early Bird ends.
+              VINNUNIAN tickets only {formatVND(config.prices.earlyBird)}! Exclusive for VinUni community.
             </p>
           </div>
         </div>
@@ -160,7 +169,7 @@ export function Tickets() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <button
-                  onClick={() => dispatch({ type: 'SET_USER_TYPE_PRICE', userType: 'vinnunian', ticketPrice: effectiveTicketPrice('vinnunian') })}
+                  onClick={() => dispatch({ type: 'SET_USER_TYPE', payload: 'vinnunian' })}
                   disabled={isLocked}
                   className={cn(
                     'relative border-4 border-primary p-6 md:p-8 text-left transition-all duration-300',
@@ -183,10 +192,10 @@ export function Tickets() {
                   </div>
                   <div className="mb-3">
                     <span className="font-display text-4xl md:text-5xl font-black tracking-tighter">
-                      {config.earlyBirdEnabled ? formatVND(config.earlyBirdPrice) : formatVND(TICKET_PRICE_VINNUNIAN)}
+                      {config.earlyBirdEnabled ? formatVND(config.prices.earlyBird) : formatVND(config.prices.vinnunian)}
                     </span>
                     {config.earlyBirdEnabled && (
-                      <span className="ml-2 text-sm font-display font-bold text-on-surface-variant line-through">{formatVND(TICKET_PRICE_VINNUNIAN)}</span>
+                      <span className="ml-2 text-sm font-display font-bold text-on-surface-variant line-through">{formatVND(config.prices.vinnunian)}</span>
                     )}
                   </div>
                   <p className="font-display text-xs font-black uppercase tracking-widest text-secondary">
@@ -209,11 +218,11 @@ export function Tickets() {
                 </button>
 
                 <button
-                  onClick={() => dispatch({ type: 'SET_USER_TYPE_PRICE', userType: 'non-vinnunian', ticketPrice: TICKET_PRICE_NON_VINNUNIAN })}
-                  disabled={config.earlyBirdEnabled || isLocked}
+                  onClick={() => dispatch({ type: 'SET_USER_TYPE', payload: 'non-vinnunian' })}
+                  disabled={!config.allowGuests || isLocked}
                   className={cn(
                     'border-4 border-primary p-6 md:p-8 text-left transition-all duration-300',
-                    (config.earlyBirdEnabled || isLocked)
+                    (!config.allowGuests || isLocked)
                       ? 'opacity-50 cursor-not-allowed'
                       : 'hover:-translate-y-1',
                     state.userType === 'non-vinnunian'
@@ -221,7 +230,7 @@ export function Tickets() {
                       : 'bg-surface hover:bg-surface-container'
                   )}
                 >
-                  {config.earlyBirdEnabled && (
+                  {!config.allowGuests && (
                     <div className="absolute -top-4 -right-4 z-10 bg-surface-dim border-2 border-primary px-3 py-1.5">
                       <span className="font-display font-black text-xs text-on-surface-variant tracking-tighter uppercase">LOCKED</span>
                     </div>
@@ -231,7 +240,7 @@ export function Tickets() {
                     <Users className="w-7 h-7" />
                   </div>
                   <div className="mb-3">
-                    <span className="font-display text-4xl md:text-5xl font-black tracking-tighter">{formatVND(TICKET_PRICE_NON_VINNUNIAN)}</span>
+                    <span className="font-display text-4xl md:text-5xl font-black tracking-tighter">{formatVND(config.prices.guest)}</span>
                   </div>
                   <p className="font-display text-xs font-black uppercase tracking-widest text-on-surface-variant">
                     GUEST ENTRANCE PASS

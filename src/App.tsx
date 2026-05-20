@@ -8,6 +8,7 @@ import { Tickets } from './components/Tickets';
 import { Checkout } from './components/Checkout';
 import { Confirmation } from './components/Confirmation';
 import { Success } from './components/Success';
+import { Admin } from './components/Admin';
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -31,6 +32,7 @@ export default function App() {
         <Route path="/confirmation" element={<Confirmation />} />
         <Route path="/checkout" element={<Checkout />} />
         <Route path="/success" element={<Success />} />
+        <Route path="/ops-yep-2026" element={<Admin />} />
       </Routes>
     </Layout>
   );
