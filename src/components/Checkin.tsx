@@ -50,6 +50,13 @@ export function Checkin() {
 
   const authHeaders = token ? { Authorization: `Bearer ${token}` } : {};
 
+  const expireSession = () => {
+    sessionStorage.removeItem('yep-admin-token');
+    setToken('');
+    setResult(null);
+    setMessage('Session expired. Please enter admin passcode again.');
+  };
+
   const login = async (event: React.FormEvent) => {
     event.preventDefault();
     setLoading(true);
@@ -85,6 +92,12 @@ export function Checkin() {
         body: JSON.stringify({ ticketCode, checkedInBy: staffName }),
       });
       const data = await res.json().catch(() => ({}));
+
+      if (res.status === 401) {
+        expireSession();
+        return;
+      }
+
       setResult(data);
       setQuery(data.ticket?.ticketCode || ticketCode);
 
