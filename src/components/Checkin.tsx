@@ -360,7 +360,7 @@ export function Checkin() {
               <p className="font-body text-sm font-bold text-on-surface-variant">Scan a ticket to check in immediately.</p>
             )}
 
-            {result?.error && (
+            {result?.error && !result.ticket && (
               <div className="space-y-4">
                 <XCircle className="w-12 h-12 text-secondary" />
                 <h2 className="font-display text-2xl font-black uppercase">Not Found</h2>
