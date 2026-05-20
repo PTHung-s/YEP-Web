@@ -59,7 +59,7 @@ export function Checkout() {
       }
 
       const data = await res.json();
-      navigate('/success', { state: { ticketId: data.ticketId, storedIn: data.storedIn } });
+      navigate('/success', { state: { ticketId: data.ticketId, ticketCodes: data.ticketCodes || [], storedIn: data.storedIn } });
       window.scrollTo(0, 0);
     } catch (err: any) {
       setError(err.message || 'Cannot connect to server. Make sure API server is running.');

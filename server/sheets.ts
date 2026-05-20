@@ -66,12 +66,47 @@ const REG_HEADERS = [
   'Mô tả / Ghi chú',
 ];
 
+const TICKET_ITEM_HEADERS = [
+  'Ticket Code',
+  'Order ID',
+  'NgĂ y giá»',
+  'Há» vĂ  tĂªn',
+  'Email',
+  'Sá»‘ Ä‘iá»‡n thoáº¡i',
+  'Loáº¡i vĂ©',
+  'Ticket No',
+  'Tổng vé trong order',
+];
+
+const CHECKIN_HEADERS = [
+  'Ticket Code',
+  'Order ID',
+  'Buyer Name',
+  'Email',
+  'Phone',
+  'Ticket Type',
+  'Checked In At',
+  'Checked In By',
+];
+
 async function ensureHeaders(sheetName: string, headers: string[]): Promise<void> {
   const sheets = getSheetsClient();
   const spreadsheetId = getSpreadsheetId();
   if (!sheets || !spreadsheetId) return;
 
   try {
+    const meta = await sheets.spreadsheets.get({ spreadsheetId });
+    const exists = (meta.data.sheets || []).some(sheet => sheet.properties?.title === sheetName);
+    if (!exists) {
+      await sheets.spreadsheets.batchUpdate({
+        spreadsheetId,
+        requestBody: {
+          requests: [{ addSheet: { properties: { title: sheetName } } }],
+        },
+      });
+      console.log(`[Sheets] Sheet created: "${sheetName}"`);
+    }
+
     const existing = await sheets.spreadsheets.values.get({
       spreadsheetId,
       range: `${sheetName}!A1:Z1`,
@@ -161,6 +196,29 @@ interface RegistrationRow {
   description: string;
 }
 
+export interface TicketItemRow {
+  ticketCode: string;
+  orderId: string;
+  timestamp: string;
+  buyerName: string;
+  email: string;
+  phone: string;
+  ticketType: string;
+  ticketNo: string;
+  orderTicketQuantity: string;
+}
+
+export interface CheckinRow {
+  ticketCode: string;
+  orderId: string;
+  buyerName: string;
+  email: string;
+  phone: string;
+  ticketType: string;
+  checkedInAt: string;
+  checkedInBy: string;
+}
+
 export async function appendRegistrationRow(row: RegistrationRow): Promise<boolean> {
   const sheets = getSheetsClient();
   const spreadsheetId = getSpreadsheetId();
@@ -182,6 +240,142 @@ export async function appendRegistrationRow(row: RegistrationRow): Promise<boole
     return true;
   } catch (err) {
     console.error('[Sheets] Failed to append registration:', err);
+    return false;
+  }
+}
+
+export async function appendTicketItemRows(rows: TicketItemRow[]): Promise<boolean> {
+  const sheets = getSheetsClient();
+  const spreadsheetId = getSpreadsheetId();
+
+  if (!sheets || !spreadsheetId || rows.length === 0) return false;
+
+  try {
+    await ensureHeaders('TicketItems', TICKET_ITEM_HEADERS);
+
+    await sheets.spreadsheets.values.append({
+      spreadsheetId,
+      range: 'TicketItems!A1',
+      valueInputOption: 'USER_ENTERED',
+      requestBody: {
+        values: rows.map(row => [
+          row.ticketCode,
+          row.orderId,
+          row.timestamp,
+          row.buyerName,
+          row.email,
+          row.phone,
+          row.ticketType,
+          row.ticketNo,
+          row.orderTicketQuantity,
+        ]),
+      },
+    });
+    console.log('[Sheets] Ticket items appended:', rows.length);
+    return true;
+  } catch (err) {
+    console.error('[Sheets] Failed to append ticket items:', err);
+    return false;
+  }
+}
+
+export async function findTicketItemByCode(ticketCode: string): Promise<TicketItemRow | null> {
+  const sheets = getSheetsClient();
+  const spreadsheetId = getSpreadsheetId();
+
+  if (!sheets || !spreadsheetId) return null;
+
+  try {
+    await ensureHeaders('TicketItems', TICKET_ITEM_HEADERS);
+    const res = await sheets.spreadsheets.values.get({
+      spreadsheetId,
+      range: 'TicketItems!A2:I',
+    });
+
+    const normalized = ticketCode.trim().toUpperCase();
+    const row = (res.data.values || []).find(item => String(item[0] || '').trim().toUpperCase() === normalized);
+    if (!row) return null;
+
+    return {
+      ticketCode: String(row[0] || ''),
+      orderId: String(row[1] || ''),
+      timestamp: String(row[2] || ''),
+      buyerName: String(row[3] || ''),
+      email: String(row[4] || ''),
+      phone: String(row[5] || ''),
+      ticketType: String(row[6] || ''),
+      ticketNo: String(row[7] || ''),
+      orderTicketQuantity: String(row[8] || ''),
+    };
+  } catch (err) {
+    console.error('[Sheets] Failed to find ticket item:', err);
+    return null;
+  }
+}
+
+export async function findCheckinByCode(ticketCode: string): Promise<CheckinRow | null> {
+  const sheets = getSheetsClient();
+  const spreadsheetId = getSpreadsheetId();
+
+  if (!sheets || !spreadsheetId) return null;
+
+  try {
+    await ensureHeaders('Checked-in', CHECKIN_HEADERS);
+    const res = await sheets.spreadsheets.values.get({
+      spreadsheetId,
+      range: 'Checked-in!A2:H',
+    });
+
+    const normalized = ticketCode.trim().toUpperCase();
+    const row = (res.data.values || []).find(item => String(item[0] || '').trim().toUpperCase() === normalized);
+    if (!row) return null;
+
+    return {
+      ticketCode: String(row[0] || ''),
+      orderId: String(row[1] || ''),
+      buyerName: String(row[2] || ''),
+      email: String(row[3] || ''),
+      phone: String(row[4] || ''),
+      ticketType: String(row[5] || ''),
+      checkedInAt: String(row[6] || ''),
+      checkedInBy: String(row[7] || ''),
+    };
+  } catch (err) {
+    console.error('[Sheets] Failed to find check-in:', err);
+    return null;
+  }
+}
+
+export async function appendCheckinRow(row: CheckinRow): Promise<boolean> {
+  const sheets = getSheetsClient();
+  const spreadsheetId = getSpreadsheetId();
+
+  if (!sheets || !spreadsheetId) return false;
+
+  try {
+    await ensureHeaders('Checked-in', CHECKIN_HEADERS);
+
+    await sheets.spreadsheets.values.append({
+      spreadsheetId,
+      range: 'Checked-in!A1',
+      valueInputOption: 'USER_ENTERED',
+      requestBody: {
+        values: [[
+          row.ticketCode,
+          row.orderId,
+          row.buyerName,
+          row.email,
+          row.phone,
+          row.ticketType,
+          row.checkedInAt,
+          row.checkedInBy,
+        ]],
+      },
+    });
+    console.log('[Sheets] Check-in appended:', row.ticketCode);
+    return true;
+  } catch (err) {
+    console.error('[Sheets] Failed to append check-in:', err);
     return false;
   }
 }

@@ -1,4 +1,5 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
+import QRCode from 'qrcode';
 import { CheckCircle, Mail, MapPin, ArrowRight, Ticket } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { useCart } from '../store/CartContext';
@@ -15,11 +16,29 @@ export function Success() {
   const ticketBulkDiscount = getTicketBulkDiscount();
   const merchBulkDiscount = getMerchBulkDiscount();
   const ticketId = (location.state as any)?.ticketId || 'N/A';
+  const ticketCodes = ((location.state as any)?.ticketCodes || []) as string[];
   const storedIn = (location.state as any)?.storedIn || 'csv';
+  const [qrImages, setQrImages] = useState<Record<string, string>>({});
 
   useEffect(() => {
     window.scrollTo(0, 0);
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function buildQrCodes() {
+      const entries = await Promise.all(ticketCodes.map(async code => {
+        const value = `${window.location.origin}/checkin-yep-2026?ticket=${encodeURIComponent(code)}`;
+        const dataUrl = await QRCode.toDataURL(value, { margin: 1, width: 180 });
+        return [code, dataUrl] as const;
+      }));
+      if (!cancelled) setQrImages(Object.fromEntries(entries));
+    }
+    if (ticketCodes.length > 0) buildQrCodes();
+    return () => {
+      cancelled = true;
+    };
+  }, [ticketCodes]);
 
   const hasMerch = state.merch.some(m => m.quantity > 0);
 
@@ -83,6 +102,27 @@ export function Success() {
             <span className="font-display text-lg md:text-xl font-black tracking-tighter">{ticketId}</span>
           </div>
         </div>
+
+        {ticketCodes.length > 0 && (
+          <div className="mb-6">
+            <h4 className="font-display text-lg font-black uppercase tracking-wider mb-4">Individual Ticket QR Codes</h4>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {ticketCodes.map((code, index) => (
+                <div key={code} className="border-2 border-primary bg-white p-4 flex items-center gap-4">
+                  {qrImages[code] && (
+                    <img src={qrImages[code]} alt={`QR code for ticket ${code}`} className="w-24 h-24 shrink-0" />
+                  )}
+                  <div>
+                    <span className="font-display text-[10px] font-bold uppercase tracking-widest text-on-surface-variant block">
+                      Ticket #{index + 1}
+                    </span>
+                    <span className="font-display text-sm font-black break-all">{code}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {storedIn === 'csv' && (
           <div className="bg-primary-container/50 border-2 border-primary p-3 mb-6 text-left">

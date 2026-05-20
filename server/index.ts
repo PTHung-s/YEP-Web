@@ -3,8 +3,30 @@ import express from 'express';
 import cors from 'cors';
 import path from 'path';
 import crypto from 'crypto';
-import { appendTicketRow, appendRegistrationRow, getSheetSummary } from './sheets';
-import { saveTicketCSV, saveRegistrationCSV, getTicketsCSV } from './csv-fallback';
+import {
+  appendCheckinRow,
+  appendRegistrationRow,
+  appendTicketItemRows,
+  appendTicketRow,
+  findCheckinByCode,
+  findTicketItemByCode,
+  getSheetSummary,
+  type CheckinRow,
+  type TicketItemRow,
+} from './sheets';
+import {
+  findCheckinCSV,
+  findTicketItemCSV,
+  getCheckinsCSV,
+  getTicketItemsCSV,
+  getTicketsCSV,
+  saveCheckinCSV,
+  saveRegistrationCSV,
+  saveTicketCSV,
+  saveTicketItemsCSV,
+  type CheckinRecord,
+  type TicketItemRecord,
+} from './csv-fallback';
 import {
   calculateMerchBundleDiscount,
   calculateServiceFee,
@@ -13,6 +35,7 @@ import {
   readConfig,
   writeConfig,
 } from './config';
+import { sendTicketEmail } from './mailer';
 
 const app = express();
 const PORT = process.env.PORT || process.env.API_PORT || 3001;
@@ -24,6 +47,11 @@ const adminTokens = new Set<string>();
 
 function generateId(): string {
   return 'YEP-' + Date.now().toString(36).toUpperCase() + '-' + Math.random().toString(36).substring(2, 6).toUpperCase();
+}
+
+function generateTicketCode(orderId: string, index: number): string {
+  const suffix = crypto.randomBytes(3).toString('hex').toUpperCase();
+  return `${orderId}-${String(index).padStart(2, '0')}-${suffix}`;
 }
 
 function nowVN(): string {
@@ -50,6 +78,45 @@ function requireAdmin(req: express.Request, res: express.Response, next: express
     return;
   }
   next();
+}
+
+function getTicketTypeLabel(userType: string, earlyBirdEnabled: boolean): string {
+  if (userType === 'vinnunian') return earlyBirdEnabled ? 'Vinnunian Early Bird' : 'Vinnunian Regular';
+  return 'Guest';
+}
+
+function extractTicketCode(input: string): string {
+  const trimmed = String(input || '').trim();
+  if (!trimmed) return '';
+
+  const ticketParamMatch = trimmed.match(/[?&]ticket=([^&\s]+)/i);
+  if (ticketParamMatch?.[1]) {
+    return decodeURIComponent(ticketParamMatch[1]).trim().toUpperCase();
+  }
+
+  try {
+    const url = new URL(trimmed);
+    return (url.searchParams.get('ticket') || trimmed).trim().toUpperCase();
+  } catch {
+    return trimmed.toUpperCase();
+  }
+}
+
+function getRequestAppUrl(req: express.Request): string | undefined {
+  const origin = req.header('origin');
+  if (origin) return origin;
+
+  const referer = req.header('referer');
+  if (referer) {
+    try {
+      const url = new URL(referer);
+      return `${url.protocol}//${url.host}`;
+    } catch {
+      return undefined;
+    }
+  }
+
+  return undefined;
 }
 
 app.get('/api/config', async (_req, res) => {
@@ -93,6 +160,99 @@ app.put('/api/admin/config', requireAdmin, async (req, res) => {
     res.json(saved);
   } catch (err) {
     console.error('[API] Error saving admin config:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+app.get('/api/checkin/search', requireAdmin, async (req, res) => {
+  try {
+    const ticketCode = extractTicketCode(String(req.query.q || req.query.ticket || ''));
+    if (!ticketCode) {
+      res.status(400).json({ error: 'Missing ticket code' });
+      return;
+    }
+
+    const ticket = await findTicketItemByCode(ticketCode) || await findTicketItemCSV(ticketCode);
+    if (!ticket) {
+      res.status(404).json({ error: 'Ticket not found', ticketCode });
+      return;
+    }
+
+    const checkedIn = await findCheckinByCode(ticketCode) || await findCheckinCSV(ticketCode);
+    res.json({
+      ticket,
+      status: checkedIn ? 'checked_in' : 'valid',
+      checkedIn,
+    });
+  } catch (err) {
+    console.error('[API] Error searching check-in:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+app.post('/api/checkin', requireAdmin, async (req, res) => {
+  try {
+    const ticketCode = extractTicketCode(req.body?.ticketCode || req.body?.q || '');
+    const checkedInBy = String(req.body?.checkedInBy || 'Staff').trim() || 'Staff';
+
+    if (!ticketCode) {
+      res.status(400).json({ error: 'Missing ticket code' });
+      return;
+    }
+
+    const ticket = await findTicketItemByCode(ticketCode) || await findTicketItemCSV(ticketCode);
+    if (!ticket) {
+      res.status(404).json({ error: 'Ticket not found', ticketCode });
+      return;
+    }
+
+    const existing = await findCheckinByCode(ticketCode) || await findCheckinCSV(ticketCode);
+    if (existing) {
+      res.status(409).json({
+        error: 'Ticket already checked in',
+        status: 'checked_in',
+        ticket,
+        checkedIn: existing,
+      });
+      return;
+    }
+
+    const checkin: CheckinRow = {
+      ticketCode: ticket.ticketCode,
+      orderId: ticket.orderId,
+      buyerName: ticket.buyerName,
+      email: ticket.email,
+      phone: ticket.phone,
+      ticketType: ticket.ticketType,
+      checkedInAt: nowVN(),
+      checkedInBy,
+    };
+
+    const sheetOk = await appendCheckinRow(checkin);
+    if (!sheetOk) {
+      await saveCheckinCSV(checkin);
+      console.log('[CSV] Check-in saved locally:', ticket.ticketCode);
+    }
+
+    res.status(201).json({
+      success: true,
+      status: 'checked_in',
+      ticket,
+      checkedIn: checkin,
+      storedIn: sheetOk ? 'sheets' : 'csv',
+    });
+  } catch (err) {
+    console.error('[API] Error checking in ticket:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+app.get('/api/checkin/recent', requireAdmin, async (_req, res) => {
+  try {
+    const checkins = await getCheckinsCSV();
+    res.json({ source: 'csv', checkins: checkins.slice(-20).reverse() });
+  } catch (err) {
+    console.error('[API] Error getting recent check-ins:', err);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -141,8 +301,22 @@ app.post('/api/tickets', async (req, res) => {
       totalAmount: String(totalAmount),
       paymentMethod: paymentMethod || 'credit',
     };
+    const ticketType = getTicketTypeLabel(userType, config.earlyBirdEnabled);
+    const ticketItems: TicketItemRow[] = Array.from({ length: normalizedTicketQuantity }, (_, index) => ({
+      ticketCode: generateTicketCode(record.id, index + 1),
+      orderId: record.id,
+      timestamp: record.timestamp,
+      buyerName: fullName,
+      email,
+      phone,
+      ticketType,
+      ticketNo: String(index + 1),
+      orderTicketQuantity: String(normalizedTicketQuantity),
+    }));
 
     const sheetOk = await appendTicketRow(record);
+
+    const itemSheetOk = await appendTicketItemRows(ticketItems);
 
     if (!sheetOk) {
       await saveTicketCSV({
@@ -156,10 +330,32 @@ app.post('/api/tickets', async (req, res) => {
       console.log('[CSV] Ticket saved locally:', record.id);
     }
 
+    if (!itemSheetOk) {
+      await saveTicketItemsCSV(ticketItems);
+      console.log('[CSV] Ticket items saved locally:', ticketItems.length);
+    }
+
+    const emailResult = await sendTicketEmail({
+      to: email,
+      buyerName: fullName,
+      orderId: record.id,
+      totalAmount: record.totalAmount,
+      paymentMethod: record.paymentMethod,
+      ticketItems,
+      appUrl: getRequestAppUrl(req),
+    });
+    if (!emailResult.sent) {
+      console.log('[Email] Ticket email not sent:', emailResult.error || 'not configured');
+    } else {
+      console.log('[Email] Ticket email sent:', email, emailResult.messageId || '');
+    }
+
     res.status(201).json({
       success: true,
       ticketId: record.id,
+      ticketCodes: ticketItems.map(item => item.ticketCode),
       storedIn: sheetOk ? 'sheets' : 'csv',
+      email: emailResult,
       message: sheetOk
         ? 'Ticket saved to Google Sheets'
         : 'Ticket saved locally (CSV). Configure Google Sheets credentials for cloud storage.',
