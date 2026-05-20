@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Camera, CheckCircle, Lock, StopCircle, XCircle } from 'lucide-react';
+import { Camera, CheckCircle, Lock, RotateCw, StopCircle, XCircle } from 'lucide-react';
 import { cn } from './Layout';
 
 interface TicketItem {
@@ -36,6 +36,29 @@ function getTicketFromUrl(): string {
   return new URLSearchParams(window.location.search).get('ticket') || '';
 }
 
+function playTone(type: 'success' | 'warning' | 'error') {
+  const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+  if (!AudioContextClass) return;
+
+  const context = new AudioContextClass();
+  const frequencies = type === 'success' ? [660, 880] : type === 'warning' ? [440, 330] : [220, 180];
+
+  frequencies.forEach((frequency, index) => {
+    const oscillator = context.createOscillator();
+    const gain = context.createGain();
+    const startsAt = context.currentTime + index * 0.12;
+    oscillator.frequency.value = frequency;
+    oscillator.type = 'square';
+    gain.gain.setValueAtTime(0.001, startsAt);
+    gain.gain.exponentialRampToValueAtTime(0.08, startsAt + 0.01);
+    gain.gain.exponentialRampToValueAtTime(0.001, startsAt + 0.11);
+    oscillator.connect(gain);
+    gain.connect(context.destination);
+    oscillator.start(startsAt);
+    oscillator.stop(startsAt + 0.12);
+  });
+}
+
 export function Checkin() {
   const [token, setToken] = useState(() => sessionStorage.getItem('yep-admin-token') || '');
   const [passcode, setPasscode] = useState('');
@@ -45,8 +68,11 @@ export function Checkin() {
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
   const [scannerActive, setScannerActive] = useState(false);
+  const [continuousScan, setContinuousScan] = useState(() => sessionStorage.getItem('yep-continuous-scan') !== 'off');
+  const [recentCheckins, setRecentCheckins] = useState<CheckinRecord[]>([]);
   const scannerRef = useRef<any>(null);
   const scanInFlightRef = useRef(false);
+  const scanCooldownRef = useRef<number | null>(null);
 
   const authHeaders = token ? { Authorization: `Bearer ${token}` } : {};
 
@@ -56,6 +82,24 @@ export function Checkin() {
     setResult(null);
     setMessage('Session expired. Please enter admin passcode again.');
   };
+
+  const fetchRecentCheckins = useCallback(async () => {
+    if (!token) return;
+
+    try {
+      const res = await fetch('/api/checkin/recent', { headers: { Authorization: `Bearer ${token}` } });
+      const data = await res.json().catch(() => ({}));
+      if (res.status === 401) {
+        expireSession();
+        return;
+      }
+      if (res.ok && Array.isArray(data.checkins)) {
+        setRecentCheckins(data.checkins);
+      }
+    } catch {
+      // Recent check-ins are a convenience panel, so failures should not block gate work.
+    }
+  }, [token]);
 
   const login = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -103,14 +147,20 @@ export function Checkin() {
 
       if (res.status === 409) {
         setMessage('Ticket was already checked in.');
+        playTone('warning');
         return;
       }
 
       if (!res.ok) throw new Error(data.error || 'Cannot check in');
       setMessage('Checked in successfully.');
+      if (data.checkedIn) {
+        setRecentCheckins(current => [data.checkedIn, ...current.filter(item => item.ticketCode !== data.checkedIn.ticketCode)].slice(0, 10));
+      }
+      playTone('success');
     } catch (err: any) {
       setResult(current => current?.ticket ? current : { error: err.message || 'Cannot check in' });
       setMessage(err.message || 'Cannot check in');
+      playTone('error');
     } finally {
       setLoading(false);
     }
@@ -129,14 +179,20 @@ export function Checkin() {
           if (scanInFlightRef.current) return;
           scanInFlightRef.current = true;
           setQuery(decodedText);
-          try {
-            await scanner.stop();
-          } finally {
-            scannerRef.current = null;
-            setScannerActive(false);
-            scanInFlightRef.current = false;
+          await checkInTicket(decodedText);
+
+          if (continuousScan) {
+            scanCooldownRef.current = window.setTimeout(() => {
+              scanInFlightRef.current = false;
+              scanCooldownRef.current = null;
+            }, 1800);
+            return;
           }
-          checkInTicket(decodedText);
+
+          await scanner.stop();
+          scannerRef.current = null;
+          setScannerActive(false);
+          scanInFlightRef.current = false;
         },
         () => {},
       );
@@ -147,6 +203,11 @@ export function Checkin() {
   };
 
   const stopScanner = async () => {
+    if (scanCooldownRef.current) {
+      window.clearTimeout(scanCooldownRef.current);
+      scanCooldownRef.current = null;
+    }
+    scanInFlightRef.current = false;
     if (scannerRef.current) {
       await scannerRef.current.stop();
       scannerRef.current = null;
@@ -156,7 +217,9 @@ export function Checkin() {
 
   useEffect(() => {
     if (token && query) checkInTicket(query);
+    if (token) fetchRecentCheckins();
     return () => {
+      if (scanCooldownRef.current) window.clearTimeout(scanCooldownRef.current);
       if (scannerRef.current) scannerRef.current.stop().catch(() => {});
     };
   }, [token]);
@@ -191,6 +254,16 @@ export function Checkin() {
 
   const isCheckedIn = result?.status === 'checked_in';
   const isValid = result?.status === 'valid';
+  const isSuccess = Boolean(result?.success);
+  const hasError = Boolean(result?.error);
+  const statusLabel = isSuccess ? 'Checked In' : isCheckedIn ? 'Already Checked In' : hasError ? 'Not Found' : scannerActive ? 'Scanning' : 'Ready';
+  const statusClass = isSuccess
+    ? 'bg-emerald-500 text-white'
+    : isCheckedIn
+      ? 'bg-amber-400 text-primary'
+      : hasError
+        ? 'bg-secondary text-white'
+        : 'bg-primary-container text-primary';
 
   return (
     <div className="w-full max-w-5xl mx-auto px-6 md:px-12 py-10 md:py-14">
@@ -207,6 +280,22 @@ export function Checkin() {
               value={staffName}
               onChange={event => setStaffName(event.target.value)}
               className="w-full bg-white border-2 border-primary px-4 py-3 font-display font-bold focus:outline-none focus:border-secondary"
+            />
+          </label>
+
+          <label className="flex items-center justify-between gap-4 border-4 border-primary bg-background px-4 py-3">
+            <div>
+              <span className="block font-display text-xs font-black uppercase tracking-widest">Continuous Scan</span>
+              <span className="block font-body text-xs font-bold text-on-surface-variant">Auto-ready for the next QR after each result.</span>
+            </div>
+            <input
+              type="checkbox"
+              checked={continuousScan}
+              onChange={event => {
+                setContinuousScan(event.target.checked);
+                sessionStorage.setItem('yep-continuous-scan', event.target.checked ? 'on' : 'off');
+              }}
+              className="h-6 w-6 accent-current"
             />
           </label>
 
@@ -233,13 +322,24 @@ export function Checkin() {
 
           <div className="border-4 border-primary bg-background p-4">
             <div id="qr-reader" className={cn('overflow-hidden', scannerActive ? 'min-h-[280px]' : 'min-h-0')} />
-            <button
-              onClick={scannerActive ? stopScanner : startScanner}
-              className="mt-3 inline-flex items-center gap-2 bg-surface border-4 border-primary px-5 py-3 font-display font-black uppercase tracking-widest hover:bg-primary-container"
-            >
-              {scannerActive ? <StopCircle className="w-4 h-4" /> : <Camera className="w-4 h-4" />}
-              {scannerActive ? 'Stop Scanner' : 'Scan QR'}
-            </button>
+            <div className="mt-3 flex flex-col sm:flex-row gap-3">
+              <button
+                onClick={scannerActive ? stopScanner : startScanner}
+                className="inline-flex items-center justify-center gap-2 bg-surface border-4 border-primary px-5 py-3 font-display font-black uppercase tracking-widest hover:bg-primary-container"
+              >
+                {scannerActive ? <StopCircle className="w-4 h-4" /> : <Camera className="w-4 h-4" />}
+                {scannerActive ? 'Stop Scanner' : 'Scan QR'}
+              </button>
+              {!scannerActive && result && (
+                <button
+                  onClick={startScanner}
+                  className="inline-flex items-center justify-center gap-2 bg-primary text-white border-4 border-primary px-5 py-3 font-display font-black uppercase tracking-widest"
+                >
+                  <RotateCw className="w-4 h-4" />
+                  Scan Next
+                </button>
+              )}
+            </div>
           </div>
 
           {message && (
@@ -250,7 +350,12 @@ export function Checkin() {
         </section>
 
         <aside className="lg:col-span-2">
-          <div className="bg-surface border-4 border-primary p-6 md:p-8 sticky top-28">
+          <div className="bg-surface border-4 border-primary p-6 md:p-8 sticky top-28 space-y-6">
+            <div className={cn('border-4 border-primary p-5 text-center', statusClass)}>
+              <span className="block font-display text-xs font-black uppercase tracking-widest">Status</span>
+              <p className="font-display text-3xl md:text-4xl font-black uppercase leading-none mt-2">{statusLabel}</p>
+            </div>
+
             {!result && (
               <p className="font-body text-sm font-bold text-on-surface-variant">Scan a ticket to check in immediately.</p>
             )}
@@ -311,6 +416,28 @@ export function Checkin() {
                     Ready for automatic check-in.
                   </div>
                 )}
+              </div>
+            )}
+
+            {recentCheckins.length > 0 && (
+              <div className="border-t-4 border-primary pt-5">
+                <div className="mb-3 flex items-center justify-between gap-3">
+                  <h2 className="font-display text-xl font-black uppercase">Recent</h2>
+                  <button
+                    onClick={fetchRecentCheckins}
+                    className="border-2 border-primary px-3 py-1 font-display text-xs font-black uppercase hover:bg-primary-container"
+                  >
+                    Refresh
+                  </button>
+                </div>
+                <div className="space-y-2">
+                  {recentCheckins.slice(0, 8).map(item => (
+                    <div key={`${item.ticketCode}-${item.checkedInAt}`} className="border-2 border-primary bg-background p-3">
+                      <p className="font-display text-sm font-black uppercase">{item.buyerName || 'Unknown'}</p>
+                      <p className="font-body text-xs font-bold text-on-surface-variant">{item.ticketType} - {item.checkedInAt}</p>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
           </div>

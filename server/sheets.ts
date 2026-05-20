@@ -346,6 +346,38 @@ export async function findCheckinByCode(ticketCode: string): Promise<CheckinRow 
   }
 }
 
+export async function getRecentCheckins(limit = 20): Promise<CheckinRow[] | null> {
+  const sheets = getSheetsClient();
+  const spreadsheetId = getSpreadsheetId();
+
+  if (!sheets || !spreadsheetId) return null;
+
+  try {
+    await ensureHeaders('Checked-in', CHECKIN_HEADERS);
+    const res = await sheets.spreadsheets.values.get({
+      spreadsheetId,
+      range: 'Checked-in!A2:H',
+    });
+
+    return (res.data.values || [])
+      .slice(-limit)
+      .reverse()
+      .map(row => ({
+        ticketCode: String(row[0] || ''),
+        orderId: String(row[1] || ''),
+        buyerName: String(row[2] || ''),
+        email: String(row[3] || ''),
+        phone: String(row[4] || ''),
+        ticketType: String(row[5] || ''),
+        checkedInAt: String(row[6] || ''),
+        checkedInBy: String(row[7] || ''),
+      }));
+  } catch (err) {
+    console.error('[Sheets] Failed to get recent check-ins:', err);
+    return null;
+  }
+}
+
 export async function appendCheckinRow(row: CheckinRow): Promise<boolean> {
   const sheets = getSheetsClient();
   const spreadsheetId = getSpreadsheetId();

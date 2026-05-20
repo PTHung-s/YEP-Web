@@ -10,6 +10,7 @@ import {
   appendTicketRow,
   findCheckinByCode,
   findTicketItemByCode,
+  getRecentCheckins,
   getSheetSummary,
   type CheckinRow,
   type TicketItemRow,
@@ -283,6 +284,12 @@ app.post('/api/checkin', requireAdmin, async (req, res) => {
 
 app.get('/api/checkin/recent', requireAdmin, async (_req, res) => {
   try {
+    const sheetCheckins = await getRecentCheckins(20);
+    if (sheetCheckins) {
+      res.json({ source: 'sheets', checkins: sheetCheckins });
+      return;
+    }
+
     const checkins = await getCheckinsCSV();
     res.json({ source: 'csv', checkins: checkins.slice(-20).reverse() });
   } catch (err) {
