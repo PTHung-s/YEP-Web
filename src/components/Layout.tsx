@@ -15,10 +15,10 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen flex flex-col pt-16 md:pt-20">
-      <header className="fixed top-0 w-full z-50 flex justify-between items-center px-4 md:px-12 h-16 md:h-20 bg-surface/95 backdrop-blur-md border-b-2 border-primary">
-        <Link to="/" className="flex items-center gap-3 md:gap-4 border-2 border-primary px-2 py-1 bg-background/80">
-          <Menu className="w-6 h-6 md:w-8 md:h-8 text-primary cursor-pointer" />
-            <h1 className="font-display text-sm md:text-base lg:text-lg font-extrabold tracking-wider uppercase text-primary leading-none">
+      <header className="fixed top-0 w-full z-50 flex justify-between items-center px-4 md:px-12 h-16 md:h-20 bg-[#070717]/95 backdrop-blur-md border-b-2 border-[#7f5cff] shadow-[0_10px_32px_rgba(0,0,0,0.45)]">
+        <Link to="/" className="flex items-center gap-3 md:gap-4 border-2 border-[#f0eaff]/70 px-2 py-1 bg-white/5 hover:bg-white/10 transition-colors">
+          <Menu className="w-6 h-6 md:w-8 md:h-8 text-[#22d3ee] cursor-pointer" />
+            <h1 className="font-display text-sm md:text-base lg:text-lg font-extrabold tracking-wider uppercase text-white leading-none">
               {BRAND_NAME}
             </h1>
           </Link>
@@ -27,7 +27,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
               to="/"
               className={cn(
                 "font-display text-sm font-bold uppercase tracking-widest transition-colors",
-                path === '/' ? "text-primary underline decoration-secondary decoration-2 underline-offset-8" : "text-secondary hover:text-primary"
+                path === '/' ? "text-white underline decoration-[#ff2fb3] decoration-2 underline-offset-8" : "text-[#d8c8ff] hover:text-white"
               )}
             >
               HOME
@@ -36,7 +36,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
               to="/lineup"
               className={cn(
                 "font-display text-sm font-bold uppercase tracking-widest transition-colors",
-                path === '/lineup' ? "text-primary underline decoration-secondary decoration-2 underline-offset-8" : "text-secondary hover:text-primary"
+                path === '/lineup' ? "text-white underline decoration-[#ff2fb3] decoration-2 underline-offset-8" : "text-[#d8c8ff] hover:text-white"
               )}
             >
               LINEUP
@@ -45,7 +45,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
               to="/tickets"
               className={cn(
                 "font-display text-sm font-bold uppercase tracking-widest transition-colors",
-                path === '/tickets' ? "text-primary underline decoration-secondary decoration-2 underline-offset-8" : "text-secondary hover:text-primary"
+                path === '/tickets' ? "text-white underline decoration-[#ff2fb3] decoration-2 underline-offset-8" : "text-[#d8c8ff] hover:text-white"
               )}
             >
               TICKETS
@@ -54,7 +54,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
               to="/vote"
               className={cn(
                 "font-display text-sm font-bold uppercase tracking-widest transition-colors",
-                path === '/vote' ? "text-primary underline decoration-secondary decoration-2 underline-offset-8" : "text-secondary hover:text-primary"
+                path === '/vote' ? "text-white underline decoration-[#ff2fb3] decoration-2 underline-offset-8" : "text-[#d8c8ff] hover:text-white"
               )}
             >
               VOTE
@@ -62,7 +62,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
           </nav>
           <Link
             to="/tickets"
-            className="bg-primary text-white px-4 md:px-6 py-2 border-2 border-primary font-display font-bold uppercase tracking-widest hover:bg-secondary hover:border-secondary transition-all duration-300 active:scale-95 text-xs md:text-sm kaleido-glow"
+            className="bg-white text-primary px-4 md:px-6 py-2 border-2 border-white font-display font-bold uppercase tracking-widest hover:bg-[#ff2fb3] hover:text-white hover:border-[#ff2fb3] transition-all duration-300 active:scale-95 text-xs md:text-sm shadow-[0_0_24px_rgba(34,211,238,0.35)]"
           >
             BUY TICKET
           </Link>
@@ -102,14 +102,14 @@ export function Layout({ children }: { children: React.ReactNode }) {
       </footer>
       
       {/* Mobile Nav */}
-      <nav className="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center h-16 bg-surface/95 backdrop-blur-md border-t-2 border-primary md:hidden">
-        <Link to="/" className={cn("p-2", path === '/' ? "bg-primary text-white" : "text-primary opacity-60 block")}>
+      <nav className="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center h-16 bg-[#070717]/95 backdrop-blur-md border-t-2 border-[#7f5cff] md:hidden">
+        <Link to="/" className={cn("p-2", path === '/' ? "bg-white text-primary" : "text-[#d8c8ff] opacity-80 block")}>
            <span className="font-bold text-xs uppercase tracking-wider">Home</span>
         </Link>
-        <Link to="/tickets" className={cn("p-2", path === '/tickets' || path === '/checkout' ? "bg-primary text-white" : "text-primary opacity-60 block")}>
+        <Link to="/tickets" className={cn("p-2", path === '/tickets' || path === '/checkout' ? "bg-white text-primary" : "text-[#d8c8ff] opacity-80 block")}>
            <span className="font-bold text-xs uppercase tracking-wider">Tix</span>
         </Link>
-         <Link to="/vote" className={cn("p-2", path === '/vote' ? "bg-primary text-white" : "text-primary opacity-60 block")}>
+         <Link to="/vote" className={cn("p-2", path === '/vote' ? "bg-white text-primary" : "text-[#d8c8ff] opacity-80 block")}>
             <span className="font-bold text-xs uppercase tracking-wider">Vote</span>
         </Link>
       </nav>
