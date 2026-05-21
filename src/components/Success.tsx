@@ -28,7 +28,7 @@ export function Success() {
     let cancelled = false;
     async function buildQrCodes() {
       const entries = await Promise.all(ticketCodes.map(async code => {
-        const value = `${window.location.origin}/checkin-yep-2026?ticket=${encodeURIComponent(code)}`;
+        const value = `${window.location.origin}/yep26/checkin-yep-2026?ticket=${encodeURIComponent(code)}`;
         const dataUrl = await QRCode.toDataURL(value, { margin: 1, width: 180 });
         return [code, dataUrl] as const;
       }));

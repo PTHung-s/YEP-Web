@@ -479,8 +479,18 @@ app.get('/api/admin/tickets', requireAdmin, async (_req, res) => {
 // Serve static frontend in production
 const distPath = path.resolve('dist');
 if (process.env.NODE_ENV === 'production') {
-  app.use(express.static(distPath));
-  app.get(/^\/(?!api\/).*/, (_req, res) => {
+  app.get('/', (_req, res) => {
+    res.redirect(301, '/yep26/');
+  });
+  app.get('/checkin-yep-2026', (req, res) => {
+    const query = req.url.includes('?') ? req.url.slice(req.url.indexOf('?')) : '';
+    res.redirect(301, `/yep26/checkin-yep-2026${query}`);
+  });
+  app.get('/ops-yep-2026', (_req, res) => {
+    res.redirect(301, '/yep26/ops-yep-2026');
+  });
+  app.use('/yep26', express.static(distPath));
+  app.get(/^\/yep26(?:\/.*)?$/, (_req, res) => {
     res.sendFile(path.join(distPath, 'index.html'));
   });
 }

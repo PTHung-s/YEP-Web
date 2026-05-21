@@ -24,7 +24,8 @@ function isEmailConfigured(): boolean {
 }
 
 function getAppUrl(appUrl?: string): string {
-  return (appUrl || process.env.APP_URL || '').replace(/\/$/, '') || 'http://localhost:3000';
+  const baseUrl = (appUrl || process.env.APP_URL || '').replace(/\/$/, '') || 'http://localhost:3000';
+  return baseUrl.endsWith('/yep26') ? baseUrl : `${baseUrl}/yep26`;
 }
 
 function formatVND(value: string | number): string {
