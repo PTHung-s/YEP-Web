@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Heart, PlusCircle, Crown, Users2, Camera, ExternalLink, Star, Sparkles, Trophy } from 'lucide-react';
 import { cn } from './Layout';
+import { yepAsset } from '../lib/assets';
 
 const REGISTRATION_LINK = 'https://forms.gle/example-yep-icon-2026';
 
@@ -62,7 +63,7 @@ export function Vote() {
       <section className="mb-12 md:mb-16 relative">
         <div className="border-4 border-primary p-6 md:p-10 bg-primary text-white neo-shadow relative overflow-hidden min-h-[360px] flex items-end">
           <img
-            src="/assets/yep/background-stage-light.png"
+            src={yepAsset('background-stage-light.png')}
             alt=""
             aria-hidden="true"
             className="absolute inset-0 h-full w-full object-cover opacity-70"

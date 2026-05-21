@@ -1,6 +1,7 @@
 import React from 'react';
 import { Camera, ChevronDown, GlassWater, Heart, Mail, MapPin, Music, Ticket } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { yepAsset } from '../lib/assets';
 
 const timeline = [
   { time: '17:00 - 18:30', title: 'Check-in & Booth Activities', desc: 'Wristbands, booths, pre-show games' },
@@ -54,12 +55,12 @@ export function Home() {
     <div className="w-full">
       <section className="relative min-h-[calc(100vh-4rem)] md:min-h-[calc(100vh-5rem)] flex items-end overflow-hidden bg-primary text-white border-b-2 border-primary">
         <img
-          src="/assets/yep/hero-kaleido-sc.png"
+          src={yepAsset('hero-kaleido-sc.png')}
           alt="YEP'26 The Kaleido Soul"
           className="absolute inset-0 hidden md:block w-full h-full object-cover object-top"
         />
         <img
-          src="/assets/yep/background-stage-light.png"
+          src={yepAsset('background-stage-light.png')}
           alt=""
           aria-hidden="true"
           className="absolute inset-0 block md:hidden w-full h-full object-cover object-center"
@@ -136,7 +137,7 @@ export function Home() {
 
           <div className="relative min-h-[320px] border-2 border-primary overflow-hidden neo-shadow">
             <img
-              src="/assets/yep/header-kaleido-wide.png"
+              src={yepAsset('header-kaleido-wide.png')}
               alt="The Kaleido Soul visual"
               className="absolute inset-0 h-full w-full object-cover object-center"
             />
@@ -150,7 +151,7 @@ export function Home() {
 
       <section className="relative py-16 md:py-24 px-6 md:px-12 bg-primary text-white border-b-2 border-primary max-w-7xl mx-auto w-full overflow-hidden">
         <img
-          src="/assets/yep/background-kaleido.png"
+          src={yepAsset('background-kaleido.png')}
           alt=""
           aria-hidden="true"
           className="absolute inset-0 h-full w-full object-cover opacity-45"
@@ -244,7 +245,7 @@ export function Home() {
 
       <section className="relative py-20 md:py-24 px-6 md:px-12 bg-primary text-background border-t-2 border-primary text-center overflow-hidden w-full">
         <img
-          src="/assets/yep/background-stage-light.png"
+          src={yepAsset('background-stage-light.png')}
           alt=""
           aria-hidden="true"
           className="absolute inset-0 h-full w-full object-cover opacity-55"
