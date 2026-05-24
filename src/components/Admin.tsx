@@ -204,13 +204,13 @@ export function Admin() {
             value={passcode}
             onChange={event => setPasscode(event.target.value)}
             placeholder="Admin passcode"
-            className="w-full bg-white border-2 border-primary px-4 py-3 font-display font-bold focus:outline-none focus:border-secondary"
+            className="w-full bg-white text-background border-2 border-primary px-4 py-3 font-display font-bold focus:outline-none focus:border-secondary"
           />
           {error && <p className="font-body text-sm font-bold text-secondary">{error}</p>}
           <button
             type="submit"
             disabled={loading || !passcode}
-            className="w-full bg-primary text-background border-4 border-primary py-3 font-display font-black uppercase tracking-widest disabled:bg-surface-dim disabled:text-on-surface-variant"
+            className="w-full bg-primary text-white border-4 border-primary py-3 font-display font-black uppercase tracking-widest disabled:bg-surface-dim disabled:text-on-surface-variant"
           >
             {loading ? 'Signing in...' : 'Enter'}
           </button>
@@ -235,7 +235,7 @@ export function Admin() {
             <Download className="w-4 h-4" />
             Export
           </button>
-          <button onClick={saveConfig} disabled={saving} className="inline-flex items-center gap-2 bg-primary text-background border-4 border-primary px-5 py-3 font-display font-black uppercase tracking-widest disabled:opacity-60">
+          <button onClick={saveConfig} disabled={saving} className="inline-flex items-center gap-2 bg-primary text-white border-4 border-primary px-5 py-3 font-display font-black uppercase tracking-widest disabled:opacity-60">
             <Save className="w-4 h-4" />
             {saving ? 'Saving' : 'Save'}
           </button>
@@ -276,7 +276,7 @@ export function Admin() {
                 <button
                   key={value}
                   onClick={() => updateConfig({ salesStatus: value as EventConfigState['salesStatus'] })}
-                  className={cn('py-3 font-display text-xs md:text-sm font-black uppercase tracking-widest border-r-4 border-primary last:border-r-0', config.salesStatus === value ? 'bg-primary text-background' : 'bg-background')}
+                  className={cn('py-3 font-display text-xs md:text-sm font-black uppercase tracking-widest border-r-4 border-primary last:border-r-0', config.salesStatus === value ? 'bg-primary text-white' : 'bg-background')}
                 >
                   {label}
                 </button>
@@ -295,6 +295,11 @@ export function Admin() {
             </label>
           </div>
 
+          <label className="flex items-center justify-between gap-4 border-2 border-primary p-4">
+            <span className="font-display font-black uppercase tracking-widest text-sm">Top 8 Leaderboard</span>
+            <Toggle checked={config.top8Enabled} onChange={top8Enabled => updateConfig({ top8Enabled })} />
+          </label>
+
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {[
               ['earlyBird', 'Early Bird'],
@@ -307,7 +312,7 @@ export function Admin() {
                   type="number"
                   value={config.prices[key as keyof EventConfigState['prices']]}
                   onChange={event => updatePrices(key as keyof EventConfigState['prices'], numberValue(event.target.value))}
-                  className="w-full bg-white border-2 border-primary px-3 py-3 font-display font-black focus:outline-none"
+                  className="w-full bg-white text-background border-2 border-primary px-3 py-3 font-display font-black focus:outline-none"
                 />
                 <span className="block font-body text-xs font-bold text-on-surface-variant">{formatVND(config.prices[key as keyof EventConfigState['prices']])}</span>
               </label>
@@ -326,7 +331,7 @@ export function Admin() {
                   type="number"
                   value={config.limits[key as keyof EventConfigState['limits']]}
                   onChange={event => updateLimits(key as keyof EventConfigState['limits'], numberValue(event.target.value))}
-                  className="w-full bg-white border-2 border-primary px-3 py-3 font-display font-black focus:outline-none"
+                  className="w-full bg-white text-background border-2 border-primary px-3 py-3 font-display font-black focus:outline-none"
                 />
               </label>
             ))}
@@ -349,11 +354,11 @@ export function Admin() {
                 <div key={index} className="grid grid-cols-[1fr_1fr_auto] gap-3 items-end">
                   <label>
                     <span className="block font-display text-[10px] font-black uppercase tracking-widest mb-1">Min Tickets</span>
-                    <input type="number" value={tier.minQty} onChange={event => updateTier(index, { minQty: numberValue(event.target.value) })} className="w-full bg-white border-2 border-primary px-3 py-2 font-display font-black" />
+                    <input type="number" value={tier.minQty} onChange={event => updateTier(index, { minQty: numberValue(event.target.value) })} className="w-full bg-white text-background border-2 border-primary px-3 py-2 font-display font-black" />
                   </label>
                   <label>
                     <span className="block font-display text-[10px] font-black uppercase tracking-widest mb-1">Percent Off</span>
-                    <input type="number" value={toPercent(tier.rate)} onChange={event => updateTier(index, { rate: fromPercent(numberValue(event.target.value)) })} className="w-full bg-white border-2 border-primary px-3 py-2 font-display font-black" />
+                    <input type="number" value={toPercent(tier.rate)} onChange={event => updateTier(index, { rate: fromPercent(numberValue(event.target.value)) })} className="w-full bg-white text-background border-2 border-primary px-3 py-2 font-display font-black" />
                   </label>
                   <button onClick={() => removeTier(index)} className="h-11 w-11 border-2 border-primary bg-background flex items-center justify-center" aria-label="Remove tier">
                     <Trash2 className="w-4 h-4" />
@@ -378,11 +383,11 @@ export function Admin() {
             <div className="grid grid-cols-2 gap-3">
               <label>
                 <span className="block font-display text-[10px] font-black uppercase tracking-widest mb-1">Min Tickets</span>
-                <input type="number" value={config.discounts.merchBundle.minTickets} onChange={event => setConfig(prev => ({ ...prev, discounts: { ...prev.discounts, merchBundle: { ...prev.discounts.merchBundle, minTickets: numberValue(event.target.value) } } }))} className="w-full bg-white border-2 border-primary px-3 py-2 font-display font-black" />
+                <input type="number" value={config.discounts.merchBundle.minTickets} onChange={event => setConfig(prev => ({ ...prev, discounts: { ...prev.discounts, merchBundle: { ...prev.discounts.merchBundle, minTickets: numberValue(event.target.value) } } }))} className="w-full bg-white text-background border-2 border-primary px-3 py-2 font-display font-black" />
               </label>
               <label>
                 <span className="block font-display text-[10px] font-black uppercase tracking-widest mb-1">Percent Off</span>
-                <input type="number" value={toPercent(config.discounts.merchBundle.rate)} onChange={event => setConfig(prev => ({ ...prev, discounts: { ...prev.discounts, merchBundle: { ...prev.discounts.merchBundle, rate: fromPercent(numberValue(event.target.value)) } } }))} className="w-full bg-white border-2 border-primary px-3 py-2 font-display font-black" />
+                <input type="number" value={toPercent(config.discounts.merchBundle.rate)} onChange={event => setConfig(prev => ({ ...prev, discounts: { ...prev.discounts, merchBundle: { ...prev.discounts.merchBundle, rate: fromPercent(numberValue(event.target.value)) } } }))} className="w-full bg-white text-background border-2 border-primary px-3 py-2 font-display font-black" />
               </label>
             </div>
           </div>
@@ -397,7 +402,7 @@ export function Admin() {
             </div>
             <label>
               <span className="block font-display text-[10px] font-black uppercase tracking-widest mb-1">Percent Fee</span>
-              <input type="number" value={toPercent(config.discounts.serviceFee.rate)} onChange={event => setConfig(prev => ({ ...prev, discounts: { ...prev.discounts, serviceFee: { ...prev.discounts.serviceFee, rate: fromPercent(numberValue(event.target.value)) } } }))} className="w-full bg-white border-2 border-primary px-3 py-2 font-display font-black" />
+              <input type="number" value={toPercent(config.discounts.serviceFee.rate)} onChange={event => setConfig(prev => ({ ...prev, discounts: { ...prev.discounts, serviceFee: { ...prev.discounts.serviceFee, rate: fromPercent(numberValue(event.target.value)) } } }))} className="w-full bg-white text-background border-2 border-primary px-3 py-2 font-display font-black" />
             </label>
           </div>
         </section>

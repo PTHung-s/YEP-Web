@@ -37,6 +37,20 @@ import {
   writeConfig,
 } from './config';
 import { sendTicketEmail } from './mailer';
+import {
+  createPaymentLink,
+  generateOrderCode,
+  verifyWebhook,
+  storePendingOrder,
+  getPendingOrder,
+  markOrderPaid,
+  storePaidResult,
+  getPaidResult,
+  checkPaymentStatus,
+  isPayOSConfigured,
+  confirmWebhook,
+  type PayOSOrderData,
+} from './payos';
 
 const app = express();
 const PORT = process.env.PORT || process.env.API_PORT || 3001;
@@ -51,9 +65,11 @@ function generateId(): string {
   return 'YEP-' + Date.now().toString(36).toUpperCase() + '-' + Math.random().toString(36).substring(2, 6).toUpperCase();
 }
 
-function generateTicketCode(orderId: string, index: number): string {
-  const suffix = crypto.randomBytes(3).toString('hex').toUpperCase();
-  return `${orderId}-${String(index).padStart(2, '0')}-${suffix}`;
+function generateTicketCode(): string {
+  const alphabet = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
+  const bytes = crypto.randomBytes(6);
+  const body = Array.from(bytes, (b) => alphabet[b % alphabet.length]).join('');
+  return `Y26-${body}`;
 }
 
 function nowVN(): string {
@@ -305,7 +321,7 @@ app.post('/api/tickets', async (req, res) => {
       fullName, email, phone, userType, userCategory,
       studentId, workplace, ticketQuantity, ticketPrice,
       merchItems, merchTotal,
-      paymentMethod,
+      paymentMethod, appUrl,
     } = req.body;
 
     if (!fullName || !email || !phone || !userType || !ticketQuantity) {
@@ -320,9 +336,59 @@ app.post('/api/tickets', async (req, res) => {
     const ticketSubtotal = normalizedTicketPrice * normalizedTicketQuantity;
     const subtotal = ticketSubtotal + normalizedMerchTotal;
     const serviceFee = calculateServiceFee(config, subtotal);
-    const ticketBulkDiscount = calculateTicketBulkDiscount(config, ticketSubtotal, normalizedTicketQuantity);
+    const isEarlyBirdOrder = userType === 'vinnunian' && config.earlyBirdEnabled;
+    const ticketBulkDiscount = isEarlyBirdOrder
+      ? 0
+      : calculateTicketBulkDiscount(config, ticketSubtotal, normalizedTicketQuantity);
     const merchBulkDiscount = calculateMerchBundleDiscount(config, normalizedMerchTotal, normalizedTicketQuantity);
     const totalAmount = Math.max(0, subtotal + serviceFee - ticketBulkDiscount - merchBulkDiscount);
+
+    if (paymentMethod === 'payos' && isPayOSConfigured()) {
+      const orderCode = generateOrderCode();
+      const orderId = generateId();
+      const ticketType = getTicketTypeLabel(userType, config.earlyBirdEnabled);
+      const ticketItems: TicketItemRow[] = Array.from({ length: normalizedTicketQuantity }, (_, index) => ({
+        ticketCode: generateTicketCode(),
+        orderId,
+        timestamp: nowVN(),
+        buyerName: fullName,
+        email,
+        phone,
+        ticketType,
+        ticketNo: String(index + 1),
+        orderTicketQuantity: String(normalizedTicketQuantity),
+      }));
+
+      const orderData: PayOSOrderData = {
+        fullName, email, phone, userType,
+        userCategory: userCategory || '',
+        studentId: studentId || '',
+        workplace: workplace || '',
+        ticketQuantity: normalizedTicketQuantity,
+        ticketPrice: normalizedTicketPrice,
+        merchItems: typeof merchItems === 'string' ? merchItems : JSON.stringify(merchItems || []),
+        merchTotal: normalizedMerchTotal,
+        totalAmount,
+        ticketBulkDiscount,
+        merchBulkDiscount,
+        paymentMethod,
+        appUrl: appUrl || '',
+      };
+
+      storePendingOrder(orderCode, orderData, ticketItems, orderId);
+
+      const { checkoutUrl, qrCode } = await createPaymentLink(orderData, orderCode);
+
+      res.status(201).json({
+        success: true,
+        payos: true,
+        orderCode,
+        checkoutUrl,
+        qrCode,
+        message: 'PAYOS payment link created. Complete payment to receive tickets.',
+      });
+      return;
+    }
 
     const record = {
       id: generateId(),
@@ -344,7 +410,7 @@ app.post('/api/tickets', async (req, res) => {
     };
     const ticketType = getTicketTypeLabel(userType, config.earlyBirdEnabled);
     const ticketItems: TicketItemRow[] = Array.from({ length: normalizedTicketQuantity }, (_, index) => ({
-      ticketCode: generateTicketCode(record.id, index + 1),
+      ticketCode: generateTicketCode(),
       orderId: record.id,
       timestamp: record.timestamp,
       buyerName: fullName,
@@ -403,6 +469,194 @@ app.post('/api/tickets', async (req, res) => {
     });
   } catch (err) {
     console.error('[API] Error saving ticket:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// POST /api/payos/webhook - PayOS payment webhook
+app.post('/api/payos/webhook', async (req, res) => {
+  try {
+    const { verified, data, error: verifyError } = await verifyWebhook(req.body);
+    if (!verified || !data) {
+      res.status(400).json({ error: 'Invalid webhook signature', detail: verifyError });
+      return;
+    }
+
+    const orderCode = data.orderCode;
+    const pending = getPendingOrder(orderCode);
+    if (!pending) {
+      res.status(404).json({ error: 'Order not found', orderCode });
+      return;
+    }
+
+    if (pending.status === 'paid') {
+      res.status(200).json({ success: true, message: 'Order already processed' });
+      return;
+    }
+
+    markOrderPaid(orderCode);
+
+    const orderData = pending.data;
+    const record = {
+      id: pending.orderId,
+      timestamp: pending.ticketItems[0]?.timestamp || nowVN(),
+      fullName: orderData.fullName,
+      email: orderData.email,
+      phone: orderData.phone,
+      userType: orderData.userType,
+      userCategory: orderData.userCategory || '',
+      studentId: orderData.studentId || '',
+      workplace: orderData.workplace || '',
+      ticketQuantity: String(orderData.ticketQuantity),
+      ticketPrice: String(orderData.ticketPrice),
+      merchItems: orderData.merchItems,
+      discountCode: 'AUTO',
+      discountAmount: String(orderData.ticketBulkDiscount + orderData.merchBulkDiscount),
+      totalAmount: String(orderData.totalAmount),
+      paymentMethod: orderData.paymentMethod,
+    };
+
+    const sheetOk = await appendTicketRow(record);
+    const itemSheetOk = await appendTicketItemRows(pending.ticketItems);
+
+    if (!sheetOk) {
+      await saveTicketCSV({
+        ...record,
+        ticketQuantity: Number(record.ticketQuantity),
+        ticketPrice: Number(record.ticketPrice),
+        discountAmount: Number(record.discountAmount),
+        totalAmount: Number(record.totalAmount),
+        timestamp: nowVN(),
+      } as any);
+      console.log('[CSV] PayOS ticket saved locally:', record.id);
+    }
+
+    if (!itemSheetOk) {
+      await saveTicketItemsCSV(pending.ticketItems);
+      console.log('[CSV] PayOS ticket items saved locally:', pending.ticketItems.length);
+    }
+
+    const emailResult = await sendTicketEmail({
+      to: orderData.email,
+      buyerName: orderData.fullName,
+      orderId: pending.orderId,
+      totalAmount: record.totalAmount,
+      paymentMethod: record.paymentMethod,
+      ticketItems: pending.ticketItems,
+      appUrl: orderData.appUrl || undefined,
+    });
+    if (!emailResult.sent) {
+      console.log('[Email] PayOS ticket email not sent:', emailResult.error || 'not configured');
+    } else {
+      console.log('[Email] PayOS ticket email sent:', orderData.email, emailResult.messageId || '');
+    }
+
+    const result = {
+      ticketId: pending.orderId,
+      ticketCodes: pending.ticketItems.map(item => item.ticketCode),
+      storedIn: sheetOk ? 'sheets' : 'csv',
+    };
+    storePaidResult(orderCode, result);
+
+    res.status(200).json({ success: true, message: 'Payment processed', ...result });
+  } catch (err) {
+    console.error('[PayOS] Webhook error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// GET /api/payos/status/:orderCode - Check PayOS payment status
+app.get('/api/payos/status/:orderCode', async (req, res) => {
+  try {
+    const orderCode = Number(req.params.orderCode);
+    if (!orderCode || Number.isNaN(orderCode)) {
+      res.status(400).json({ error: 'Invalid order code' });
+      return;
+    }
+
+    const paidResult = getPaidResult(orderCode);
+    if (paidResult) {
+      res.json({ status: 'paid', ...paidResult });
+      return;
+    }
+
+    const isPaid = await checkPaymentStatus(orderCode);
+    if (!isPaid) {
+      res.json({ status: 'pending' });
+      return;
+    }
+
+    const pending = getPendingOrder(orderCode);
+    if (!pending) {
+      res.status(404).json({ error: 'Order not found', orderCode });
+      return;
+    }
+
+    markOrderPaid(orderCode);
+
+    const orderData = pending.data;
+    const record = {
+      id: pending.orderId,
+      timestamp: pending.ticketItems[0]?.timestamp || nowVN(),
+      fullName: orderData.fullName,
+      email: orderData.email,
+      phone: orderData.phone,
+      userType: orderData.userType,
+      userCategory: orderData.userCategory || '',
+      studentId: orderData.studentId || '',
+      workplace: orderData.workplace || '',
+      ticketQuantity: String(orderData.ticketQuantity),
+      ticketPrice: String(orderData.ticketPrice),
+      merchItems: orderData.merchItems,
+      discountCode: 'AUTO',
+      discountAmount: String(orderData.ticketBulkDiscount + orderData.merchBulkDiscount),
+      totalAmount: String(orderData.totalAmount),
+      paymentMethod: orderData.paymentMethod,
+    };
+
+    const sheetOk = await appendTicketRow(record);
+    const itemSheetOk = await appendTicketItemRows(pending.ticketItems);
+
+    if (!sheetOk) {
+      await saveTicketCSV({
+        ...record,
+        ticketQuantity: Number(record.ticketQuantity),
+        ticketPrice: Number(record.ticketPrice),
+        discountAmount: Number(record.discountAmount),
+        totalAmount: Number(record.totalAmount),
+        timestamp: nowVN(),
+      } as any);
+      console.log('[CSV] PayOS ticket saved locally (status check):', record.id);
+    }
+
+    if (!itemSheetOk) {
+      await saveTicketItemsCSV(pending.ticketItems);
+      console.log('[CSV] PayOS ticket items saved locally (status check):', pending.ticketItems.length);
+    }
+
+    const emailResult = await sendTicketEmail({
+      to: orderData.email,
+      buyerName: orderData.fullName,
+      orderId: pending.orderId,
+      totalAmount: record.totalAmount,
+      paymentMethod: record.paymentMethod,
+      ticketItems: pending.ticketItems,
+      appUrl: orderData.appUrl || undefined,
+    });
+    if (!emailResult.sent) {
+      console.log('[Email] PayOS ticket email not sent (status check):', emailResult.error || 'not configured');
+    }
+
+    const result = {
+      ticketId: pending.orderId,
+      ticketCodes: pending.ticketItems.map(item => item.ticketCode),
+      storedIn: sheetOk ? 'sheets' : 'csv',
+    };
+    storePaidResult(orderCode, result);
+
+    res.json({ status: 'paid', ...result });
+  } catch (err) {
+    console.error('[PayOS] Status check error:', err);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -500,11 +754,20 @@ app.listen(PORT, () => {
   console.log('[Server] Endpoints:');
   console.log('  POST /api/tickets');
   console.log('  POST /api/registrations');
+  console.log('  POST /api/payos/webhook');
+  console.log('  GET  /api/payos/status/:orderCode');
   console.log('  GET  /api/admin/summary');
   console.log('  GET  /api/admin/tickets');
 
   if (!process.env.GOOGLE_SHEETS_SPREADSHEET_ID) {
     console.log('[Server] ⚠ Google Sheets not configured. Using CSV fallback.');
     console.log('[Server] To enable Sheets: set GOOGLE_SHEETS_SPREADSHEET_ID, GOOGLE_SHEETS_CLIENT_EMAIL, GOOGLE_SHEETS_PRIVATE_KEY in .env');
+  }
+  if (!process.env.PAYOS_CLIENT_ID) {
+    console.log('[Server] ⚠ PayOS not configured. PayOS payment disabled.');
+    console.log('[Server] To enable PayOS: set PAYOS_CLIENT_ID, PAYOS_API_KEY, PAYOS_CHECKSUM_KEY in .env');
+  } else {
+    const appUrl = process.env.APP_URL || `http://localhost:${PORT}`;
+    confirmWebhook(appUrl);
   }
 });

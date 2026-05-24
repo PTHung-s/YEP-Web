@@ -19,13 +19,13 @@ function StepIndicator({ current }: { current: number }) {
           <div className="flex items-center gap-2">
             <span className={cn(
               'w-8 h-8 md:w-10 md:h-10 rounded-full border-2 border-primary flex items-center justify-center font-display font-black text-sm',
-              i + 1 <= current ? 'bg-primary text-background' : 'bg-surface text-primary'
+              i + 1 <= current ? 'bg-primary text-white' : 'bg-surface text-on-surface-variant'
             )}>
               {i + 1 < current ? '✓' : i + 1}
             </span>
             <span className={cn(
               'hidden md:block font-display text-xs font-bold uppercase tracking-widest',
-              i + 1 <= current ? 'text-primary' : 'text-on-surface-variant'
+              i + 1 <= current ? 'text-on-surface-variant' : 'text-on-surface-variant'
             )}>
               {label}
             </span>
@@ -55,6 +55,7 @@ export function Tickets() {
   const ticketPrice = effectiveTicketPrice(state.userType);
   const ticketBulkDiscount = getTicketBulkDiscount();
   const merchBulkDiscount = getMerchBulkDiscount();
+  const isEarlyBirdOrder = state.userType === 'vinnunian' && config.earlyBirdEnabled;
 
   const canNextStep1 = state.userType !== null && !isLocked;
   const canNextStep2 = (() => {
@@ -123,18 +124,18 @@ export function Tickets() {
       )}
 
       {config.salesStatus !== 'sold_out' && config.salesStatus === 'not_started' && (
-        <div className="bg-tertiary text-white border-4 border-primary p-4 md:p-6 mb-8 flex items-center gap-4">
+        <div className="bg-[#0c1016]/95 text-white border-4 border-[#2c3a4f] p-4 md:p-6 mb-8 flex items-center gap-4">
           <Clock className="w-8 h-8 md:w-10 md:h-10 shrink-0" />
           <div>
             <h3 className="font-display text-xl md:text-2xl font-black uppercase tracking-wider">SALES NOT OPEN YET</h3>
-            <p className="font-body text-sm font-bold uppercase tracking-wider opacity-90">
+            <p className="font-body text-sm font-bold uppercase tracking-wider text-[#cbd6e4]/80">
               Ticket sales start on {new Date(config.salesStartDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}. Come back then!
             </p>
           </div>
         </div>
       )}
 
-      {!isLocked && config.earlyBirdEnabled && (
+      {step === 1 && !isLocked && config.earlyBirdEnabled && (
         <div className="bg-primary-container border-4 border-primary p-4 md:p-6 mb-8 flex items-center gap-4">
           <Zap className="w-8 h-8 md:w-10 md:h-10 shrink-0 text-secondary" />
           <div className="flex-1">
@@ -164,7 +165,7 @@ export function Tickets() {
           {step === 1 && (
             <div className="space-y-6">
               <h3 className="font-display text-2xl md:text-3xl font-black uppercase flex items-center gap-3">
-                <span className="bg-primary text-background w-10 h-10 flex items-center justify-center font-bold text-xl">01</span>
+                <span className="bg-primary text-white w-10 h-10 flex items-center justify-center font-bold text-xl">01</span>
                 SELECT YOUR IDENTITY
               </h3>
 
@@ -269,25 +270,25 @@ export function Tickets() {
           {step === 2 && (
             <div className="space-y-6">
               <h3 className="font-display text-2xl md:text-3xl font-black uppercase flex items-center gap-3">
-                <span className="bg-primary text-background w-10 h-10 flex items-center justify-center font-bold text-xl">02</span>
+                <span className="bg-primary text-white w-10 h-10 flex items-center justify-center font-bold text-xl">02</span>
                 ATTENDEE INFORMATION
               </h3>
 
               <div className="bg-surface border-4 border-primary p-6 md:p-8 space-y-6">
                 <div className="space-y-3">
-                  <label className="block font-display text-xs md:text-sm font-black uppercase tracking-widest text-primary">FULL NAME *</label>
+                  <label className="block font-display text-xs md:text-sm font-black uppercase tracking-widest text-on-surface-variant">FULL NAME *</label>
                   <input
                     type="text"
                     value={state.fullName}
                     onChange={e => dispatch({ type: 'SET_FIELD', field: 'fullName', value: e.target.value })}
                     placeholder="NGUYEN VAN A"
-                    className="w-full bg-white border-2 border-primary py-3 px-4 font-display text-lg focus:outline-none focus:border-secondary transition-colors placeholder-primary/30 font-bold"
+                    className="w-full bg-white text-background border-2 border-primary py-3 px-4 font-display text-lg focus:outline-none focus:border-secondary transition-colors placeholder-primary/30 font-bold"
                   />
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-3">
-                    <label className="block font-display text-xs md:text-sm font-black uppercase tracking-widest text-primary">
+                    <label className="block font-display text-xs md:text-sm font-black uppercase tracking-widest text-on-surface-variant">
                       EMAIL *
                       {state.userType === 'vinnunian' && <span className="text-secondary ml-1">(@vinuni.edu.vn)</span>}
                     </label>
@@ -296,7 +297,7 @@ export function Tickets() {
                       value={state.email}
                       onChange={e => dispatch({ type: 'SET_FIELD', field: 'email', value: e.target.value })}
                       placeholder={state.userType === 'vinnunian' ? 'name@vinuni.edu.vn' : 'email@example.com'}
-                      className="w-full bg-white border-2 border-primary py-3 px-4 font-display text-lg focus:outline-none focus:border-secondary transition-colors placeholder-primary/30 font-bold"
+                      className="w-full bg-white text-background border-2 border-primary py-3 px-4 font-display text-lg focus:outline-none focus:border-secondary transition-colors placeholder-primary/30 font-bold"
                     />
                     {state.userType === 'vinnunian' && state.email && !state.email.toLowerCase().endsWith('@vinuni.edu.vn') && (
                       <p className="text-secondary font-display text-xs font-bold uppercase tracking-wider">
@@ -305,13 +306,13 @@ export function Tickets() {
                     )}
                   </div>
                   <div className="space-y-3">
-                    <label className="block font-display text-xs md:text-sm font-black uppercase tracking-widest text-primary">PHONE NUMBER *</label>
+                    <label className="block font-display text-xs md:text-sm font-black uppercase tracking-widest text-on-surface-variant">PHONE NUMBER *</label>
                     <input
                       type="tel"
                       value={state.phone}
                       onChange={e => dispatch({ type: 'SET_FIELD', field: 'phone', value: e.target.value })}
                       placeholder="0123 456 789"
-                      className="w-full bg-white border-2 border-primary py-3 px-4 font-display text-lg focus:outline-none focus:border-secondary transition-colors placeholder-primary/30 font-bold"
+                      className="w-full bg-white text-background border-2 border-primary py-3 px-4 font-display text-lg focus:outline-none focus:border-secondary transition-colors placeholder-primary/30 font-bold"
                     />
                   </div>
                 </div>
@@ -319,12 +320,12 @@ export function Tickets() {
                 {state.userType === 'vinnunian' && (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-3">
-                      <label className="block font-display text-xs md:text-sm font-black uppercase tracking-widest text-primary">CATEGORY *</label>
+                      <label className="block font-display text-xs md:text-sm font-black uppercase tracking-widest text-on-surface-variant">CATEGORY *</label>
                       <div className="relative">
                         <select
                           value={state.userCategory || ''}
                           onChange={e => dispatch({ type: 'SET_USER_CATEGORY', payload: (e.target.value || null) as UserCategory })}
-                          className="w-full bg-white border-2 border-primary py-3 px-4 font-display text-lg font-bold focus:outline-none focus:border-secondary transition-colors appearance-none cursor-pointer"
+                          className="w-full bg-white text-background border-2 border-primary py-3 px-4 font-display text-lg font-bold focus:outline-none focus:border-secondary transition-colors appearance-none cursor-pointer"
                         >
                           <option value="">-- SELECT --</option>
                           <option value="student">STUDENT</option>
@@ -338,13 +339,13 @@ export function Tickets() {
                       </div>
                     </div>
                     <div className="space-y-3">
-                      <label className="block font-display text-xs md:text-sm font-black uppercase tracking-widest text-primary">STUDENT ID</label>
+                      <label className="block font-display text-xs md:text-sm font-black uppercase tracking-widest text-on-surface-variant">STUDENT ID</label>
                       <input
                         type="text"
                         value={state.studentId}
                         onChange={e => dispatch({ type: 'SET_FIELD', field: 'studentId', value: e.target.value })}
                         placeholder="2004XXXX"
-                        className="w-full bg-white border-2 border-primary py-3 px-4 font-display text-lg focus:outline-none focus:border-secondary transition-colors placeholder-primary/30 font-bold"
+                        className="w-full bg-white text-background border-2 border-primary py-3 px-4 font-display text-lg focus:outline-none focus:border-secondary transition-colors placeholder-primary/30 font-bold"
                       />
                     </div>
                   </div>
@@ -352,13 +353,13 @@ export function Tickets() {
 
                 {state.userType === 'non-vinnunian' && (
                   <div className="space-y-3">
-                    <label className="block font-display text-xs md:text-sm font-black uppercase tracking-widest text-primary">WORKPLACE / ADDRESS *</label>
+                    <label className="block font-display text-xs md:text-sm font-black uppercase tracking-widest text-on-surface-variant">WORKPLACE / ADDRESS *</label>
                     <input
                       type="text"
                       value={state.workplace}
                       onChange={e => dispatch({ type: 'SET_FIELD', field: 'workplace', value: e.target.value })}
                       placeholder="ABC Company / 123 Nguyen Trai, District 1..."
-                      className="w-full bg-white border-2 border-primary py-3 px-4 font-display text-lg focus:outline-none focus:border-secondary transition-colors placeholder-primary/30 font-bold"
+                      className="w-full bg-white text-background border-2 border-primary py-3 px-4 font-display text-lg focus:outline-none focus:border-secondary transition-colors placeholder-primary/30 font-bold"
                     />
                   </div>
                 )}
@@ -377,9 +378,64 @@ export function Tickets() {
           {step === 3 && (
             <div className="space-y-6">
               <h3 className="font-display text-2xl md:text-3xl font-black uppercase flex items-center gap-3">
-                <span className="bg-primary text-background w-10 h-10 flex items-center justify-center font-bold text-xl">03</span>
+                <span className="bg-primary text-white w-10 h-10 flex items-center justify-center font-bold text-xl">03</span>
                 QUANTITY & MERCH
               </h3>
+
+              <div className="bg-surface border-4 border-primary p-5 md:p-6 space-y-4">
+                <div className="flex items-center gap-3">
+                  <Zap className="w-5 h-5 text-secondary" />
+                  <h4 className="font-display text-lg font-black uppercase tracking-wider">AUTO DISCOUNTS</h4>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {config.discounts.ticketBulk.enabled && config.discounts.ticketBulk.tiers.length > 0 && (
+                    <div className="border-2 border-primary bg-primary-container/50 p-4">
+                      <div className="flex items-center gap-2">
+                        <Ticket className="w-5 h-5 text-tertiary" />
+                        <span className="font-display text-sm font-black uppercase tracking-widest">Bulk Tickets</span>
+                      </div>
+                      <div className="mt-3 space-y-1 font-body text-xs font-bold uppercase tracking-wider text-on-surface-variant">
+                        {config.discounts.ticketBulk.tiers.map(tier => (
+                          <div key={tier.minQty}>
+                            {Math.round(tier.rate * 100)}% OFF{' '}
+                            <span className="normal-case">for</span>{' '}
+                            {tier.minQty}+ tickets
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {config.discounts.merchBundle.enabled && (
+                    <div className="border-2 border-primary bg-primary-container/50 p-4">
+                      <div className="flex items-center gap-2">
+                        <Shirt className="w-5 h-5 text-secondary" />
+                        <span className="font-display text-sm font-black uppercase tracking-widest">Merch Bundle</span>
+                      </div>
+                      <p className="mt-3 font-body text-xs font-bold uppercase tracking-wider text-on-surface-variant">
+                        {Math.round(config.discounts.merchBundle.rate * 100)}% OFF merch{' '}
+                        <span className="normal-case">for</span>{' '}
+                        {config.discounts.merchBundle.minTickets}+ tickets
+                      </p>
+                    </div>
+                  )}
+
+                  {!config.discounts.ticketBulk.enabled && !config.discounts.merchBundle.enabled && (
+                    <div className="border-2 border-primary bg-primary-container/50 p-4">
+                      <span className="font-display text-sm font-black uppercase tracking-widest">No vouchers available</span>
+                    </div>
+                  )}
+                </div>
+
+                {isEarlyBirdOrder && (
+                  <p className="font-body text-xs font-bold uppercase tracking-wider text-secondary">
+                    Early Bird tickets are not eligible{' '}
+                    <span className="normal-case">for</span>{' '}
+                    bulk ticket discounts.
+                  </p>
+                )}
+              </div>
 
               {/* Ticket Quantity */}
               <div className="bg-surface border-4 border-primary p-6 md:p-8 space-y-6">
@@ -420,16 +476,16 @@ export function Tickets() {
               </div>
 
               {/* Merch Selection */}
-              <div className="bg-primary text-background border-4 border-primary p-6 md:p-8 space-y-6">
+              <div className="bg-primary text-white border-4 border-primary p-6 md:p-8 space-y-6">
                 <div className="flex items-center gap-3 mb-4">
-                  <Shirt className="w-6 h-6 text-background" />
+                  <Shirt className="w-6 h-6 text-white" />
                   <h4 className="font-display text-xl font-black uppercase tracking-tight">EXCLUSIVE MERCH</h4>
                 </div>
                 <p className="font-body text-xs font-bold uppercase tracking-wider opacity-80">
                   Nhận merch tại booth của VinUni Student Council hoặc nhận trực tiếp trong sự kiện.
                 </p>
                 {state.ticketQuantity >= 3 && (
-                  <div className="bg-background text-primary border-2 border-primary px-3 py-2 inline-flex items-center">
+                  <div className="bg-surface text-on-surface-variant border-2 border-primary px-3 py-2 inline-flex items-center">
                     <span className="font-display text-xs font-black uppercase tracking-wider">
                       Merch discount active: -{formatVND(merchBulkDiscount)}
                     </span>
@@ -437,7 +493,7 @@ export function Tickets() {
                 )}
 
                 {state.merch.map(item => (
-                  <div key={item.id} className="flex flex-col md:flex-row items-center gap-4 p-4 bg-surface text-primary border-4 border-primary">
+                  <div key={item.id} className="flex flex-col md:flex-row items-center gap-4 p-4 bg-surface border-4 border-primary">
                     <div className="flex-grow text-center md:text-left">
                       <h5 className="font-display font-black uppercase text-lg tracking-tight">{item.name}</h5>
                       <p className="font-display text-xl font-black mt-1">{formatVND(item.price)}</p>
@@ -489,7 +545,7 @@ export function Tickets() {
               className={cn(
                 'flex items-center gap-2 border-4 border-primary px-6 py-3 font-display font-black text-lg uppercase tracking-widest transition-all',
                 ((step === 1 && canNextStep1) || (step === 2 && canNextStep2) || (step === 3 && canNextStep3))
-                  ? 'bg-primary text-background hover:bg-background hover:text-primary neo-shadow-sm active:translate-y-1 active:shadow-none'
+                  ? 'bg-primary text-white hover:bg-background hover:text-primary neo-shadow-sm active:translate-y-1 active:shadow-none'
                   : 'bg-surface-dim text-on-surface-variant cursor-not-allowed'
               )}
             >

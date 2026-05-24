@@ -35,6 +35,7 @@ export interface EventConfigState {
       rate: number;
     };
   };
+  top8Enabled: boolean;
 }
 
 export const defaultEventConfig: EventConfigState = {
@@ -70,6 +71,7 @@ export const defaultEventConfig: EventConfigState = {
       rate: 0.03,
     },
   },
+  top8Enabled: false,
 };
 
 type ConfigAction =

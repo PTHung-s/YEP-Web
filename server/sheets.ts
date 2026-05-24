@@ -175,7 +175,7 @@ export async function appendTicketRow(row: TicketRow): Promise<boolean> {
           row.discountCode || '',
           row.discountAmount,
           row.totalAmount,
-          row.paymentMethod === 'credit' ? 'Thẻ tín dụng' : 'Chuyển khoản',
+          row.paymentMethod === 'credit' ? 'Thẻ tín dụng' : row.paymentMethod === 'payos' ? 'PayOS' : 'Chuyển khoản',
         ]],
       },
     });

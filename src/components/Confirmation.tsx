@@ -51,14 +51,14 @@ export function Confirmation() {
           <React.Fragment key={i}>
             <span className={cn(
               'w-8 h-8 md:w-10 md:h-10 rounded-full border-2 border-primary flex items-center justify-center font-display font-black text-sm',
-              i <= 4 ? 'bg-primary text-background' : 'bg-surface text-primary'
+              i < 4 ? 'bg-primary text-white' : 'bg-surface text-on-surface-variant'
             )}>
-              ✓
+              {i < 4 ? '✓' : i}
             </span>
             {i < 4 && <div className="h-0.5 w-8 md:w-12 bg-primary" />}
           </React.Fragment>
         ))}
-        <span className="hidden md:block font-display text-xs font-bold uppercase tracking-widest text-primary ml-2">
+        <span className="hidden md:block font-display text-xs font-bold uppercase tracking-widest text-on-surface-variant ml-2">
           CONFIRMATION
         </span>
       </div>
@@ -107,7 +107,7 @@ export function Confirmation() {
 
             {/* Email re-confirmation */}
             <div className="mt-6 pt-6 border-t-2 border-primary">
-              <label className="block font-display text-xs md:text-sm font-black uppercase tracking-widest text-primary mb-3">
+              <label className="block font-display text-xs md:text-sm font-black uppercase tracking-widest text-on-surface-variant mb-3">
                 CONFIRM EMAIL ADDRESS *
               </label>
               <input
@@ -115,7 +115,7 @@ export function Confirmation() {
                 value={emailConfirm}
                 onChange={e => setEmailConfirm(e.target.value)}
                 placeholder="Re-enter your email address"
-                className="w-full bg-white border-2 border-primary py-3 px-4 font-display text-lg focus:outline-none focus:border-secondary transition-colors placeholder-primary/30 font-bold"
+                className="w-full bg-white text-background border-2 border-primary py-3 px-4 font-display text-lg focus:outline-none focus:border-secondary transition-colors placeholder-primary/30 font-bold"
               />
               {emailMismatch && emailConfirm && (
                 <p className="text-secondary font-display text-xs font-bold uppercase tracking-wider mt-2">
@@ -169,7 +169,7 @@ export function Confirmation() {
 
               </div>
 
-              <div className="bg-primary-container border-3 border-primary p-4 flex justify-between items-end mb-8">
+              <div className="bg-primary-container border-4 border-primary p-4 flex justify-between items-end mb-8">
                 <span className="font-display font-black text-lg uppercase tracking-widest">TOTAL DUE</span>
                 <span className="font-display text-2xl md:text-3xl font-black tracking-tighter">
                   {formatVND(total)}
@@ -182,7 +182,7 @@ export function Confirmation() {
                 className={cn(
                   'w-full flex items-center justify-center gap-2 border-4 border-primary py-4 font-display font-black text-xl uppercase tracking-widest transition-all mb-4',
                   canProceed
-                    ? 'bg-tertiary text-white hover:bg-primary hover:text-background neo-shadow-sm active:translate-y-1 active:shadow-none'
+                    ? 'bg-tertiary text-background hover:bg-primary hover:text-white neo-shadow-sm active:translate-y-1 active:shadow-none'
                     : 'bg-surface-dim text-on-surface-variant cursor-not-allowed'
                 )}
               >

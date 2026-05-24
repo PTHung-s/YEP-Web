@@ -21,7 +21,7 @@ export interface CartState {
   workplace: string;
   ticketQuantity: number;
   merch: MerchItem[];
-  paymentMethod: 'credit' | 'bank' | null;
+  paymentMethod: 'credit' | 'bank' | 'payos' | null;
 }
 
 const INITIAL_MERCH: MerchItem[] = [
@@ -48,7 +48,7 @@ type CartAction =
   | { type: 'SET_FIELD'; field: keyof CartState; value: string }
   | { type: 'SET_TICKET_QUANTITY'; payload: number }
   | { type: 'SET_MERCH_QUANTITY'; id: string; quantity: number }
-  | { type: 'SET_PAYMENT_METHOD'; payload: 'credit' | 'bank' }
+  | { type: 'SET_PAYMENT_METHOD'; payload: 'credit' | 'bank' | 'payos' }
   | { type: 'RESET' };
 
 function cartReducer(state: CartState, action: CartAction): CartState {
@@ -89,6 +89,7 @@ function getMerchTotal(state: CartState): number {
 
 function getTicketBulkDiscount(state: CartState, config: EventConfigState): number {
   if (!config.discounts.ticketBulk.enabled) return 0;
+  if (state.userType === 'vinnunian' && config.earlyBirdEnabled) return 0;
   const tier = config.discounts.ticketBulk.tiers.find(item => state.ticketQuantity >= item.minQty);
   if (!tier) return 0;
   const ticketSubtotal = getTicketPrice(state, config) * state.ticketQuantity;

@@ -108,7 +108,7 @@ export function Success() {
             <h4 className="font-display text-lg font-black uppercase tracking-wider mb-4">Individual Ticket QR Codes</h4>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {ticketCodes.map((code, index) => (
-                <div key={code} className="border-2 border-primary bg-white p-4 flex items-center gap-4">
+                <div key={code} className="border-2 border-primary bg-white text-background p-4 flex items-center gap-4">
                   {qrImages[code] && (
                     <img src={qrImages[code]} alt={`QR code for ticket ${code}`} className="w-24 h-24 shrink-0" />
                   )}
@@ -161,7 +161,7 @@ export function Success() {
       <Link
         to="/"
         onClick={() => dispatch({ type: 'RESET' })}
-        className="inline-flex items-center gap-2 bg-primary text-background border-4 border-primary px-8 py-4 font-display font-black text-xl uppercase tracking-widest hover:bg-background hover:text-primary transition-colors neo-shadow-sm active:translate-y-1 active:shadow-none"
+        className="inline-flex items-center gap-2 bg-primary text-white border-4 border-primary px-8 py-4 font-display font-black text-xl uppercase tracking-widest hover:bg-background hover:text-primary transition-colors neo-shadow-sm active:translate-y-1 active:shadow-none"
       >
         BACK TO HOME
         <ArrowRight className="w-5 h-5" />

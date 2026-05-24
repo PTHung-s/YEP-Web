@@ -418,7 +418,7 @@ export function Checkin() {
             <input
               value={staffName}
               onChange={event => setStaffName(event.target.value)}
-              className="w-full bg-white border-2 border-primary px-4 py-3 font-display font-bold focus:outline-none focus:border-secondary"
+            className="w-full bg-white text-background border-2 border-primary px-4 py-3 font-display font-bold focus:outline-none focus:border-secondary"
             />
           </label>
 
@@ -446,7 +446,7 @@ export function Checkin() {
                 onChange={event => setQuery(event.target.value)}
                 onKeyDown={event => event.key === 'Enter' && checkInTicket()}
                 placeholder="YEP-..."
-                className="min-w-0 flex-1 bg-white border-2 border-primary px-3 md:px-4 py-3 font-display text-sm md:text-base font-bold focus:outline-none focus:border-secondary"
+                className="min-w-0 flex-1 bg-white text-background border-2 border-primary px-3 md:px-4 py-3 font-display text-sm md:text-base font-bold focus:outline-none focus:border-secondary"
               />
               <button
                 onClick={() => checkInTicket()}

@@ -36,6 +36,7 @@ export interface AppConfig {
       rate: number;
     };
   };
+  top8Enabled: boolean;
 }
 
 const DATA_DIR = path.resolve('server', 'data');
@@ -74,6 +75,7 @@ export const defaultConfig: AppConfig = {
       rate: 0.03,
     },
   },
+  top8Enabled: false,
 };
 
 async function ensureDataDir() {
@@ -146,6 +148,7 @@ export function normalizeConfig(input: Partial<AppConfig> | null | undefined): A
         rate: clampRate(source.discounts?.serviceFee?.rate, defaultConfig.discounts.serviceFee.rate),
       },
     },
+    top8Enabled: Boolean(source.top8Enabled ?? defaultConfig.top8Enabled),
   };
 }
 

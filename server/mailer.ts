@@ -57,6 +57,8 @@ function buildTicketEmailHtml(input: TicketEmailInput): string {
 
   const paymentNote = input.paymentMethod === 'bank'
     ? 'Your order has been recorded. Please complete the bank transfer according to the organizer instructions.'
+    : input.paymentMethod === 'payos'
+    ? 'Your order has been recorded and paid via PayOS. Thank you for your payment!'
     : 'Your order has been recorded successfully.';
 
   return `
