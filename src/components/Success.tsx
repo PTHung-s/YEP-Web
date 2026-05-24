@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import QRCode from 'qrcode';
-import { CheckCircle, Mail, MapPin, ArrowRight, Ticket } from 'lucide-react';
-import { Link, useLocation } from 'react-router-dom';
+import { CheckCircle, Mail, MapPin, ArrowRight, Ticket, Loader2 } from 'lucide-react';
+import { Link, useLocation, useSearchParams } from 'react-router-dom';
 import { useCart } from '../store/CartContext';
 
 function formatVND(amount: number): string {
@@ -15,14 +15,54 @@ export function Success() {
   const ticketPrice = getTicketPrice();
   const ticketBulkDiscount = getTicketBulkDiscount();
   const merchBulkDiscount = getMerchBulkDiscount();
-  const ticketId = (location.state as any)?.ticketId || 'N/A';
-  const ticketCodes = ((location.state as any)?.ticketCodes || []) as string[];
-  const storedIn = (location.state as any)?.storedIn || 'csv';
+  const [searchParams] = useSearchParams();
+  const orderCode = (location.state as any)?.orderCode as number | undefined
+    || (searchParams.get('payosOrder') ? Number(searchParams.get('payosOrder')) : undefined);
+  const [ticketId, setTicketId] = useState((location.state as any)?.ticketId || null);
+  const [ticketCodes, setTicketCodes] = useState(((location.state as any)?.ticketCodes || []) as string[]);
+  const [storedIn, setStoredIn] = useState((location.state as any)?.storedIn || 'payos');
+  const [polling, setPolling] = useState(!!orderCode);
+  const [pollError, setPollError] = useState('');
   const [qrImages, setQrImages] = useState<Record<string, string>>({});
 
   useEffect(() => {
     window.scrollTo(0, 0);
   }, []);
+
+  useEffect(() => {
+    if (!orderCode) return;
+    let cancelled = false;
+    let attempts = 0;
+
+    async function poll() {
+      while (attempts < 30 && !cancelled) {
+        try {
+          const res = await fetch(`/api/payos/status/${orderCode}`);
+          const data = await res.json();
+          if (data.status === 'paid') {
+            if (!cancelled) {
+              setTicketId(data.ticketId);
+              setTicketCodes(data.ticketCodes || []);
+              setStoredIn(data.storedIn || 'payos');
+              setPolling(false);
+            }
+            return;
+          }
+        } catch {
+          // retry
+        }
+        attempts++;
+        await new Promise(r => setTimeout(r, 3000));
+      }
+      if (!cancelled) {
+        setPollError('Payment not yet confirmed. Your tickets will be sent to your email once payment is verified.');
+        setPolling(false);
+      }
+    }
+    poll();
+
+    return () => { cancelled = true; };
+  }, [orderCode]);
 
   useEffect(() => {
     let cancelled = false;
@@ -44,6 +84,28 @@ export function Success() {
 
   return (
     <div className="w-full max-w-3xl mx-auto px-6 md:px-12 py-16 md:py-24 text-center">
+      {polling ? (
+        <div className="space-y-8">
+          <div className="mb-8">
+            <div className="w-24 h-24 md:w-32 md:h-32 mx-auto bg-primary-container border-4 border-primary rounded-full flex items-center justify-center neo-shadow">
+              <Loader2 className="w-12 h-12 md:w-16 md:h-16 text-tertiary animate-spin" strokeWidth={2.5} />
+            </div>
+          </div>
+          <h1 className="font-display text-4xl md:text-6xl font-black uppercase tracking-tighter leading-[0.9] mb-6">
+            VERIFYING<br />
+            <span className="text-tertiary">PAYMENT</span>
+          </h1>
+          <p className="font-body text-lg md:text-xl text-on-surface-variant font-medium leading-relaxed max-w-xl mx-auto">
+            Checking your payment status with PayOS. This may take a few moments.
+          </p>
+          {pollError && (
+            <div className="bg-primary-container border-4 border-primary p-6">
+              <p className="font-body text-sm font-medium text-on-surface-variant">{pollError}</p>
+            </div>
+          )}
+        </div>
+      ) : (
+        <>
       {/* Success Icon */}
       <div className="mb-8">
         <div className="w-24 h-24 md:w-32 md:h-32 mx-auto bg-primary-container border-4 border-primary rounded-full flex items-center justify-center neo-shadow">
@@ -166,6 +228,8 @@ export function Success() {
         BACK TO HOME
         <ArrowRight className="w-5 h-5" />
       </Link>
+        </>
+      )}
     </div>
   );
 }

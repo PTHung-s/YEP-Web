@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Download, Lock, Plus, RefreshCw, Save, Trash2 } from 'lucide-react';
+import { Download, FlaskConical, Lock, Plus, RefreshCw, Save, Trash2 } from 'lucide-react';
 import { defaultEventConfig, type EventConfigState, type TicketBulkDiscountTier } from '../store/EventConfigContext';
 import { cn } from './Layout';
 
@@ -191,6 +191,19 @@ export function Admin() {
     }));
   };
 
+  const setTestPrices = () => {
+    setConfig(prev => ({
+      ...prev,
+      prices: { earlyBird: 4000, vinnunian: 4000, guest: 4000 },
+      discounts: {
+        ...prev.discounts,
+        serviceFee: { ...prev.discounts.serviceFee, enabled: false },
+        ticketBulk: { ...prev.discounts.ticketBulk, enabled: false },
+        merchBundle: { ...prev.discounts.merchBundle, enabled: false },
+      },
+    }));
+  };
+
   if (!token) {
     return (
       <div className="w-full max-w-md mx-auto px-6 py-20">
@@ -234,6 +247,10 @@ export function Admin() {
           <button onClick={exportTickets} className="inline-flex items-center gap-2 bg-surface border-4 border-primary px-4 py-3 font-display font-black uppercase tracking-widest">
             <Download className="w-4 h-4" />
             Export
+          </button>
+          <button onClick={setTestPrices} className="inline-flex items-center gap-2 bg-secondary text-background border-4 border-secondary px-4 py-3 font-display font-black uppercase tracking-widest hover:bg-primary hover:text-white hover:border-primary transition-colors">
+            <FlaskConical className="w-4 h-4" />
+            Test Mode: 4K
           </button>
           <button onClick={saveConfig} disabled={saving} className="inline-flex items-center gap-2 bg-primary text-white border-4 border-primary px-5 py-3 font-display font-black uppercase tracking-widest disabled:opacity-60">
             <Save className="w-4 h-4" />

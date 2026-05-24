@@ -320,8 +320,7 @@ app.post('/api/tickets', async (req, res) => {
     const {
       fullName, email, phone, userType, userCategory,
       studentId, workplace, ticketQuantity, ticketPrice,
-      merchItems, merchTotal,
-      paymentMethod, appUrl,
+      merchItems, merchTotal, appUrl,
     } = req.body;
 
     if (!fullName || !email || !phone || !userType || !ticketQuantity) {
@@ -343,7 +342,7 @@ app.post('/api/tickets', async (req, res) => {
     const merchBulkDiscount = calculateMerchBundleDiscount(config, normalizedMerchTotal, normalizedTicketQuantity);
     const totalAmount = Math.max(0, subtotal + serviceFee - ticketBulkDiscount - merchBulkDiscount);
 
-    if (paymentMethod === 'payos' && isPayOSConfigured()) {
+    if (isPayOSConfigured()) {
       const orderCode = generateOrderCode();
       const orderId = generateId();
       const ticketType = getTicketTypeLabel(userType, config.earlyBirdEnabled);
@@ -371,7 +370,7 @@ app.post('/api/tickets', async (req, res) => {
         totalAmount,
         ticketBulkDiscount,
         merchBulkDiscount,
-        paymentMethod,
+        paymentMethod: 'payos',
         appUrl: appUrl || '',
       };
 
@@ -406,7 +405,7 @@ app.post('/api/tickets', async (req, res) => {
       discountCode: 'AUTO',
       discountAmount: String(ticketBulkDiscount + merchBulkDiscount),
       totalAmount: String(totalAmount),
-      paymentMethod: paymentMethod || 'credit',
+      paymentMethod: 'payos',
     };
     const ticketType = getTicketTypeLabel(userType, config.earlyBirdEnabled);
     const ticketItems: TicketItemRow[] = Array.from({ length: normalizedTicketQuantity }, (_, index) => ({
