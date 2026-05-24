@@ -42,21 +42,22 @@ export function Home() {
           aria-hidden="true"
           className="absolute inset-0 block md:hidden w-full h-full object-cover object-center"
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-primary via-primary/35 to-primary/10" />
+        <div className="absolute inset-0 bg-gradient-to-t from-primary via-primary/35 to-primary/5" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_78%,rgba(7,7,23,0.72)_0%,rgba(7,7,23,0.34)_34%,transparent_62%)]" />
         <div className="relative z-10 w-full px-6 md:px-12 pb-8 md:pb-12">
           <div className="max-w-7xl mx-auto flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6">
             <div className="max-w-xl">
-              <p className="font-display text-xs md:text-sm font-black uppercase tracking-[0.3em] text-white/80 mb-3">
+              <p className="font-display text-xs md:text-sm font-black uppercase tracking-[0.3em] text-white/85 mb-3 drop-shadow-[0_2px_8px_rgba(0,0,0,0.65)]">
                 June 27, 2026 / Amphitheatre - VinUni Campus
               </p>
-              <h1 className="font-display text-4xl md:text-6xl font-black uppercase tracking-tighter leading-[0.82] mb-4">
+              <h1 className="md:sr-only font-display text-4xl font-black uppercase tracking-tighter leading-[0.82] mb-4">
                 YEP'26<br />
                 <span className="text-tertiary">The Kaleido Soul</span>
               </h1>
-              <p className="font-display text-3xl md:text-5xl font-black uppercase tracking-tight leading-none">
+              <p className="font-display text-3xl md:text-5xl font-black uppercase tracking-tight leading-none drop-shadow-[0_3px_12px_rgba(0,0,0,0.72)]">
                 Born to Bloom Different
               </p>
-              <p className="font-body text-sm md:text-base text-white/80 max-w-lg mt-4 leading-relaxed">
+              <p className="font-body text-sm md:text-base text-white/85 max-w-lg mt-4 leading-relaxed drop-shadow-[0_2px_8px_rgba(0,0,0,0.65)]">
                 A night of blooming colors and fearless souls, where every reflection tells a story worth celebrating.
               </p>
             </div>
