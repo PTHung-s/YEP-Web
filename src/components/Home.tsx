@@ -42,11 +42,11 @@ export function Home() {
           aria-hidden="true"
           className="absolute inset-0 block md:hidden w-full h-full object-cover object-center"
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-primary via-primary/35 to-primary/5" />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_78%,rgba(7,7,23,0.72)_0%,rgba(7,7,23,0.34)_34%,transparent_62%)]" />
+        <div className="absolute inset-0 bg-gradient-to-t from-primary via-primary/30 to-primary/5 md:from-primary/55 md:via-primary/15 md:to-transparent" />
+        <div className="absolute inset-0 md:hidden bg-[radial-gradient(circle_at_20%_78%,rgba(7,7,23,0.72)_0%,rgba(7,7,23,0.34)_34%,transparent_62%)]" />
         <div className="relative z-10 w-full px-6 md:px-12 pb-8 md:pb-12">
           <div className="max-w-7xl mx-auto flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6">
-            <div className="max-w-xl">
+            <div className="max-w-xl md:hidden">
               <p className="font-display text-xs md:text-sm font-black uppercase tracking-[0.3em] text-white/85 mb-3 drop-shadow-[0_2px_8px_rgba(0,0,0,0.65)]">
                 June 27, 2026 / Amphitheatre - VinUni Campus
               </p>
@@ -61,7 +61,7 @@ export function Home() {
                 A night of blooming colors and fearless souls, where every reflection tells a story worth celebrating.
               </p>
             </div>
-            <div className="flex flex-col sm:flex-row gap-3">
+            <div className="flex flex-col sm:flex-row gap-3 md:ml-auto">
               <Link
                 to="/tickets"
                 className="bg-white text-primary border-4 border-white px-6 py-3 font-display font-black uppercase tracking-widest hover:bg-primary-container hover:border-primary-container transition-colors neo-shadow-sm"
