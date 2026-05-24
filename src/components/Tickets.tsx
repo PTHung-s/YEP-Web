@@ -11,7 +11,7 @@ function formatVND(amount: number): string {
 }
 
 function StepIndicator({ current }: { current: number }) {
-  const steps = ['Chọn loại vé', 'Thông tin cá nhân', 'Số lượng & Merch'];
+  const steps = ['TICKET TYPE', 'YOUR INFO', 'QUANTITY & MERCH'];
   return (
     <div className="flex items-center justify-center gap-2 md:gap-4 mb-10">
       {steps.map((label, i) => (

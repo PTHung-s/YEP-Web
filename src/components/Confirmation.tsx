@@ -92,16 +92,25 @@ export function Confirmation() {
       </div>
 
       <div className="flex items-center justify-center gap-2 md:gap-4 mb-10">
-        {[1, 2, 3].map(i => (
-          <React.Fragment key={i}>
-            <span className={cn('w-8 h-8 md:w-10 md:h-10 rounded-full border-2 border-primary flex items-center justify-center font-display font-black text-sm bg-primary text-white')}>
-              ✓
-            </span>
-            {i < 3 && <div className="h-0.5 w-8 md:w-12 bg-primary" />}
+        {[
+          ['TICKET TYPE', true],
+          ['YOUR INFO', true],
+          ['QUANTITY', true],
+          ['PAYMENT', false],
+        ].map(([label, done], i) => (
+          <React.Fragment key={label}>
+            <div className="flex items-center gap-2">
+              <span className={cn(
+                'w-8 h-8 md:w-10 md:h-10 rounded-full border-2 border-primary flex items-center justify-center font-display font-black text-sm',
+                done ? 'bg-primary text-white' : 'bg-surface text-on-surface-variant'
+              )}>
+                {done ? '✓' : i + 1}
+              </span>
+              <span className="hidden md:block font-display text-[10px] font-bold uppercase tracking-wider text-on-surface-variant">{label}</span>
+            </div>
+            {i < 3 && <div className={cn('h-0.5 w-8 md:w-12', done ? 'bg-primary' : 'bg-outline-variant')} />}
           </React.Fragment>
         ))}
-        <span className="w-8 h-8 md:w-10 md:h-10 rounded-full border-2 border-primary flex items-center justify-center font-display font-black text-sm bg-surface text-on-surface-variant">4</span>
-        <span className="hidden md:block font-display text-xs font-bold uppercase tracking-widest text-on-surface-variant ml-2">PAYMENT</span>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-10 lg:gap-12">
