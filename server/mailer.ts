@@ -23,9 +23,18 @@ function isEmailConfigured(): boolean {
   return Boolean(process.env.BREVO_API_KEY && process.env.MAIL_FROM_EMAIL);
 }
 
-function getAppUrl(appUrl?: string): string {
-  const baseUrl = (appUrl || process.env.APP_URL || '').replace(/\/$/, '') || 'http://localhost:3000';
+function getAppUrl(): string {
+  const baseUrl = (process.env.APP_URL || '').replace(/\/$/, '') || 'http://localhost:3000';
   return baseUrl.endsWith('/yep26') ? baseUrl : `${baseUrl}/yep26`;
+}
+
+function escapeHtml(value: unknown): string {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
 function formatVND(value: string | number): string {
@@ -33,8 +42,8 @@ function formatVND(value: string | number): string {
   return amount.toLocaleString('vi-VN') + ' VND';
 }
 
-async function buildQrAttachment(ticketCode: string, appUrl?: string) {
-  const checkinUrl = `${getAppUrl(appUrl)}/checkin-yep-2026?ticket=${encodeURIComponent(ticketCode)}`;
+async function buildQrAttachment(ticketCode: string) {
+  const checkinUrl = `${getAppUrl()}/checkin-yep-2026?ticket=${encodeURIComponent(ticketCode)}`;
   const dataUrl = await QRCode.toDataURL(checkinUrl, { margin: 1, width: 480 });
   return {
     name: `${ticketCode}.png`,
@@ -44,13 +53,13 @@ async function buildQrAttachment(ticketCode: string, appUrl?: string) {
 
 function buildTicketEmailHtml(input: TicketEmailInput): string {
   const ticketRows = input.ticketItems.map((ticket, index) => {
-    const checkinUrl = `${getAppUrl(input.appUrl)}/checkin-yep-2026?ticket=${encodeURIComponent(ticket.ticketCode)}`;
+    const checkinUrl = `${getAppUrl()}/checkin-yep-2026?ticket=${encodeURIComponent(ticket.ticketCode)}`;
     return `
       <tr>
         <td style="padding:12px;border:1px solid #d8c8e7;">${index + 1}</td>
-        <td style="padding:12px;border:1px solid #d8c8e7;font-weight:700;">${ticket.ticketCode}</td>
-        <td style="padding:12px;border:1px solid #d8c8e7;">${ticket.ticketType}</td>
-        <td style="padding:12px;border:1px solid #d8c8e7;"><a href="${checkinUrl}">QR link</a></td>
+        <td style="padding:12px;border:1px solid #d8c8e7;font-weight:700;">${escapeHtml(ticket.ticketCode)}</td>
+        <td style="padding:12px;border:1px solid #d8c8e7;">${escapeHtml(ticket.ticketType)}</td>
+        <td style="padding:12px;border:1px solid #d8c8e7;"><a href="${escapeHtml(checkinUrl)}">QR link</a></td>
       </tr>
     `;
   }).join('');
@@ -67,11 +76,11 @@ function buildTicketEmailHtml(input: TicketEmailInput): string {
         <h1 style="margin:0 0 8px;font-size:32px;line-height:1;text-transform:uppercase;">YEP'26 Ticket Confirmation</h1>
         <p style="margin:0 0 24px;color:#5f5070;">The Kaleido Soul / Born to Bloom Different</p>
 
-        <p>Hi <strong>${input.buyerName}</strong>,</p>
+        <p>Hi <strong>${escapeHtml(input.buyerName)}</strong>,</p>
         <p>${paymentNote}</p>
 
         <div style="background:#efe0ff;border:2px solid #160925;padding:16px;margin:20px 0;">
-          <p style="margin:0;"><strong>Order ID:</strong> ${input.orderId}</p>
+          <p style="margin:0;"><strong>Order ID:</strong> ${escapeHtml(input.orderId)}</p>
           <p style="margin:8px 0 0;"><strong>Total:</strong> ${formatVND(input.totalAmount)}</p>
           <p style="margin:8px 0 0;"><strong>Tickets:</strong> ${input.ticketItems.length}</p>
         </div>
@@ -102,7 +111,7 @@ export async function sendTicketEmail(input: TicketEmailInput): Promise<EmailRes
   }
 
   try {
-    const attachments = await Promise.all(input.ticketItems.map(item => buildQrAttachment(item.ticketCode, input.appUrl)));
+    const attachments = await Promise.all(input.ticketItems.map(item => buildQrAttachment(item.ticketCode)));
     const senderName = process.env.MAIL_FROM_NAME || "YEP'26";
     const res = await fetch('https://api.brevo.com/v3/smtp/email', {
       method: 'POST',

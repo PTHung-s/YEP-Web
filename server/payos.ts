@@ -1,5 +1,8 @@
 import { PayOS } from '@payos/node';
 import type { Webhook, WebhookData } from '@payos/node';
+import fs from 'fs';
+import path from 'path';
+import crypto from 'crypto';
 import type { TicketItemRow } from './sheets';
 
 function getPayOS(): PayOS | null {
@@ -27,6 +30,8 @@ export interface PayOSOrderData {
   userCategory: string;
   studentId: string;
   workplace: string;
+  upcomingStudent: boolean;
+  applicationId: string;
   ticketQuantity: number;
   ticketPrice: number;
   merchItems: string;
@@ -35,33 +40,76 @@ export interface PayOSOrderData {
   ticketBulkDiscount: number;
   merchBulkDiscount: number;
   paymentMethod: string;
-  appUrl: string;
 }
 
 interface PendingOrder {
   data: PayOSOrderData;
   ticketItems: TicketItemRow[];
   orderId: string;
+  statusKey: string;
   createdAt: number;
   status: 'pending' | 'paid';
 }
 
+interface PaidOrderResult {
+  ticketId: string;
+  ticketCodes: string[];
+  storedIn: string;
+  statusKey: string;
+}
+
 const pendingOrders = new Map<number, PendingOrder>();
-const paidOrders = new Map<number, { ticketId: string; ticketCodes: string[]; storedIn: string }>();
+const paidOrders = new Map<number, PaidOrderResult>();
+const DATA_DIR = path.resolve('server', 'data');
+const PAYOS_STATE_PATH = path.join(DATA_DIR, 'payos-orders.json');
+
+function loadOrderState() {
+  try {
+    if (!fs.existsSync(PAYOS_STATE_PATH)) return;
+    const raw = fs.readFileSync(PAYOS_STATE_PATH, 'utf-8');
+    const state = JSON.parse(raw || '{}');
+
+    for (const [orderCode, order] of Object.entries<PendingOrder>(state.pendingOrders || {})) {
+      pendingOrders.set(Number(orderCode), order);
+    }
+    for (const [orderCode, result] of Object.entries<PaidOrderResult>(state.paidOrders || {})) {
+      paidOrders.set(Number(orderCode), result);
+    }
+  } catch (err) {
+    console.error('[PayOS] Failed to load saved order state:', err);
+  }
+}
+
+function persistOrderState() {
+  try {
+    fs.mkdirSync(DATA_DIR, { recursive: true });
+    fs.writeFileSync(PAYOS_STATE_PATH, JSON.stringify({
+      pendingOrders: Object.fromEntries(pendingOrders),
+      paidOrders: Object.fromEntries(paidOrders),
+    }, null, 2));
+  } catch (err) {
+    console.error('[PayOS] Failed to persist order state:', err);
+  }
+}
+
+loadOrderState();
 
 export function storePendingOrder(
   orderCode: number,
   orderData: PayOSOrderData,
   ticketItems: TicketItemRow[],
   orderId: string,
+  statusKey: string,
 ) {
   pendingOrders.set(orderCode, {
     data: orderData,
     ticketItems,
     orderId,
+    statusKey,
     createdAt: Date.now(),
     status: 'pending',
   });
+  persistOrderState();
 }
 
 export function getPendingOrder(orderCode: number): PendingOrder | undefined {
@@ -72,14 +120,16 @@ export function markOrderPaid(orderCode: number) {
   const order = pendingOrders.get(orderCode);
   if (order) {
     order.status = 'paid';
+    persistOrderState();
   }
 }
 
 export function storePaidResult(
   orderCode: number,
-  result: { ticketId: string; ticketCodes: string[]; storedIn: string },
+  result: PaidOrderResult,
 ) {
   paidOrders.set(orderCode, result);
+  persistOrderState();
 }
 
 export function getPaidResult(orderCode: number) {
@@ -95,14 +145,20 @@ export async function createPaymentLink(
     throw new Error('PayOS is not configured');
   }
 
-  const baseUrl = orderData.appUrl || process.env.APP_URL || 'http://localhost:3000';
+  const pending = getPendingOrder(orderCode);
+  const statusKey = pending?.statusKey || '';
+  const baseUrl = (process.env.APP_URL || 'http://localhost:3000').replace(/\/$/, '');
+  const returnParams = new URLSearchParams({
+    payosOrder: String(orderCode),
+    payosKey: statusKey,
+  });
 
   const result = await payos.paymentRequests.create({
     orderCode,
     amount: orderData.totalAmount,
     description: `YEP26 Ticket - ${orderData.fullName}`,
     cancelUrl: `${baseUrl}/yep26/checkout`,
-    returnUrl: `${baseUrl}/yep26/success?payosOrder=${orderCode}`,
+    returnUrl: `${baseUrl}/yep26/success?${returnParams.toString()}`,
     buyerName: orderData.fullName,
     buyerEmail: orderData.email,
     buyerPhone: orderData.phone,
@@ -124,7 +180,11 @@ export async function createPaymentLink(
 }
 
 export function generateOrderCode(): number {
-  return Math.floor(Date.now() / 1000) * 100 + Math.floor(Math.random() * 100);
+  return Date.now() * 100 + crypto.randomInt(100);
+}
+
+export function generateStatusKey(): string {
+  return crypto.randomBytes(24).toString('hex');
 }
 
 export async function checkPaymentStatus(orderCode: number): Promise<boolean> {

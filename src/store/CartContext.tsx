@@ -19,6 +19,8 @@ export interface CartState {
   phone: string;
   studentId: string;
   workplace: string;
+  upcomingStudent: boolean;
+  applicationId: string;
   ticketQuantity: number;
   merch: MerchItem[];
   paymentMethod: 'credit' | 'bank' | 'payos' | null;
@@ -37,6 +39,8 @@ const initialState: CartState = {
   phone: '',
   studentId: '',
   workplace: '',
+  upcomingStudent: false,
+  applicationId: '',
   ticketQuantity: 1,
   merch: INITIAL_MERCH,
   paymentMethod: null,
@@ -46,6 +50,7 @@ type CartAction =
   | { type: 'SET_USER_TYPE'; payload: UserType }
   | { type: 'SET_USER_CATEGORY'; payload: UserCategory }
   | { type: 'SET_FIELD'; field: keyof CartState; value: string }
+  | { type: 'SET_UPCOMING_STUDENT'; payload: boolean }
   | { type: 'SET_TICKET_QUANTITY'; payload: number }
   | { type: 'SET_MERCH_QUANTITY'; id: string; quantity: number }
   | { type: 'SET_PAYMENT_METHOD'; payload: 'credit' | 'bank' | 'payos' }
@@ -54,11 +59,25 @@ type CartAction =
 function cartReducer(state: CartState, action: CartAction): CartState {
   switch (action.type) {
     case 'SET_USER_TYPE':
-      return { ...state, userType: action.payload, userCategory: null, workplace: '', studentId: '' };
+      return {
+        ...state,
+        userType: action.payload,
+        userCategory: null,
+        workplace: '',
+        studentId: '',
+        upcomingStudent: false,
+        applicationId: '',
+      };
     case 'SET_USER_CATEGORY':
       return { ...state, userCategory: action.payload };
     case 'SET_FIELD':
       return { ...state, [action.field]: action.value };
+    case 'SET_UPCOMING_STUDENT':
+      return {
+        ...state,
+        upcomingStudent: action.payload,
+        applicationId: action.payload ? state.applicationId : '',
+      };
     case 'SET_TICKET_QUANTITY':
       return { ...state, ticketQuantity: Math.max(1, action.payload) };
     case 'SET_MERCH_QUANTITY':

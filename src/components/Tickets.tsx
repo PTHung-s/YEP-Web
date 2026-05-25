@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { School, Users, CheckCircle, ArrowRight, ArrowLeft, Ticket, Shirt, AlertTriangle, Clock, Zap } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useCart, type UserType, type UserCategory } from '../store/CartContext';
@@ -44,6 +44,7 @@ export function Tickets() {
   const { config } = useEventConfig();
   const navigate = useNavigate();
   const [step, setStep] = useState(1);
+  const fullNameRef = useRef<HTMLInputElement | null>(null);
 
   const isLocked = config.salesStatus === 'sold_out' || config.salesStatus === 'not_started';
   const effectiveTicketPrice = (userType: UserType): number => {
@@ -66,6 +67,7 @@ export function Tickets() {
       if (!state.email.toLowerCase().endsWith('@vinuni.edu.vn')) return false;
     } else {
       if (!state.workplace.trim()) return false;
+      if (state.upcomingStudent && !state.applicationId.trim()) return false;
     }
     return true;
   })();
@@ -88,6 +90,21 @@ export function Tickets() {
       setStep(step - 1);
       window.scrollTo(0, 0);
     }
+  };
+
+  useEffect(() => {
+    if (step !== 2) return;
+    if (fullNameRef.current) {
+      fullNameRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      fullNameRef.current.focus();
+    }
+  }, [step]);
+
+  const handleUserTypeSelect = (type: UserType) => {
+    if (isLocked) return;
+    dispatch({ type: 'SET_USER_TYPE', payload: type });
+    setStep(2);
+    window.scrollTo(0, 0);
   };
 
   return (
@@ -171,7 +188,7 @@ export function Tickets() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <button
-                  onClick={() => dispatch({ type: 'SET_USER_TYPE', payload: 'vinnunian' })}
+                  onClick={() => handleUserTypeSelect('vinnunian')}
                   disabled={isLocked}
                   className={cn(
                     'relative border-4 border-primary p-6 md:p-8 text-left transition-all duration-300',
@@ -203,24 +220,10 @@ export function Tickets() {
                   <p className="font-display text-xs font-black uppercase tracking-widest text-secondary">
                     STUDENTS · FACULTY · STAFF · ALUMNI
                   </p>
-                  <ul className="mt-4 space-y-2">
-                    <li className="flex items-start gap-2 text-sm font-medium">
-                      <CheckCircle className="w-4 h-4 shrink-0 mt-0.5" />
-                      Full venue access including VIP lounge
-                    </li>
-                    <li className="flex items-start gap-2 text-sm font-medium">
-                      <CheckCircle className="w-4 h-4 shrink-0 mt-0.5" />
-                      2 Complimentary drink vouchers
-                    </li>
-                    <li className="flex items-start gap-2 text-sm font-medium">
-                      <CheckCircle className="w-4 h-4 shrink-0 mt-0.5" />
-                      Commemorative YEP Wristband
-                    </li>
-                  </ul>
                 </button>
 
                 <button
-                  onClick={() => dispatch({ type: 'SET_USER_TYPE', payload: 'non-vinnunian' })}
+                  onClick={() => handleUserTypeSelect('non-vinnunian')}
                   disabled={!config.allowGuests || isLocked}
                   className={cn(
                     'border-4 border-primary p-6 md:p-8 text-left transition-all duration-300',
@@ -247,20 +250,6 @@ export function Tickets() {
                   <p className="font-display text-xs font-black uppercase tracking-widest text-on-surface-variant">
                     GUEST ENTRANCE PASS
                   </p>
-                  <ul className="mt-4 space-y-2">
-                    <li className="flex items-start gap-2 text-sm font-medium">
-                      <CheckCircle className="w-4 h-4 shrink-0 mt-0.5" />
-                      Full venue access
-                    </li>
-                    <li className="flex items-start gap-2 text-sm font-medium">
-                      <CheckCircle className="w-4 h-4 shrink-0 mt-0.5" />
-                      1 Complimentary drink voucher
-                    </li>
-                    <li className="flex items-start gap-2 text-sm font-medium">
-                      <CheckCircle className="w-4 h-4 shrink-0 mt-0.5" />
-                      YEP Attendee Wristband
-                    </li>
-                  </ul>
                 </button>
               </div>
             </div>
@@ -281,6 +270,7 @@ export function Tickets() {
                     type="text"
                     value={state.fullName}
                     onChange={e => dispatch({ type: 'SET_FIELD', field: 'fullName', value: e.target.value })}
+                    ref={fullNameRef}
                     placeholder="NGUYEN VAN A"
                     className="w-full bg-white text-background border-2 border-primary py-3 px-4 font-display text-lg focus:outline-none focus:border-secondary transition-colors placeholder-primary/30 font-bold"
                   />
@@ -352,15 +342,45 @@ export function Tickets() {
                 )}
 
                 {state.userType === 'non-vinnunian' && (
-                  <div className="space-y-3">
-                    <label className="block font-display text-xs md:text-sm font-black uppercase tracking-widest text-on-surface-variant">WORKPLACE / ADDRESS *</label>
-                    <input
-                      type="text"
-                      value={state.workplace}
-                      onChange={e => dispatch({ type: 'SET_FIELD', field: 'workplace', value: e.target.value })}
-                      placeholder="ABC Company / 123 Nguyen Trai, District 1..."
-                      className="w-full bg-white text-background border-2 border-primary py-3 px-4 font-display text-lg focus:outline-none focus:border-secondary transition-colors placeholder-primary/30 font-bold"
-                    />
+                  <div className="space-y-4">
+                    <div className="space-y-3">
+                      <label className="block font-display text-xs md:text-sm font-black uppercase tracking-widest text-on-surface-variant">WORKPLACE / ADDRESS *</label>
+                      <input
+                        type="text"
+                        value={state.workplace}
+                        onChange={e => dispatch({ type: 'SET_FIELD', field: 'workplace', value: e.target.value })}
+                        placeholder="ABC Company / 123 Nguyen Trai, District 1..."
+                        className="w-full bg-white text-background border-2 border-primary py-3 px-4 font-display text-lg focus:outline-none focus:border-secondary transition-colors placeholder-primary/30 font-bold"
+                      />
+                    </div>
+
+                    <label className="flex items-center gap-3 border-2 border-primary p-3 bg-surface">
+                      <input
+                        type="checkbox"
+                        checked={state.upcomingStudent}
+                        onChange={e => dispatch({ type: 'SET_UPCOMING_STUDENT', payload: e.target.checked })}
+                        className="h-5 w-5 accent-primary"
+                      />
+                      <span className="font-display text-xs md:text-sm font-black uppercase tracking-widest text-on-surface-variant">
+                        Upcoming student
+                      </span>
+                    </label>
+
+                    {state.upcomingStudent && (
+                      <div className="space-y-3">
+                        <label className="block font-display text-xs md:text-sm font-black uppercase tracking-widest text-on-surface-variant">APPLICATION ID *</label>
+                        <input
+                          type="text"
+                          value={state.applicationId}
+                          onChange={e => dispatch({ type: 'SET_FIELD', field: 'applicationId', value: e.target.value })}
+                          placeholder="Application ID"
+                          className="w-full bg-white text-background border-2 border-primary py-3 px-4 font-display text-lg focus:outline-none focus:border-secondary transition-colors placeholder-primary/30 font-bold"
+                        />
+                        <p className="text-on-surface-variant font-display text-xs font-bold uppercase tracking-wider">
+                          Mang theo thư trúng tuyển để nhận merch vào hôm D-Day.
+                        </p>
+                      </div>
+                    )}
                   </div>
                 )}
 

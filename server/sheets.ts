@@ -48,6 +48,8 @@ const TICKET_HEADERS = [
   'Phân loại',
   'MSSV',
   'Nơi ở / Công tác',
+  'Upcoming Student',
+  'Application ID',
   'SL Vé',
   'Đơn giá vé (VND)',
   'Merch đã mua',
@@ -120,6 +122,14 @@ async function ensureHeaders(sheetName: string, headers: string[]): Promise<void
         requestBody: { values: [headers] },
       });
       console.log(`[Sheets] Headers created for "${sheetName}"`);
+    } else if ((existing.data.values[0] || []).length < headers.length) {
+      await sheets.spreadsheets.values.update({
+        spreadsheetId,
+        range: `${sheetName}!A1`,
+        valueInputOption: 'USER_ENTERED',
+        requestBody: { values: [headers] },
+      });
+      console.log(`[Sheets] Headers updated for "${sheetName}"`);
     }
   } catch (err) {
     console.error(`[Sheets] Failed to ensure headers for "${sheetName}":`, err);
@@ -136,6 +146,8 @@ interface TicketRow {
   userCategory: string;
   studentId: string;
   workplace: string;
+  upcomingStudent: boolean;
+  applicationId: string;
   ticketQuantity: string;
   ticketPrice: string;
   merchItems: string;
@@ -169,6 +181,8 @@ export async function appendTicketRow(row: TicketRow): Promise<boolean> {
           row.userCategory || '',
           row.studentId || '',
           row.workplace || '',
+          row.upcomingStudent ? 'Yes' : '',
+          row.applicationId || '',
           row.ticketQuantity,
           row.ticketPrice,
           row.merchItems,

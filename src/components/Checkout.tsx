@@ -13,7 +13,7 @@ export function Checkout() {
   const navigate = useNavigate();
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState('');
-  const [payosData, setPayosData] = useState<{ checkoutUrl: string; qrCode: string; orderCode: number } | null>(null);
+  const [payosData, setPayosData] = useState<{ checkoutUrl: string; qrCode: string; orderCode: number; statusKey?: string } | null>(null);
 
   const ticketPrice = getTicketPrice();
   const serviceFee = getServiceFee();
@@ -40,6 +40,8 @@ export function Checkout() {
         userCategory: state.userCategory,
         studentId: state.studentId,
         workplace: state.workplace,
+        upcomingStudent: state.upcomingStudent,
+        applicationId: state.applicationId,
         ticketQuantity: state.ticketQuantity,
         ticketPrice: ticketPrice,
         merchItems: merchData.join('; '),
@@ -48,7 +50,6 @@ export function Checkout() {
         ticketBulkDiscount,
         merchBulkDiscount,
         paymentMethod: state.paymentMethod,
-        appUrl: window.location.origin,
       };
 
       const res = await fetch('/api/tickets', {
@@ -65,7 +66,7 @@ export function Checkout() {
       const data = await res.json();
 
       if (data.payos) {
-        setPayosData({ checkoutUrl: data.checkoutUrl, qrCode: data.qrCode, orderCode: data.orderCode });
+        setPayosData({ checkoutUrl: data.checkoutUrl, qrCode: data.qrCode, orderCode: data.orderCode, statusKey: data.statusKey });
         setProcessing(false);
         return;
       }

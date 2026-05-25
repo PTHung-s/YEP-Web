@@ -20,6 +20,8 @@ interface TicketRecord {
   userCategory: string;
   studentId: string;
   workplace: string;
+  upcomingStudent: boolean;
+  applicationId: string;
   ticketQuantity: number;
   ticketPrice: number;
   merchItems: string;
@@ -76,6 +78,8 @@ const ticketHeaders = [
   { id: 'userCategory', title: 'Category' },
   { id: 'studentId', title: 'Student ID' },
   { id: 'workplace', title: 'Workplace' },
+  { id: 'upcomingStudent', title: 'Upcoming Student' },
+  { id: 'applicationId', title: 'Application ID' },
   { id: 'ticketQuantity', title: 'Ticket Qty' },
   { id: 'ticketPrice', title: 'Ticket Price' },
   { id: 'merchItems', title: 'Merch' },

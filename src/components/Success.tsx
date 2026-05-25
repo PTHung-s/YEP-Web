@@ -18,6 +18,9 @@ export function Success() {
   const [searchParams] = useSearchParams();
   const orderCode = (location.state as any)?.orderCode as number | undefined
     || (searchParams.get('payosOrder') ? Number(searchParams.get('payosOrder')) : undefined);
+  const statusKey = (location.state as any)?.statusKey as string | undefined
+    || searchParams.get('payosKey')
+    || undefined;
   const [ticketId, setTicketId] = useState((location.state as any)?.ticketId || null);
   const [ticketCodes, setTicketCodes] = useState(((location.state as any)?.ticketCodes || []) as string[]);
   const [storedIn, setStoredIn] = useState((location.state as any)?.storedIn || 'payos');
@@ -31,13 +34,18 @@ export function Success() {
 
   useEffect(() => {
     if (!orderCode) return;
+    if (!statusKey) {
+      setPollError('Payment confirmation link is missing its security key. Please check your email for your tickets.');
+      setPolling(false);
+      return;
+    }
     let cancelled = false;
     let attempts = 0;
 
     async function poll() {
       while (attempts < 30 && !cancelled) {
         try {
-          const res = await fetch(`/api/payos/status/${orderCode}`);
+          const res = await fetch(`/api/payos/status/${orderCode}?key=${encodeURIComponent(statusKey)}`);
           const data = await res.json();
           if (data.status === 'paid') {
             if (!cancelled) {
@@ -62,7 +70,7 @@ export function Success() {
     poll();
 
     return () => { cancelled = true; };
-  }, [orderCode]);
+  }, [orderCode, statusKey]);
 
   useEffect(() => {
     let cancelled = false;

@@ -40,6 +40,7 @@ import { sendTicketEmail } from './mailer';
 import {
   createPaymentLink,
   generateOrderCode,
+  generateStatusKey,
   verifyWebhook,
   storePendingOrder,
   getPendingOrder,
@@ -56,10 +57,86 @@ const app = express();
 const PORT = process.env.PORT || process.env.API_PORT || 3001;
 const ADMIN_TOKEN_TTL_MS = 1000 * 60 * 60 * 18;
 
-app.use(cors());
-app.use(express.json());
+app.disable('x-powered-by');
+app.use((_req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.setHeader('Permissions-Policy', 'camera=(self), microphone=(), geolocation=()');
+  if (process.env.NODE_ENV === 'production') {
+    res.setHeader('Strict-Transport-Security', 'max-age=15552000; includeSubDomains');
+  }
+  next();
+});
+
+const allowedOrigins = new Set([
+  'https://vinunistudentcouncil.com',
+  'https://www.vinunistudentcouncil.com',
+  'http://localhost:3000',
+  'http://localhost:3001',
+  'http://127.0.0.1:3000',
+  'http://127.0.0.1:3001',
+  ...(process.env.APP_URL ? [process.env.APP_URL.replace(/\/$/, '')] : []),
+]);
+
+app.use(cors({
+  origin(origin, callback) {
+    if (process.env.NODE_ENV !== 'production') {
+      callback(null, true);
+      return;
+    }
+    if (!origin || allowedOrigins.has(origin)) {
+      callback(null, true);
+      return;
+    }
+    callback(null, false);
+  },
+}));
+app.use(express.json({ limit: '64kb' }));
 
 const adminTokens = new Set<string>();
+const MAX_TICKETS_PER_ORDER = 10;
+
+function createRateLimiter(options: { windowMs: number; max: number }) {
+  const hits = new Map<string, { count: number; resetAt: number }>();
+
+  return (req: express.Request, res: express.Response, next: express.NextFunction) => {
+    const forwardedIp = String(req.header('cf-connecting-ip') || req.header('x-forwarded-for') || '').split(',')[0].trim();
+    const key = `${forwardedIp || req.ip || req.socket.remoteAddress || 'unknown'}:${req.path}`;
+    const now = Date.now();
+    const current = hits.get(key);
+
+    if (!current || current.resetAt <= now) {
+      hits.set(key, { count: 1, resetAt: now + options.windowMs });
+      next();
+      return;
+    }
+
+    if (current.count >= options.max) {
+      res.status(429).json({ error: 'Too many requests. Please try again later.' });
+      return;
+    }
+
+    current.count += 1;
+    next();
+  };
+}
+
+const adminLoginLimiter = createRateLimiter({ windowMs: 60 * 1000, max: 6 });
+const publicWriteLimiter = createRateLimiter({ windowMs: 60 * 1000, max: 12 });
+const paymentStatusLimiter = createRateLimiter({ windowMs: 60 * 1000, max: 30 });
+
+function cleanText(value: unknown, maxLength = 160): string {
+  return String(value ?? '').trim().slice(0, maxLength);
+}
+
+function isValidEmail(value: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value) && value.length <= 254;
+}
+
+function isValidPhone(value: string): boolean {
+  return /^[0-9+\-\s().]{7,24}$/.test(value);
+}
 
 function generateId(): string {
   return 'YEP-' + Date.now().toString(36).toUpperCase() + '-' + Math.random().toString(36).substring(2, 6).toUpperCase();
@@ -179,7 +256,7 @@ app.get('/api/config', async (_req, res) => {
   }
 });
 
-app.post('/api/admin/login', (req, res) => {
+app.post('/api/admin/login', adminLoginLimiter, (req, res) => {
   const passcode = getAdminPasscode();
   if (!passcode) {
     res.status(503).json({ error: 'Admin passcode is not configured' });
@@ -315,12 +392,12 @@ app.get('/api/checkin/recent', requireAdmin, async (_req, res) => {
 });
 
 // POST /api/tickets - Save a ticket purchase
-app.post('/api/tickets', async (req, res) => {
+app.post('/api/tickets', publicWriteLimiter, async (req, res) => {
   try {
     const {
       fullName, email, phone, userType, userCategory,
-      studentId, workplace, ticketQuantity, ticketPrice,
-      merchItems, merchTotal, appUrl,
+      studentId, workplace, upcomingStudent, applicationId, ticketQuantity, ticketPrice,
+      merchItems, merchTotal,
     } = req.body;
 
     if (!fullName || !email || !phone || !userType || !ticketQuantity) {
@@ -328,14 +405,60 @@ app.post('/api/tickets', async (req, res) => {
       return;
     }
 
+    const normalizedFullName = cleanText(fullName, 120);
+    const normalizedEmail = cleanText(email, 254).toLowerCase();
+    const normalizedPhone = cleanText(phone, 24);
+    const normalizedUserType = cleanText(userType, 32);
+    const normalizedUserCategory = cleanText(userCategory, 80);
+    const normalizedStudentId = cleanText(studentId, 80);
+    const normalizedWorkplace = cleanText(workplace, 120);
+    const normalizedUpcomingStudent = normalizedUserType === 'non-vinnunian'
+      ? req.body?.upcomingStudent === true || String(req.body?.upcomingStudent).toLowerCase() === 'true'
+      : false;
+    const normalizedApplicationId = normalizedUpcomingStudent ? cleanText(applicationId, 120) : '';
+
+    if (!normalizedFullName || !isValidEmail(normalizedEmail) || !isValidPhone(normalizedPhone)) {
+      res.status(400).json({ error: 'Invalid buyer information' });
+      return;
+    }
+
+    if (!['vinnunian', 'non-vinnunian'].includes(normalizedUserType)) {
+      res.status(400).json({ error: 'Invalid ticket type' });
+      return;
+    }
+
+    if (normalizedUserType === 'vinnunian' && !normalizedEmail.endsWith('@vinuni.edu.vn')) {
+      res.status(400).json({ error: 'VinUnian tickets require a vinuni.edu.vn email address' });
+      return;
+    }
+
     const config = await readConfig();
-    const normalizedTicketQuantity = Math.max(1, Number(ticketQuantity) || 1);
-    const normalizedTicketPrice = getTicketPriceForUser(config, userType);
+    if (config.salesStatus !== 'open') {
+      res.status(403).json({ error: 'Ticket sales are not open' });
+      return;
+    }
+
+    if (normalizedUserType === 'non-vinnunian' && !config.allowGuests) {
+      res.status(403).json({ error: 'Guest tickets are not available' });
+      return;
+    }
+
+    if (normalizedUpcomingStudent && !normalizedApplicationId) {
+      res.status(400).json({ error: 'Application ID is required for upcoming students' });
+      return;
+    }
+
+    const normalizedTicketQuantity = Math.min(MAX_TICKETS_PER_ORDER, Math.max(1, Math.floor(Number(ticketQuantity) || 1)));
+    const normalizedTicketPrice = getTicketPriceForUser(config, normalizedUserType);
     const normalizedMerchTotal = Math.max(0, Number(merchTotal) || 0);
+    const normalizedMerchItems = cleanText(
+      typeof merchItems === 'string' ? merchItems : JSON.stringify(merchItems || []),
+      2000,
+    );
     const ticketSubtotal = normalizedTicketPrice * normalizedTicketQuantity;
     const subtotal = ticketSubtotal + normalizedMerchTotal;
     const serviceFee = calculateServiceFee(config, subtotal);
-    const isEarlyBirdOrder = userType === 'vinnunian' && config.earlyBirdEnabled;
+    const isEarlyBirdOrder = normalizedUserType === 'vinnunian' && config.earlyBirdEnabled;
     const ticketBulkDiscount = isEarlyBirdOrder
       ? 0
       : calculateTicketBulkDiscount(config, ticketSubtotal, normalizedTicketQuantity);
@@ -345,36 +468,41 @@ app.post('/api/tickets', async (req, res) => {
     if (isPayOSConfigured()) {
       const orderCode = generateOrderCode();
       const orderId = generateId();
-      const ticketType = getTicketTypeLabel(userType, config.earlyBirdEnabled);
+      const statusKey = generateStatusKey();
+      const ticketType = getTicketTypeLabel(normalizedUserType, config.earlyBirdEnabled);
       const ticketItems: TicketItemRow[] = Array.from({ length: normalizedTicketQuantity }, (_, index) => ({
         ticketCode: generateTicketCode(),
         orderId,
         timestamp: nowVN(),
-        buyerName: fullName,
-        email,
-        phone,
+        buyerName: normalizedFullName,
+        email: normalizedEmail,
+        phone: normalizedPhone,
         ticketType,
         ticketNo: String(index + 1),
         orderTicketQuantity: String(normalizedTicketQuantity),
       }));
 
       const orderData: PayOSOrderData = {
-        fullName, email, phone, userType,
-        userCategory: userCategory || '',
-        studentId: studentId || '',
-        workplace: workplace || '',
+        fullName: normalizedFullName,
+        email: normalizedEmail,
+        phone: normalizedPhone,
+        userType: normalizedUserType,
+        userCategory: normalizedUserCategory,
+        studentId: normalizedStudentId,
+        workplace: normalizedWorkplace,
+        upcomingStudent: normalizedUpcomingStudent,
+        applicationId: normalizedApplicationId,
         ticketQuantity: normalizedTicketQuantity,
         ticketPrice: normalizedTicketPrice,
-        merchItems: typeof merchItems === 'string' ? merchItems : JSON.stringify(merchItems || []),
+        merchItems: normalizedMerchItems,
         merchTotal: normalizedMerchTotal,
         totalAmount,
         ticketBulkDiscount,
         merchBulkDiscount,
         paymentMethod: 'payos',
-        appUrl: appUrl || '',
       };
 
-      storePendingOrder(orderCode, orderData, ticketItems, orderId);
+      storePendingOrder(orderCode, orderData, ticketItems, orderId, statusKey);
 
       const { checkoutUrl, qrCode } = await createPaymentLink(orderData, orderCode);
 
@@ -382,6 +510,7 @@ app.post('/api/tickets', async (req, res) => {
         success: true,
         payos: true,
         orderCode,
+        statusKey,
         checkoutUrl,
         qrCode,
         message: 'PAYOS payment link created. Complete payment to receive tickets.',
@@ -389,32 +518,39 @@ app.post('/api/tickets', async (req, res) => {
       return;
     }
 
+    if (process.env.NODE_ENV === 'production') {
+      res.status(503).json({ error: 'Payment provider is not available. Please try again later.' });
+      return;
+    }
+
     const record = {
       id: generateId(),
       timestamp: nowVN(),
-      fullName,
-      email,
-      phone,
-      userType,
-      userCategory: userCategory || '',
-      studentId: studentId || '',
-      workplace: workplace || '',
+      fullName: normalizedFullName,
+      email: normalizedEmail,
+      phone: normalizedPhone,
+      userType: normalizedUserType,
+      userCategory: normalizedUserCategory,
+      studentId: normalizedStudentId,
+      workplace: normalizedWorkplace,
+      upcomingStudent: normalizedUpcomingStudent,
+      applicationId: normalizedApplicationId,
       ticketQuantity: String(normalizedTicketQuantity),
       ticketPrice: String(normalizedTicketPrice || ticketPrice),
-      merchItems: typeof merchItems === 'string' ? merchItems : JSON.stringify(merchItems || []),
+      merchItems: normalizedMerchItems,
       discountCode: 'AUTO',
       discountAmount: String(ticketBulkDiscount + merchBulkDiscount),
       totalAmount: String(totalAmount),
       paymentMethod: 'payos',
     };
-    const ticketType = getTicketTypeLabel(userType, config.earlyBirdEnabled);
+    const ticketType = getTicketTypeLabel(normalizedUserType, config.earlyBirdEnabled);
     const ticketItems: TicketItemRow[] = Array.from({ length: normalizedTicketQuantity }, (_, index) => ({
       ticketCode: generateTicketCode(),
       orderId: record.id,
       timestamp: record.timestamp,
-      buyerName: fullName,
-      email,
-      phone,
+      buyerName: normalizedFullName,
+      email: normalizedEmail,
+      phone: normalizedPhone,
       ticketType,
       ticketNo: String(index + 1),
       orderTicketQuantity: String(normalizedTicketQuantity),
@@ -442,18 +578,17 @@ app.post('/api/tickets', async (req, res) => {
     }
 
     const emailResult = await sendTicketEmail({
-      to: email,
-      buyerName: fullName,
+      to: normalizedEmail,
+      buyerName: normalizedFullName,
       orderId: record.id,
       totalAmount: record.totalAmount,
       paymentMethod: record.paymentMethod,
       ticketItems,
-      appUrl: getRequestAppUrl(req),
     });
     if (!emailResult.sent) {
       console.log('[Email] Ticket email not sent:', emailResult.error || 'not configured');
     } else {
-      console.log('[Email] Ticket email sent:', email, emailResult.messageId || '');
+      console.log('[Email] Ticket email sent:', normalizedEmail, emailResult.messageId || '');
     }
 
     res.status(201).json({
@@ -493,8 +628,6 @@ app.post('/api/payos/webhook', async (req, res) => {
       return;
     }
 
-    markOrderPaid(orderCode);
-
     const orderData = pending.data;
     const record = {
       id: pending.orderId,
@@ -506,6 +639,8 @@ app.post('/api/payos/webhook', async (req, res) => {
       userCategory: orderData.userCategory || '',
       studentId: orderData.studentId || '',
       workplace: orderData.workplace || '',
+      upcomingStudent: Boolean(orderData.upcomingStudent),
+      applicationId: orderData.applicationId || '',
       ticketQuantity: String(orderData.ticketQuantity),
       ticketPrice: String(orderData.ticketPrice),
       merchItems: orderData.merchItems,
@@ -542,7 +677,6 @@ app.post('/api/payos/webhook', async (req, res) => {
       totalAmount: record.totalAmount,
       paymentMethod: record.paymentMethod,
       ticketItems: pending.ticketItems,
-      appUrl: orderData.appUrl || undefined,
     });
     if (!emailResult.sent) {
       console.log('[Email] PayOS ticket email not sent:', emailResult.error || 'not configured');
@@ -554,7 +688,9 @@ app.post('/api/payos/webhook', async (req, res) => {
       ticketId: pending.orderId,
       ticketCodes: pending.ticketItems.map(item => item.ticketCode),
       storedIn: sheetOk ? 'sheets' : 'csv',
+      statusKey: pending.statusKey,
     };
+    markOrderPaid(orderCode);
     storePaidResult(orderCode, result);
 
     res.status(200).json({ success: true, message: 'Payment processed', ...result });
@@ -565,9 +701,10 @@ app.post('/api/payos/webhook', async (req, res) => {
 });
 
 // GET /api/payos/status/:orderCode - Check PayOS payment status
-app.get('/api/payos/status/:orderCode', async (req, res) => {
+app.get('/api/payos/status/:orderCode', paymentStatusLimiter, async (req, res) => {
   try {
     const orderCode = Number(req.params.orderCode);
+    const statusKey = cleanText(req.query.key, 96);
     if (!orderCode || Number.isNaN(orderCode)) {
       res.status(400).json({ error: 'Invalid order code' });
       return;
@@ -575,13 +712,11 @@ app.get('/api/payos/status/:orderCode', async (req, res) => {
 
     const paidResult = getPaidResult(orderCode);
     if (paidResult) {
+      if (!statusKey || statusKey !== paidResult.statusKey) {
+        res.status(401).json({ error: 'Unauthorized payment status lookup' });
+        return;
+      }
       res.json({ status: 'paid', ...paidResult });
-      return;
-    }
-
-    const isPaid = await checkPaymentStatus(orderCode);
-    if (!isPaid) {
-      res.json({ status: 'pending' });
       return;
     }
 
@@ -591,7 +726,16 @@ app.get('/api/payos/status/:orderCode', async (req, res) => {
       return;
     }
 
-    markOrderPaid(orderCode);
+    if (!statusKey || statusKey !== pending.statusKey) {
+      res.status(401).json({ error: 'Unauthorized payment status lookup' });
+      return;
+    }
+
+    const isPaid = await checkPaymentStatus(orderCode);
+    if (!isPaid) {
+      res.json({ status: 'pending' });
+      return;
+    }
 
     const orderData = pending.data;
     const record = {
@@ -604,6 +748,8 @@ app.get('/api/payos/status/:orderCode', async (req, res) => {
       userCategory: orderData.userCategory || '',
       studentId: orderData.studentId || '',
       workplace: orderData.workplace || '',
+      upcomingStudent: Boolean(orderData.upcomingStudent),
+      applicationId: orderData.applicationId || '',
       ticketQuantity: String(orderData.ticketQuantity),
       ticketPrice: String(orderData.ticketPrice),
       merchItems: orderData.merchItems,
@@ -640,7 +786,6 @@ app.get('/api/payos/status/:orderCode', async (req, res) => {
       totalAmount: record.totalAmount,
       paymentMethod: record.paymentMethod,
       ticketItems: pending.ticketItems,
-      appUrl: orderData.appUrl || undefined,
     });
     if (!emailResult.sent) {
       console.log('[Email] PayOS ticket email not sent (status check):', emailResult.error || 'not configured');
@@ -650,7 +795,9 @@ app.get('/api/payos/status/:orderCode', async (req, res) => {
       ticketId: pending.orderId,
       ticketCodes: pending.ticketItems.map(item => item.ticketCode),
       storedIn: sheetOk ? 'sheets' : 'csv',
+      statusKey: pending.statusKey,
     };
+    markOrderPaid(orderCode);
     storePaidResult(orderCode, result);
 
     res.json({ status: 'paid', ...result });
@@ -661,7 +808,7 @@ app.get('/api/payos/status/:orderCode', async (req, res) => {
 });
 
 // POST /api/registrations - Save a contest registration
-app.post('/api/registrations', async (req, res) => {
+app.post('/api/registrations', publicWriteLimiter, async (req, res) => {
   try {
     const { fullName, email, phone, description } = req.body;
 
@@ -670,13 +817,23 @@ app.post('/api/registrations', async (req, res) => {
       return;
     }
 
+    const normalizedFullName = cleanText(fullName, 120);
+    const normalizedEmail = cleanText(email, 254).toLowerCase();
+    const normalizedPhone = cleanText(phone, 24);
+    const normalizedDescription = cleanText(description, 2000);
+
+    if (!normalizedFullName || !isValidEmail(normalizedEmail) || (normalizedPhone && !isValidPhone(normalizedPhone))) {
+      res.status(400).json({ error: 'Invalid registration information' });
+      return;
+    }
+
     const record = {
       id: generateId(),
       timestamp: nowVN(),
-      fullName,
-      email,
-      phone: phone || '',
-      description: description || '',
+      fullName: normalizedFullName,
+      email: normalizedEmail,
+      phone: normalizedPhone,
+      description: normalizedDescription,
     };
 
     const sheetOk = await appendRegistrationRow(record);

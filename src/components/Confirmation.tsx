@@ -28,6 +28,7 @@ export function Confirmation() {
     && state.email.trim()
     && state.phone.trim()
     && state.ticketQuantity >= 1
+    && !(state.userType === 'non-vinnunian' && state.upcomingStudent && !state.applicationId.trim())
     && !emailMismatch
     && !processing;
 
@@ -52,6 +53,8 @@ export function Confirmation() {
           userCategory: state.userCategory,
           studentId: state.studentId,
           workplace: state.workplace,
+          upcomingStudent: state.upcomingStudent,
+          applicationId: state.applicationId,
           ticketQuantity: state.ticketQuantity,
           ticketPrice,
           merchItems: merchData.join('; '),
@@ -59,7 +62,6 @@ export function Confirmation() {
           totalAmount: total,
           ticketBulkDiscount,
           merchBulkDiscount,
-          appUrl: window.location.origin,
         }),
       });
 
@@ -126,6 +128,12 @@ export function Confirmation() {
               <div><span className="block font-display text-xs font-bold uppercase tracking-widest text-on-surface-variant">Type</span><span className="font-display font-black text-lg uppercase">{state.userType === 'vinnunian' ? `VINNUNIAN · ${state.userCategory?.toUpperCase() || ''}` : 'NON-VINNUNIAN'}</span></div>
               {state.userType === 'vinnunian' && state.studentId && <div><span className="block font-display text-xs font-bold uppercase tracking-widest text-on-surface-variant">Student ID</span><span className="font-display font-black text-lg">{state.studentId}</span></div>}
               {state.userType === 'non-vinnunian' && state.workplace && <div><span className="block font-display text-xs font-bold uppercase tracking-widest text-on-surface-variant">Workplace</span><span className="font-display font-black text-lg">{state.workplace}</span></div>}
+              {state.userType === 'non-vinnunian' && state.upcomingStudent && (
+                <>
+                  <div><span className="block font-display text-xs font-bold uppercase tracking-widest text-on-surface-variant">Upcoming Student</span><span className="font-display font-black text-lg">YES</span></div>
+                  {state.applicationId && <div><span className="block font-display text-xs font-bold uppercase tracking-widest text-on-surface-variant">Application ID</span><span className="font-display font-black text-lg">{state.applicationId}</span></div>}
+                </>
+              )}
             </div>
             <div className="mt-6 pt-6 border-t-2 border-primary">
               <label className="block font-display text-xs md:text-sm font-black uppercase tracking-widest text-on-surface-variant mb-3">CONFIRM EMAIL ADDRESS *</label>
