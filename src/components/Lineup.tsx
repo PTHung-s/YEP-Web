@@ -2,67 +2,52 @@ import React from 'react';
 import { Music, ArrowRight, EyeOff, Clock } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { yepAsset } from '../lib/assets';
+import { cn } from './Layout';
 
 const artists = [
   {
     id: 1,
-    name: 'SOLO ECHO',
-    genre: 'ELECTRONIC / TECHNO',
-    time: '21:00 - 22:30',
+    name: '52HZ',
+    genre: 'MYSTERY VOCALIST',
+    time: 'TBA',
     stage: 'MAIN STAGE',
-    description: 'Cutting-edge electronic music producer known for immersive, geometric soundscapes that push the boundaries of techno and experimental electronica.',
+    description: 'This artist will be revealed soon. Read the clues and keep guessing.',
     img: 'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?auto=format&fit=crop&q=80&w=1200',
     revealed: false,
+    hintTags: ['52hz', '“Ngồi đợi biết bao mùa….”', 'Billie Eilish Việt Nam', 'Em Xinh Say Hi', 'not a pitbull'],
   },
   {
     id: 2,
-    name: 'NOVA RAY',
-    genre: 'INDIE POP / SYNTH',
-    time: '19:30 - 20:15',
+    name: 'RIO',
+    genre: 'MYSTERY PERFORMER',
+    time: 'TBA',
     stage: 'MAIN STAGE',
-    description: 'Blending dreamy synth textures with indie pop sensibilities, Nova Ray creates atmospheric performances that transport audiences to another dimension.',
+    description: 'This artist will be revealed soon. Read the clues and keep guessing.',
     img: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=1200',
     revealed: false,
+    hintTags: ['RIO', 'Cựu thành viên P336', 'Tốt nghiệp Ngôn ngữ Anh ĐHKHXH&NV', 'Đỗ Việt Tiến', 'T-up', 'Hoà âm phối khí trong 5 ngày'],
   },
   {
     id: 3,
-    name: 'THE GRID',
-    genre: 'HOUSE / DISCO',
-    time: '22:00 - 23:15',
-    stage: 'SIDE STAGE',
-    description: 'A dynamic house and disco collective bringing infectious grooves and high-energy performances to the dance floor.',
+    name: 'HOÀNG TÔN',
+    genre: 'MYSTERY SINGER',
+    time: 'TBA',
+    stage: 'MAIN STAGE',
+    description: 'This artist will be revealed soon. Read the clues and keep guessing.',
     img: 'https://images.unsplash.com/photo-1493225457224-eda0e6fdc758?auto=format&fit=crop&q=80&w=1200',
     revealed: false,
+    hintTags: ['Hoàng Tôn', 'Giọng hát Việt 2013', 'Em không quay về', 'Dành cho em', 'Sinh ra trong gia đình nghệ thuật', 'Giải Làn sóng xanh'],
   },
   {
     id: 4,
-    name: 'BRASS BOX',
-    genre: 'EXPERIMENTAL JAZZ',
-    time: '19:00 - 19:45',
-    stage: 'SIDE STAGE',
-    description: 'Pushing the boundaries of jazz with experimental compositions, Brass Box combines traditional brass instrumentation with modern electronic elements.',
+    name: '2SPILLZ',
+    genre: 'MYSTERY PRODUCER',
+    time: 'TBA',
+    stage: 'MAIN STAGE',
+    description: 'This artist will be revealed soon. Read the clues and keep guessing.',
     img: 'https://images.unsplash.com/photo-1510915361894-db8b60106cb1?auto=format&fit=crop&q=80&w=1200',
     revealed: false,
-  },
-  {
-    id: 5,
-    name: 'PIXEL DRIFT',
-    genre: 'CHILLWAVE / AMBIENT',
-    time: '20:30 - 21:15',
-    stage: 'LOUNGE',
-    description: 'Creating lush, textured ambient soundscapes perfect for the chill-out lounge. Pixel Drift blends analog warmth with digital precision.',
-    img: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1?auto=format&fit=crop&q=80&w=1200',
-    revealed: false,
-  },
-  {
-    id: 6,
-    name: 'NEON FUSE',
-    genre: 'SYNTHWAVE / RETRO',
-    time: '23:30 - 00:30',
-    stage: 'MAIN STAGE',
-    description: 'Closing the night with an explosive fusion of retro synthwave and modern electronic beats, guaranteed to keep the energy high until midnight.',
-    img: 'https://images.unsplash.com/photo-1542909168-82c3e7fdca5c?auto=format&fit=crop&q=80&w=1200',
-    revealed: false,
+    hintTags: ['2spillz', 'We go hard', '(Nhà sản xuất) Rap Việt', 'HIEUTHUHAI, tlinh, GREY D, Wren Evans', 'Dám rực rỡ'],
   },
 ];
 
@@ -91,7 +76,7 @@ export function Lineup() {
               <span className="text-tertiary">SHOWCASE</span>
             </h1>
             <p className="font-body text-base md:text-lg text-white/75 max-w-xl leading-relaxed mt-6">
-              Six acts. Three stages. One unforgettable night at YEP'26: The Kaleido Soul.
+              Four mystery acts. One main stage. One unforgettable night at YEP'26: The Kaleido Soul.
             </p>
           </div>
           <div className="absolute -right-20 -bottom-20 opacity-8 pointer-events-none">
@@ -190,6 +175,18 @@ export function Lineup() {
               <p className="font-body text-sm md:text-base text-on-surface-variant/50 font-medium leading-relaxed mt-6 max-w-sm">
                 This artist will be revealed soon. Stay tuned for the announcement.
               </p>
+              <div className="mt-7 w-full max-w-xl overflow-hidden border-y-2 border-outline-variant bg-background/60 py-3">
+                <div className={cn('flex w-max gap-3 whitespace-nowrap', index % 2 === 0 ? 'animate-marquee' : 'animate-marquee2')}>
+                  {[...(artist.hintTags || []), ...(artist.hintTags || [])].map((hint, hintIndex) => (
+                    <span
+                      key={`${artist.id}-${hintIndex}`}
+                      className="rounded-full border border-tertiary/50 bg-tertiary/10 px-4 py-2 font-display text-xs font-black uppercase tracking-widest text-tertiary"
+                    >
+                      {hint}
+                    </span>
+                  ))}
+                </div>
+              </div>
             </div>
           </section>
         ))}

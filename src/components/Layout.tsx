@@ -1,8 +1,8 @@
 import React from 'react';
-import { Menu } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
+import { yepAsset } from '../lib/assets';
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -17,7 +17,11 @@ export function Layout({ children }: { children: React.ReactNode }) {
     <div className="min-h-screen flex flex-col pt-16 md:pt-20">
       <header className="fixed top-0 w-full z-50 flex justify-between items-center px-4 md:px-12 h-16 md:h-20 bg-background/95 backdrop-blur-md border-b-2 border-outline shadow-[0_10px_32px_rgba(0,0,0,0.45)]">
         <Link to="/" className="flex items-center gap-3 md:gap-4 border-2 border-on-surface/60 px-2 py-1 bg-on-surface/5 hover:bg-on-surface/10 transition-colors">
-          <Menu className="w-6 h-6 md:w-8 md:h-8 text-tertiary cursor-pointer" />
+          <img
+            src={yepAsset('yep-logo.png')}
+            alt="YEP'26"
+            className="h-9 w-9 md:h-12 md:w-12 object-contain"
+          />
             <h1 className="font-display text-sm md:text-base lg:text-lg font-extrabold tracking-wider uppercase text-white leading-none">
               {BRAND_NAME}
             </h1>
@@ -74,6 +78,11 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
       <footer className="w-full py-12 px-6 md:px-12 flex flex-col gap-8 md:flex-row justify-between items-start bg-background/95 border-t-2 border-outline mt-auto">
         <div className="flex flex-col gap-3">
+            <img
+              src={yepAsset('yep-logo.png')}
+              alt="YEP'26"
+              className="h-14 w-14 object-contain"
+            />
             <h2 className="font-display text-xl md:text-2xl font-bold tracking-tighter uppercase text-white">
               {BRAND_NAME}
             </h2>

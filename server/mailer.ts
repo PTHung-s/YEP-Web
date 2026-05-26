@@ -31,7 +31,7 @@ function getRootAppUrl(): string {
 }
 
 function getSupportEmail(): string {
-  return process.env.SUPPORT_EMAIL || process.env.MAIL_REPLY_TO || process.env.MAIL_FROM_EMAIL || 'tickets@vinunistudentcouncil.com';
+  return process.env.SUPPORT_EMAIL || process.env.MAIL_REPLY_TO || 'vinunistudentcouncil@vinuni.edu.vn';
 }
 
 function escapeHtml(value: unknown): string {
@@ -48,23 +48,26 @@ function formatVND(value: string | number): string {
   return amount.toLocaleString('vi-VN') + ' VND';
 }
 
-function formatOrderDate(ticketItems: TicketItemRow[]): string {
-  const raw = ticketItems[0]?.timestamp;
-  if (!raw) return new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+function uniqueTicketTypes(ticketItems: TicketItemRow[]): string {
+  const counts = ticketItems.reduce<Record<string, number>>((acc, ticket) => {
+    const type = ticket.ticketType || 'YEP Ticket';
+    acc[type] = (acc[type] || 0) + 1;
+    return acc;
+  }, {});
 
-  const parsed = new Date(raw);
-  if (!Number.isNaN(parsed.getTime())) {
-    return parsed.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
-  }
+  return Object.entries(counts)
+    .map(([type, count]) => `${count} x ${type}`)
+    .join(', ');
+}
 
-  const [datePart] = raw.split(' ');
-  const [day, month, year] = datePart.split('/');
-  const fallback = new Date(Number(year), Number(month) - 1, Number(day));
-  if (!Number.isNaN(fallback.getTime())) {
-    return fallback.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
-  }
+function getBuyerPhone(input: TicketEmailInput): string {
+  return input.ticketItems[0]?.phone || '';
+}
 
-  return raw;
+function getPurchaseInfo(input: TicketEmailInput): string {
+  const quantity = input.ticketItems.length;
+  const typeText = uniqueTicketTypes(input.ticketItems);
+  return `${quantity} ticket${quantity > 1 ? 's' : ''} - ${typeText} - ${formatVND(input.totalAmount)}`;
 }
 
 export function getTicketQrUrl(ticketCode: string): string {
@@ -72,64 +75,60 @@ export function getTicketQrUrl(ticketCode: string): string {
 }
 
 export function getTicketCheckinUrl(ticketCode: string): string {
-  const checkinUrl = `${getAppUrl()}/checkin-yep-2026?ticket=${encodeURIComponent(ticketCode)}`;
-  return checkinUrl;
+  return `${getAppUrl()}/checkin-yep-2026?ticket=${encodeURIComponent(ticketCode)}`;
 }
 
-export function buildTicketEmailHtml(input: TicketEmailInput): string {
-  const supportEmail = getSupportEmail();
-  const bannerUrl = `${getAppUrl()}/assets/yep/email-banner-kaleido.jpg`;
-  const orderDate = formatOrderDate(input.ticketItems);
-  const ticketCards = input.ticketItems.map((ticket, index) => {
-    const checkinUrl = getTicketCheckinUrl(ticket.ticketCode);
+function buildTicketCards(input: TicketEmailInput): string {
+  return input.ticketItems.map((ticket, index) => {
     const qrUrl = getTicketQrUrl(ticket.ticketCode);
+    const checkinUrl = getTicketCheckinUrl(ticket.ticketCode);
+    const title = input.ticketItems.length > 1 ? `Ticket ${index + 1}` : 'Your Ticket';
+
     return `
-      <div style="background:#ffffff;border:1px solid #d8c7ff;border-radius:14px;margin:18px 0;padding:24px;box-shadow:0 8px 26px rgba(78,36,155,0.12);">
-        <p style="margin:0 0 18px;color:#4f22a8;font-size:14px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;">Your Ticket ${input.ticketItems.length > 1 ? `#${index + 1}` : ''}</p>
+      <div style="margin:18px 0 0;border:1px solid #ded7ee;border-radius:18px;overflow:hidden;background:#ffffff;box-shadow:0 14px 34px rgba(39,24,82,0.08);">
+        <div style="padding:18px 22px;background:#faf8ff;border-bottom:1px solid #e8e1f5;">
+          <p style="margin:0;color:#4f2aa7;font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:.1em;">${escapeHtml(title)}</p>
+          <p style="margin:6px 0 0;color:#111827;font-size:20px;line-height:1.25;font-weight:800;">YEP'26: The Kaleido Soul</p>
+        </div>
         <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse;">
           <tr>
-            <td class="ticket-main" style="vertical-align:top;padding:0 22px 0 0;">
-              <div style="background:#f7f2ff;border:1px solid #eadfff;border-radius:12px;padding:16px;margin-bottom:14px;">
-                <p style="margin:0 0 6px;color:#6b42c2;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;">Ticket Code</p>
-                <p class="ticket-code" style="margin:0;color:#171329;font-size:28px;line-height:1.1;font-weight:900;letter-spacing:.02em;">${escapeHtml(ticket.ticketCode)}</p>
-              </div>
-              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse;color:#2a2540;font-size:15px;">
+            <td class="ticket-info" style="padding:22px;vertical-align:top;">
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse;color:#1f2937;font-size:14px;line-height:1.55;">
                 <tr>
-                  <td style="padding:10px 0;border-bottom:1px solid #eee6fb;color:#5b2bb8;font-weight:700;">Ticket Type</td>
-                  <td style="padding:10px 0;border-bottom:1px solid #eee6fb;text-align:right;">${escapeHtml(ticket.ticketType)}</td>
+                  <td style="padding:7px 0;color:#6b7280;">Ticket code</td>
+                  <td style="padding:7px 0;text-align:right;font-weight:800;color:#111827;">${escapeHtml(ticket.ticketCode)}</td>
                 </tr>
                 <tr>
-                  <td style="padding:10px 0;border-bottom:1px solid #eee6fb;color:#5b2bb8;font-weight:700;">Ticket ID</td>
-                  <td style="padding:10px 0;border-bottom:1px solid #eee6fb;text-align:right;">${escapeHtml(input.orderId)}</td>
+                  <td style="padding:7px 0;color:#6b7280;">Ticket type</td>
+                  <td style="padding:7px 0;text-align:right;font-weight:700;color:#111827;">${escapeHtml(ticket.ticketType)}</td>
                 </tr>
                 <tr>
-                  <td style="padding:10px 0;border-bottom:1px solid #eee6fb;color:#5b2bb8;font-weight:700;">Order Date</td>
-                  <td style="padding:10px 0;border-bottom:1px solid #eee6fb;text-align:right;">${escapeHtml(orderDate)}</td>
+                  <td style="padding:7px 0;color:#6b7280;">Order ID</td>
+                  <td style="padding:7px 0;text-align:right;font-weight:700;color:#111827;">${escapeHtml(input.orderId)}</td>
                 </tr>
                 <tr>
-                  <td style="padding:10px 0;color:#5b2bb8;font-weight:700;">Quantity</td>
-                  <td style="padding:10px 0;text-align:right;">${escapeHtml(ticket.ticketNo)} / ${escapeHtml(ticket.orderTicketQuantity || input.ticketItems.length)}</td>
+                  <td style="padding:7px 0;color:#6b7280;">Ticket no.</td>
+                  <td style="padding:7px 0;text-align:right;font-weight:700;color:#111827;">${escapeHtml(ticket.ticketNo)} / ${escapeHtml(ticket.orderTicketQuantity || input.ticketItems.length)}</td>
                 </tr>
               </table>
             </td>
-            <td class="ticket-qr" width="236" style="vertical-align:top;text-align:center;padding:0;">
-              <div style="background:#ffffff;border:1px solid #eee6fb;border-radius:14px;padding:14px;display:inline-block;">
-                <img src="${escapeHtml(qrUrl)}" width="188" height="188" alt="Check-in QR code for ${escapeHtml(ticket.ticketCode)}" style="display:block;width:188px;height:188px;border:0;margin:0 auto;" />
+            <td class="ticket-qr" width="230" style="padding:22px;text-align:center;vertical-align:top;">
+              <div style="display:inline-block;padding:12px;border:1px solid #e5e7eb;border-radius:16px;background:#ffffff;">
+                <img src="${escapeHtml(qrUrl)}" width="174" height="174" alt="Check-in QR code for ${escapeHtml(ticket.ticketCode)}" style="display:block;width:174px;height:174px;border:0;margin:0 auto;" />
               </div>
-              <a href="${escapeHtml(checkinUrl)}" style="display:block;background:#5b2bb8;color:#ffffff;text-decoration:none;border-radius:8px;padding:12px 16px;margin:10px auto 8px;font-size:14px;font-weight:800;max-width:190px;">Open Ticket QR</a>
-              <p style="margin:0;color:#655d78;font-size:12px;line-height:1.5;">Show this QR code at the check-in gate.</p>
+              <a href="${escapeHtml(checkinUrl)}" style="display:block;margin:12px auto 0;padding:11px 14px;max-width:170px;border-radius:999px;background:#4f2aa7;color:#ffffff;text-decoration:none;font-size:13px;font-weight:800;">Open Ticket QR</a>
             </td>
           </tr>
         </table>
       </div>
     `;
   }).join('');
+}
 
-  const paymentNote = input.paymentMethod === 'bank'
-    ? 'Your order has been recorded. Please complete the bank transfer according to the organizer instructions.'
-    : input.paymentMethod === 'payos'
-    ? 'Your order has been recorded and paid via PayOS. Thank you for your payment!'
-    : 'Your order has been recorded successfully.';
+export function buildTicketEmailHtml(input: TicketEmailInput): string {
+  const supportEmail = getSupportEmail();
+  const phone = getBuyerPhone(input);
+  const purchaseInfo = getPurchaseInfo(input);
 
   return `<!doctype html>
     <html>
@@ -138,95 +137,78 @@ export function buildTicketEmailHtml(input: TicketEmailInput): string {
         <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
         <style>
           @media only screen and (max-width: 640px) {
-            .email-shell { padding: 16px 8px !important; }
-            .email-content { padding: 24px 18px 8px !important; }
-            .brand-cell, .brand-right, .ticket-main, .ticket-qr, .footer-col {
+            .email-shell { padding: 12px !important; }
+            .email-card { border-radius: 14px !important; }
+            .email-body { padding: 24px 18px !important; }
+            .ticket-info, .ticket-qr {
               display: block !important;
               width: 100% !important;
               box-sizing: border-box !important;
             }
-            .email-banner {
-              height: auto !important;
-            }
-            .brand-right, .footer-col {
-              text-align: left !important;
-              padding-top: 10px !important;
-            }
-            .ticket-main {
-              padding-right: 0 !important;
-            }
-            .ticket-qr {
-              padding-top: 18px !important;
-              text-align: center !important;
-            }
-            .ticket-code {
-              font-size: 24px !important;
-              word-break: break-word !important;
-            }
+            .ticket-info { padding-bottom: 6px !important; }
+            .ticket-qr { padding-top: 8px !important; }
           }
         </style>
       </head>
-      <body style="margin:0;padding:0;background:#f6f4fb;color:#171329;font-family:Arial,Helvetica,sans-serif;">
-        <div style="display:none;max-height:0;overflow:hidden;opacity:0;">Your YEP'26 ticket and check-in QR code are ready.</div>
-        <div class="email-shell" style="padding:28px 14px;background:#f6f4fb;">
-          <div style="max-width:760px;margin:0 auto;background:#ffffff;border:1px solid #e3dcf1;border-radius:14px;overflow:hidden;">
-            <img class="email-banner" src="${escapeHtml(bannerUrl)}" width="760" alt="YEP'26 The Kaleido Soul" style="display:block;width:100%;max-width:760px;height:auto;border:0;" />
+      <body style="margin:0;padding:0;background:#f5f5f7;color:#111827;font-family:Arial,Helvetica,sans-serif;">
+        <div style="display:none;max-height:0;overflow:hidden;opacity:0;">Your YEP'26 ticket QR code is ready.</div>
+        <div class="email-shell" style="padding:28px 14px;background:#f5f5f7;">
+          <div class="email-card" style="max-width:760px;margin:0 auto;background:#ffffff;border:1px solid #e5e7eb;border-radius:18px;overflow:hidden;">
+            <div style="padding:22px 28px;border-bottom:1px solid #ececf0;background:#ffffff;">
+              <p style="margin:0;color:#4f2aa7;font-size:24px;line-height:1.1;font-weight:900;">YEP'26</p>
+              <p style="margin:5px 0 0;color:#4b5563;font-size:14px;line-height:1.45;">The Kaleido Soul by VinUni Student Council</p>
+            </div>
 
-            <div class="email-content" style="padding:28px 30px 8px;">
-              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse;border-bottom:2px solid #5b2bb8;padding-bottom:20px;margin-bottom:26px;">
-                <tr>
-                  <td class="brand-cell" style="padding:0 0 20px;">
-                    <p style="margin:0;color:#4f22a8;font-size:30px;line-height:1.1;font-weight:900;">YEP'26</p>
-                    <p style="margin:4px 0 0;color:#6b42c2;font-size:14px;line-height:1.5;">The Kaleido Soul<br />Born to Bloom Different</p>
-                  </td>
-                  <td class="brand-right" style="padding:0 0 20px;text-align:right;color:#4f22a8;font-size:15px;font-weight:800;">VinUni Student Council</td>
-                </tr>
-              </table>
+            <div class="email-body" style="padding:30px 34px 34px;">
+              <p style="margin:0 0 20px;color:#111827;font-size:18px;line-height:1.6;">Dear ${escapeHtml(input.buyerName)},</p>
 
-              <h1 style="margin:0 0 18px;color:#171329;font-size:28px;line-height:1.25;">Hi ${escapeHtml(input.buyerName)},</h1>
-              <p style="margin:0 0 14px;color:#2a2540;font-size:16px;line-height:1.7;">Thank you for registering for YEP'26.</p>
-              <p style="margin:0 0 24px;color:#2a2540;font-size:16px;line-height:1.7;">${paymentNote}</p>
+              <p style="margin:0 0 16px;color:#1f2937;font-size:15px;line-height:1.75;">The YEP '26 Organizing Team is delighted to confirm your ticket purchase at <strong>YEP '26: The Kaleido Soul</strong>.</p>
+              <p style="margin:0 0 22px;color:#1f2937;font-size:15px;line-height:1.75;">Your ticket QR code has been attached to this email. Please also review your ticket information below:</p>
 
-              <div style="background:#fbf8ff;border:1px solid #d8c7ff;border-radius:12px;padding:20px 22px;margin:0 0 24px;">
-                <p style="margin:0 0 16px;color:#4f22a8;font-size:14px;font-weight:900;text-transform:uppercase;letter-spacing:.08em;">Event Details</p>
-                <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse;color:#2a2540;font-size:15px;line-height:1.6;">
-                  <tr><td width="110" style="padding:6px 0;color:#5b2bb8;font-weight:700;">Date</td><td style="padding:6px 0;">June 27, 2026</td></tr>
-                  <tr><td width="110" style="padding:6px 0;color:#5b2bb8;font-weight:700;">Venue</td><td style="padding:6px 0;">Amphitheatre, VinUni Campus</td></tr>
-                  <tr><td width="110" style="padding:6px 0;color:#5b2bb8;font-weight:700;">Time</td><td style="padding:6px 0;">17:00 - 21:45</td></tr>
-                  <tr><td width="110" style="padding:6px 0;color:#5b2bb8;font-weight:700;">Order</td><td style="padding:6px 0;">${escapeHtml(input.orderId)} · ${formatVND(input.totalAmount)}</td></tr>
+              <div style="margin:0 0 24px;padding:18px 20px;border:1px solid #e5e7eb;border-radius:14px;background:#fbfbfc;">
+                <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse;color:#1f2937;font-size:14px;line-height:1.55;">
+                  <tr><td width="120" style="padding:7px 0;color:#6b7280;">Full name</td><td style="padding:7px 0;font-weight:700;">${escapeHtml(input.buyerName)}</td></tr>
+                  <tr><td width="120" style="padding:7px 0;color:#6b7280;">Phone number</td><td style="padding:7px 0;font-weight:700;">${escapeHtml(phone || 'N/A')}</td></tr>
+                  <tr><td width="120" style="padding:7px 0;color:#6b7280;">Purchase info</td><td style="padding:7px 0;font-weight:700;">${escapeHtml(purchaseInfo)}</td></tr>
                 </table>
               </div>
 
-              ${ticketCards}
+              ${buildTicketCards(input)}
 
-              <div style="background:#f7f2ff;border-radius:12px;padding:20px 22px;margin:26px 0 26px;color:#2a2540;">
-                <p style="margin:0 0 12px;color:#4f22a8;font-size:14px;font-weight:900;text-transform:uppercase;letter-spacing:.08em;">Important Notes</p>
-                <ul style="margin:0;padding-left:20px;font-size:14px;line-height:1.8;">
-                  <li>Please present the QR code above at the check-in gate.</li>
-                  <li>Each QR code can only be scanned once.</li>
-                  <li>If you purchased multiple tickets, each ticket has a unique QR code.</li>
-                  <li>Keep this email safe. Do not share your QR code with others.</li>
-                </ul>
+              <p style="margin:24px 0 16px;color:#1f2937;font-size:15px;line-height:1.75;">If any of the information above is incorrect, please contact us via email or our fanpage for assistance.</p>
+              <p style="margin:0 0 12px;color:#1f2937;font-size:15px;line-height:1.75;">Before <strong>YEP'26: The Kaleido Soul</strong>, we would like to remind you of the following:</p>
+
+              <div style="margin:0 0 22px;padding:18px 20px;border-left:4px solid #4f2aa7;background:#faf8ff;border-radius:12px;color:#1f2937;font-size:14px;line-height:1.75;">
+                <p style="margin:0 0 10px;font-weight:800;">Please arrive on time for the best experience:</p>
+                <p style="margin:0;"><strong>Date:</strong> Thursday, 25/6/2026</p>
+                <p style="margin:0;"><strong>Check-in time:</strong> From 17:00 to 19:00</p>
+                <p style="margin:0;"><strong>Location:</strong> Amphitheatre, VinUniversity, Vinhomes Ocean Park, Hà Nội</p>
               </div>
 
-              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse;border-top:1px solid #d8c7ff;padding-top:20px;">
-                <tr>
-                  <td class="footer-col" style="padding:20px 0;color:#2a2540;font-size:14px;line-height:1.7;">
-                    <strong style="color:#4f22a8;">Need help?</strong><br />
-                    Contact us at <a href="mailto:${escapeHtml(supportEmail)}" style="color:#5b2bb8;text-decoration:none;font-weight:700;">${escapeHtml(supportEmail)}</a><br />
-                    VinUni Student Council
-                  </td>
-                  <td class="footer-col" style="padding:20px 0;text-align:right;color:#655d78;font-size:13px;line-height:1.7;">
-                    YEP'26: The Kaleido Soul<br />
-                    Amphitheatre, VinUni Campus
-                  </td>
-                </tr>
-              </table>
+              <ul style="margin:0 0 22px;padding-left:20px;color:#1f2937;font-size:14px;line-height:1.8;">
+                <li>Please bring your VinUni student ID for check-in. If you are not a student of VinUniversity, please present your National ID or Passport.</li>
+                <li>This email serves as your ticket. Please present the QR code attached below in this email at the check-in counter.</li>
+                <li>Tickets are non-refundable and non-transferrable after purchase.</li>
+                <li>After purchasing any merchandise, you can collect it at the SC booth starting from 15/06 or at the booth during the event.</li>
+                <li>Dresscode: Gardenia summer - colorful, expressive, and radiant. Be ready for photos!</li>
+              </ul>
+
+              <p style="margin:0 0 16px;color:#1f2937;font-size:15px;line-height:1.75;">Please follow our fanpage: <strong>VinUni Student Council</strong> to stay updated with the latest announcement.</p>
+              <p style="margin:0 0 22px;color:#1f2937;font-size:15px;line-height:1.75;">We hope you will have unforgettable memories in <strong>YEP '26: The Kaleido Soul</strong>!</p>
+
+              <p style="margin:0 0 22px;color:#1f2937;font-size:15px;line-height:1.75;">Best regards,<br />VinUni Student Council and the YEP '26 Organizing Team</p>
+
+              <div style="margin-top:24px;padding-top:18px;border-top:1px solid #e5e7eb;color:#4b5563;font-size:13px;line-height:1.7;">
+                <p style="margin:0 0 6px;font-weight:800;color:#111827;">Contact</p>
+                <p style="margin:0;">Page: VinUni Student Council</p>
+                <p style="margin:0;">Mail: <a href="mailto:${escapeHtml(supportEmail)}" style="color:#4f2aa7;text-decoration:none;font-weight:700;">${escapeHtml(supportEmail)}</a></p>
+                <p style="margin:0;">Website: <a href="${escapeHtml(getAppUrl())}" style="color:#4f2aa7;text-decoration:none;font-weight:700;">${escapeHtml(getAppUrl())}</a></p>
+                <p style="margin:0;">Hotline: 0377488195 (Mr. Trường Trần)</p>
+              </div>
             </div>
 
-            <div style="background:#f2ebff;padding:24px 30px;text-align:center;color:#655d78;font-size:12px;line-height:1.7;">
-              This is an automated transactional email for your YEP'26 ticket purchase.<br />
-              © 2026 VinUni Student Council. All rights reserved.
+            <div style="background:#f9fafb;padding:16px 28px;text-align:center;color:#6b7280;font-size:12px;line-height:1.6;border-top:1px solid #ececf0;">
+              This is an automated transactional email for your YEP'26 ticket purchase.
             </div>
           </div>
         </div>
@@ -237,29 +219,51 @@ export function buildTicketEmailHtml(input: TicketEmailInput): string {
 
 export function buildTicketEmailText(input: TicketEmailInput): string {
   const ticketLines = input.ticketItems.map((ticket, index) => [
-    `Ticket ${index + 1}: ${ticket.ticketCode}`,
-    `Type: ${ticket.ticketType}`,
+    `Ticket ${index + 1}:`,
+    `Ticket code: ${ticket.ticketCode}`,
+    `Ticket type: ${ticket.ticketType}`,
     `Open Ticket QR: ${getTicketCheckinUrl(ticket.ticketCode)}`,
   ].join('\n')).join('\n\n');
 
   return [
-    `Hi ${input.buyerName},`,
+    `Dear ${input.buyerName},`,
     '',
-    "Thank you for registering for YEP'26: The Kaleido Soul.",
-    `Order ID: ${input.orderId}`,
-    `Total: ${formatVND(input.totalAmount)}`,
+    "The YEP '26 Organizing Team is delighted to confirm your ticket purchase at YEP '26: The Kaleido Soul.",
     '',
-    'Event details:',
-    'Date: June 27, 2026',
-    'Venue: Amphitheatre, VinUni Campus',
-    'Time: 17:00 - 21:45',
+    'Your ticket QR code has been attached to this email. Please also review your ticket information below:',
+    '',
+    `Full name: ${input.buyerName}`,
+    `Phone number: ${getBuyerPhone(input) || 'N/A'}`,
+    `Purchase info: ${getPurchaseInfo(input)}`,
     '',
     ticketLines,
     '',
-    'Please present your QR code at the check-in gate. Each QR code can only be scanned once.',
+    'If any of the information above is incorrect, please contact us via email or our fanpage for assistance.',
     '',
-    `Need help? Contact ${getSupportEmail()}`,
-    'This is an automated transactional email from VinUni Student Council.',
+    "Before YEP'26: The Kaleido Soul, we would like to remind you of the following:",
+    '',
+    'Please arrive on time for the best experience:',
+    'Date: Thursday, 25/6/2026',
+    'Check-in time: From 17:00 to 19:00',
+    'Location: Amphitheatre, VinUniversity, Vinhomes Ocean Park, Hà Nội',
+    'Please bring your VinUni student ID for check-in. If you are not a student of VinUniversity, please present your National ID or Passport.',
+    'This email serves as your ticket. Please present the QR code attached below in this email at the check-in counter.',
+    'Tickets are non-refundable and non-transferrable after purchase.',
+    'After purchasing any merchandise, you can collect it at the SC booth starting from 15/06 or at the booth during the event.',
+    'Dresscode: Gardenia summer - colorful, expressive, and radiant. Be ready for photos!',
+    '',
+    'Please follow our fanpage: VinUni Student Council to stay updated with the latest announcement.',
+    '',
+    "We hope you will have unforgettable memories in YEP '26: The Kaleido Soul!",
+    '',
+    'Best regards,',
+    "VinUni Student Council and the YEP '26 Organizing Team",
+    '',
+    'Contact:',
+    'Page: VinUni Student Council',
+    `Mail: ${getSupportEmail()}`,
+    `Website: ${getAppUrl()}`,
+    'Hotline: 0377488195 (Mr. Trường Trần)',
   ].join('\n');
 }
 
@@ -298,8 +302,7 @@ export async function sendTicketEmail(input: TicketEmailInput): Promise<EmailRes
 
     const responseText = await res.text();
     if (!res.ok) {
-      const text = responseText;
-      return { configured: true, sent: false, provider: 'brevo', error: text };
+      return { configured: true, sent: false, provider: 'brevo', error: responseText };
     }
 
     const data = responseText ? JSON.parse(responseText) : {};
