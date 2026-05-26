@@ -111,7 +111,7 @@ export function Tickets() {
     <div className="w-full max-w-7xl mx-auto px-6 md:px-12 py-12 md:py-16">
       <div className="relative mb-8 md:mb-12 border-4 border-primary overflow-hidden bg-primary text-white p-6 md:p-10 min-h-[320px] flex flex-col justify-end">
         <img
-          src={yepAsset('background-kaleido.png')}
+          src={yepAsset('background-kaleido.webp')}
           alt=""
           aria-hidden="true"
           className="absolute inset-0 h-full w-full object-cover opacity-60"

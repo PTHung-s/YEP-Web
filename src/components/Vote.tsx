@@ -133,7 +133,7 @@ export function Vote() {
       <section className="mb-12 md:mb-16 relative">
         <div className="border-4 border-primary p-6 md:p-10 bg-primary text-white neo-shadow relative overflow-hidden min-h-[360px] flex items-end">
           <img
-            src={yepAsset('background-stage-light.png')}
+            src={yepAsset('background-stage-light.webp')}
             alt=""
             aria-hidden="true"
             className="absolute inset-0 h-full w-full object-cover opacity-70"

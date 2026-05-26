@@ -32,12 +32,12 @@ export function Home() {
     <div className="w-full">
       <section className="relative min-h-[calc(100vh-4rem)] md:min-h-[calc(100vh-5rem)] flex items-end overflow-hidden bg-primary text-white border-b-2 border-primary">
         <img
-          src={yepAsset('hero-kaleido-sc.png')}
+          src={yepAsset('hero-kaleido-sc.webp')}
           alt="YEP'26 The Kaleido Soul"
           className="absolute inset-0 hidden md:block w-full h-full object-cover object-top"
         />
         <img
-          src={yepAsset('background-stage-light.png')}
+          src={yepAsset('background-stage-light.webp')}
           alt=""
           aria-hidden="true"
           className="absolute inset-0 block md:hidden w-full h-full object-cover object-center"
@@ -115,7 +115,7 @@ export function Home() {
 
           <div className="relative min-h-[320px] border-2 border-primary overflow-hidden neo-shadow">
             <img
-              src={yepAsset('header-kaleido-wide.png')}
+              src={yepAsset('header-kaleido-wide.webp')}
               alt="The Kaleido Soul visual"
               className="absolute inset-0 h-full w-full object-cover object-center"
             />
@@ -194,7 +194,7 @@ export function Home() {
 
       <section className="relative py-20 md:py-24 px-6 md:px-12 bg-primary text-white border-t-2 border-primary text-center overflow-hidden w-full">
         <img
-          src={yepAsset('background-stage-light.png')}
+          src={yepAsset('background-stage-light.webp')}
           alt=""
           aria-hidden="true"
           className="absolute inset-0 h-full w-full object-cover opacity-55"

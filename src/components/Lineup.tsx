@@ -76,7 +76,7 @@ export function Lineup() {
       <section className="mb-12 md:mb-16 relative">
         <div className="border-4 border-primary p-8 md:p-14 bg-primary text-white neo-shadow relative overflow-hidden min-h-[420px] md:min-h-[520px] flex items-center">
           <img
-            src={yepAsset('background-stage-light.png')}
+            src={yepAsset('background-stage-light.webp')}
             alt=""
             aria-hidden="true"
             className="absolute inset-0 h-full w-full object-cover opacity-50"
