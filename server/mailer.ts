@@ -76,7 +76,7 @@ export function getTicketCheckinUrl(ticketCode: string): string {
   return checkinUrl;
 }
 
-function buildTicketEmailHtml(input: TicketEmailInput): string {
+export function buildTicketEmailHtml(input: TicketEmailInput): string {
   const supportEmail = getSupportEmail();
   const bannerUrl = `${getAppUrl()}/assets/yep/email-banner-kaleido.jpg`;
   const orderDate = formatOrderDate(input.ticketItems);
@@ -88,10 +88,10 @@ function buildTicketEmailHtml(input: TicketEmailInput): string {
         <p style="margin:0 0 18px;color:#4f22a8;font-size:14px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;">Your Ticket ${input.ticketItems.length > 1 ? `#${index + 1}` : ''}</p>
         <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse;">
           <tr>
-            <td style="vertical-align:top;padding:0 22px 0 0;">
+            <td class="ticket-main" style="vertical-align:top;padding:0 22px 0 0;">
               <div style="background:#f7f2ff;border:1px solid #eadfff;border-radius:12px;padding:16px;margin-bottom:14px;">
                 <p style="margin:0 0 6px;color:#6b42c2;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;">Ticket Code</p>
-                <p style="margin:0;color:#171329;font-size:28px;line-height:1.1;font-weight:900;letter-spacing:.02em;">${escapeHtml(ticket.ticketCode)}</p>
+                <p class="ticket-code" style="margin:0;color:#171329;font-size:28px;line-height:1.1;font-weight:900;letter-spacing:.02em;">${escapeHtml(ticket.ticketCode)}</p>
               </div>
               <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse;color:#2a2540;font-size:15px;">
                 <tr>
@@ -112,7 +112,7 @@ function buildTicketEmailHtml(input: TicketEmailInput): string {
                 </tr>
               </table>
             </td>
-            <td width="236" style="vertical-align:top;text-align:center;padding:0;">
+            <td class="ticket-qr" width="236" style="vertical-align:top;text-align:center;padding:0;">
               <div style="background:#ffffff;border:1px solid #eee6fb;border-radius:14px;padding:14px;display:inline-block;">
                 <img src="${escapeHtml(qrUrl)}" width="188" height="188" alt="Check-in QR code for ${escapeHtml(ticket.ticketCode)}" style="display:block;width:188px;height:188px;border:0;margin:0 auto;" />
               </div>
@@ -133,20 +133,53 @@ function buildTicketEmailHtml(input: TicketEmailInput): string {
 
   return `<!doctype html>
     <html>
+      <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+        <style>
+          @media only screen and (max-width: 640px) {
+            .email-shell { padding: 16px 8px !important; }
+            .email-content { padding: 24px 18px 8px !important; }
+            .brand-cell, .brand-right, .ticket-main, .ticket-qr, .footer-col {
+              display: block !important;
+              width: 100% !important;
+              box-sizing: border-box !important;
+            }
+            .email-banner {
+              height: auto !important;
+            }
+            .brand-right, .footer-col {
+              text-align: left !important;
+              padding-top: 10px !important;
+            }
+            .ticket-main {
+              padding-right: 0 !important;
+            }
+            .ticket-qr {
+              padding-top: 18px !important;
+              text-align: center !important;
+            }
+            .ticket-code {
+              font-size: 24px !important;
+              word-break: break-word !important;
+            }
+          }
+        </style>
+      </head>
       <body style="margin:0;padding:0;background:#f6f4fb;color:#171329;font-family:Arial,Helvetica,sans-serif;">
         <div style="display:none;max-height:0;overflow:hidden;opacity:0;">Your YEP'26 ticket and check-in QR code are ready.</div>
-        <div style="padding:28px 14px;background:#f6f4fb;">
+        <div class="email-shell" style="padding:28px 14px;background:#f6f4fb;">
           <div style="max-width:760px;margin:0 auto;background:#ffffff;border:1px solid #e3dcf1;border-radius:14px;overflow:hidden;">
-            <img src="${escapeHtml(bannerUrl)}" width="760" alt="YEP'26 The Kaleido Soul" style="display:block;width:100%;max-width:760px;height:auto;border:0;" />
+            <img class="email-banner" src="${escapeHtml(bannerUrl)}" width="760" alt="YEP'26 The Kaleido Soul" style="display:block;width:100%;max-width:760px;height:auto;border:0;" />
 
-            <div style="padding:28px 30px 8px;">
+            <div class="email-content" style="padding:28px 30px 8px;">
               <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse;border-bottom:2px solid #5b2bb8;padding-bottom:20px;margin-bottom:26px;">
                 <tr>
-                  <td style="padding:0 0 20px;">
+                  <td class="brand-cell" style="padding:0 0 20px;">
                     <p style="margin:0;color:#4f22a8;font-size:30px;line-height:1.1;font-weight:900;">YEP'26</p>
                     <p style="margin:4px 0 0;color:#6b42c2;font-size:14px;line-height:1.5;">The Kaleido Soul<br />Born to Bloom Different</p>
                   </td>
-                  <td style="padding:0 0 20px;text-align:right;color:#4f22a8;font-size:15px;font-weight:800;">VinUni Student Council</td>
+                  <td class="brand-right" style="padding:0 0 20px;text-align:right;color:#4f22a8;font-size:15px;font-weight:800;">VinUni Student Council</td>
                 </tr>
               </table>
 
@@ -178,12 +211,12 @@ function buildTicketEmailHtml(input: TicketEmailInput): string {
 
               <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse;border-top:1px solid #d8c7ff;padding-top:20px;">
                 <tr>
-                  <td style="padding:20px 0;color:#2a2540;font-size:14px;line-height:1.7;">
+                  <td class="footer-col" style="padding:20px 0;color:#2a2540;font-size:14px;line-height:1.7;">
                     <strong style="color:#4f22a8;">Need help?</strong><br />
                     Contact us at <a href="mailto:${escapeHtml(supportEmail)}" style="color:#5b2bb8;text-decoration:none;font-weight:700;">${escapeHtml(supportEmail)}</a><br />
                     VinUni Student Council
                   </td>
-                  <td style="padding:20px 0;text-align:right;color:#655d78;font-size:13px;line-height:1.7;">
+                  <td class="footer-col" style="padding:20px 0;text-align:right;color:#655d78;font-size:13px;line-height:1.7;">
                     YEP'26: The Kaleido Soul<br />
                     Amphitheatre, VinUni Campus
                   </td>
@@ -202,7 +235,7 @@ function buildTicketEmailHtml(input: TicketEmailInput): string {
   `;
 }
 
-function buildTicketEmailText(input: TicketEmailInput): string {
+export function buildTicketEmailText(input: TicketEmailInput): string {
   const ticketLines = input.ticketItems.map((ticket, index) => [
     `Ticket ${index + 1}: ${ticket.ticketCode}`,
     `Type: ${ticket.ticketType}`,
