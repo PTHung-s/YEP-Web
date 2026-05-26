@@ -354,15 +354,20 @@ export function Tickets() {
                       />
                     </div>
 
-                    <label className="flex items-center gap-3 border-2 border-primary p-3 bg-surface">
+                    <label className="flex items-start gap-3 border-2 border-primary p-3 bg-surface">
                       <input
                         type="checkbox"
                         checked={state.upcomingStudent}
                         onChange={e => dispatch({ type: 'SET_UPCOMING_STUDENT', payload: e.target.checked })}
-                        className="h-5 w-5 accent-primary"
+                        className="mt-0.5 h-5 w-5 shrink-0 accent-primary"
                       />
-                      <span className="font-display text-xs md:text-sm font-black uppercase tracking-widest text-on-surface-variant">
-                        Upcoming student
+                      <span>
+                        <span className="block font-display text-xs md:text-sm font-black uppercase tracking-widest text-on-surface-variant">
+                          Upcoming student
+                        </span>
+                        <span className="mt-1 block font-body text-[11px] md:text-xs font-bold leading-relaxed text-on-surface-variant">
+                          Cohort 7 students who have received an offer can register to receive merch.
+                        </span>
                       </span>
                     </label>
 
@@ -377,7 +382,7 @@ export function Tickets() {
                           className="w-full bg-white text-background border-2 border-primary py-3 px-4 font-display text-lg focus:outline-none focus:border-secondary transition-colors placeholder-primary/30 font-bold"
                         />
                         <p className="text-on-surface-variant font-display text-xs font-bold uppercase tracking-wider">
-                          Mang theo thư trúng tuyển để nhận merch vào hôm D-Day.
+                          Please bring your offer letter to receive merch on D-Day.
                         </p>
                       </div>
                     )}
@@ -470,17 +475,17 @@ export function Tickets() {
                     <p className="font-display text-3xl font-black tracking-tighter">{formatVND(ticketPrice)}</p>
                     <p className="font-body text-sm text-on-surface-variant font-medium mt-1">per ticket</p>
                   </div>
-                  <div className="flex items-center border-4 border-primary bg-background">
+                  <div className="grid w-full max-w-[260px] grid-cols-3 border-4 border-primary bg-background md:w-auto">
                     <button
                       onClick={() => dispatch({ type: 'SET_TICKET_QUANTITY', payload: state.ticketQuantity - 1 })}
-                      className="px-4 py-3 hover:bg-primary-container transition-colors border-r-4 border-primary font-display font-black text-xl"
+                      className="h-12 w-full hover:bg-primary-container transition-colors border-r-4 border-primary font-display font-black text-lg md:h-14 md:px-4 md:text-xl"
                     >
                       -
                     </button>
-                    <span className="px-6 py-3 font-display font-black text-xl min-w-[60px] text-center">{state.ticketQuantity}</span>
+                    <span className="flex h-12 items-center justify-center px-3 font-display font-black text-lg md:h-14 md:min-w-[60px] md:px-6 md:text-xl">{state.ticketQuantity}</span>
                     <button
                       onClick={() => dispatch({ type: 'SET_TICKET_QUANTITY', payload: state.ticketQuantity + 1 })}
-                      className="px-4 py-3 hover:bg-primary-container transition-colors border-l-4 border-primary font-display font-black text-xl"
+                      className="h-12 w-full hover:bg-primary-container transition-colors border-l-4 border-primary font-display font-black text-lg md:h-14 md:px-4 md:text-xl"
                     >
                       +
                     </button>
@@ -518,17 +523,17 @@ export function Tickets() {
                       <h5 className="font-display font-black uppercase text-lg tracking-tight">{item.name}</h5>
                       <p className="font-display text-xl font-black mt-1">{formatVND(item.price)}</p>
                     </div>
-                    <div className="flex items-center border-4 border-primary bg-background">
+                    <div className="grid w-full max-w-[220px] grid-cols-3 border-4 border-primary bg-background md:w-auto">
                       <button
                         onClick={() => dispatch({ type: 'SET_MERCH_QUANTITY', id: item.id, quantity: item.quantity - 1 })}
-                        className="px-3 py-2 hover:bg-primary-container transition-colors border-r-4 border-primary font-display font-black text-lg"
+                        className="h-11 w-full hover:bg-primary-container transition-colors border-r-4 border-primary font-display font-black text-base md:h-12 md:px-3 md:text-lg"
                       >
                         -
                       </button>
-                      <span className="px-5 py-2 font-display font-black text-lg min-w-[50px] text-center">{item.quantity}</span>
+                      <span className="flex h-11 items-center justify-center px-3 font-display font-black text-base md:h-12 md:min-w-[50px] md:px-5 md:text-lg">{item.quantity}</span>
                       <button
                         onClick={() => dispatch({ type: 'SET_MERCH_QUANTITY', id: item.id, quantity: item.quantity + 1 })}
-                        className="px-3 py-2 hover:bg-primary-container transition-colors border-l-4 border-primary font-display font-black text-lg"
+                        className="h-11 w-full hover:bg-primary-container transition-colors border-l-4 border-primary font-display font-black text-base md:h-12 md:px-3 md:text-lg"
                       >
                         +
                       </button>
@@ -540,21 +545,21 @@ export function Tickets() {
           )}
 
           {/* Navigation Buttons */}
-          <div className="flex justify-between items-center pt-4">
+          <div className="flex items-center justify-between gap-3 pt-4 sm:gap-4">
             {step > 1 ? (
               <button
                 onClick={prevStep}
-                className="flex items-center gap-2 bg-surface border-4 border-primary px-6 py-3 font-display font-black text-lg uppercase tracking-widest hover:bg-primary-container transition-colors"
+                className="flex min-w-0 flex-1 items-center justify-center gap-2 whitespace-nowrap bg-surface border-4 border-primary px-3 py-3 font-display font-black text-sm uppercase tracking-widest hover:bg-primary-container transition-colors sm:flex-none sm:px-6 sm:text-lg"
               >
-                <ArrowLeft className="w-5 h-5" />
+                <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5" />
                 BACK
               </button>
             ) : (
               <Link
                 to="/"
-                className="flex items-center gap-2 bg-surface border-4 border-primary px-6 py-3 font-display font-black text-lg uppercase tracking-widest hover:bg-primary-container transition-colors"
+                className="flex min-w-0 flex-1 items-center justify-center gap-2 whitespace-nowrap bg-surface border-4 border-primary px-3 py-3 font-display font-black text-sm uppercase tracking-widest hover:bg-primary-container transition-colors sm:flex-none sm:px-6 sm:text-lg"
               >
-                <ArrowLeft className="w-5 h-5" />
+                <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5" />
                 HOME
               </Link>
             )}
@@ -563,14 +568,14 @@ export function Tickets() {
               onClick={nextStep}
               disabled={(step === 1 && !canNextStep1) || (step === 2 && !canNextStep2) || (step === 3 && !canNextStep3)}
               className={cn(
-                'flex items-center gap-2 border-4 border-primary px-6 py-3 font-display font-black text-lg uppercase tracking-widest transition-all',
+                'flex min-w-0 flex-1 items-center justify-center gap-2 whitespace-nowrap border-4 border-primary px-3 py-3 font-display font-black text-sm uppercase tracking-widest transition-all sm:flex-none sm:px-6 sm:text-lg',
                 ((step === 1 && canNextStep1) || (step === 2 && canNextStep2) || (step === 3 && canNextStep3))
                   ? 'bg-primary text-white hover:bg-background hover:text-primary neo-shadow-sm active:translate-y-1 active:shadow-none'
                   : 'bg-surface-dim text-on-surface-variant cursor-not-allowed'
               )}
             >
               {step === 3 ? 'REVIEW ORDER' : 'NEXT STEP'}
-              <ArrowRight className="w-5 h-5" />
+              <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5" />
             </button>
           </div>
         </div>

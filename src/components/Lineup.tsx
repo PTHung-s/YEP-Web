@@ -7,47 +7,47 @@ import { cn } from './Layout';
 const artists = [
   {
     id: 1,
-    name: '52HZ',
+    name: 'MYSTERY ACT 01',
     genre: 'MYSTERY VOCALIST',
     time: 'TBA',
     stage: 'MAIN STAGE',
     description: 'This artist will be revealed soon. Read the clues and keep guessing.',
     img: 'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?auto=format&fit=crop&q=80&w=1200',
     revealed: false,
-    hintTags: ['52hz', '“Ngồi đợi biết bao mùa….”', 'Billie Eilish Việt Nam', 'Em Xinh Say Hi', 'not a pitbull'],
+    hintTags: ['“Ngồi đợi biết bao mùa...”', 'Billie Eilish Việt Nam', 'Em Xinh Say Hi', 'not a pitbull', 'alt-pop energy', 'soft whale frequency'],
   },
   {
     id: 2,
-    name: 'RIO',
+    name: 'MYSTERY ACT 02',
     genre: 'MYSTERY PERFORMER',
     time: 'TBA',
     stage: 'MAIN STAGE',
     description: 'This artist will be revealed soon. Read the clues and keep guessing.',
     img: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=1200',
     revealed: false,
-    hintTags: ['RIO', 'Cựu thành viên P336', 'Tốt nghiệp Ngôn ngữ Anh ĐHKHXH&NV', 'Đỗ Việt Tiến', 'T-up', 'Hoà âm phối khí trong 5 ngày'],
+    hintTags: ['Cựu thành viên P336', 'Tốt nghiệp Ngôn ngữ Anh ĐHKHXH&NV', 'Đỗ Việt Tiến', 'T-up', 'Hoà âm phối khí trong 5 ngày', 'boygroup roots'],
   },
   {
     id: 3,
-    name: 'HOÀNG TÔN',
+    name: 'MYSTERY ACT 03',
     genre: 'MYSTERY SINGER',
     time: 'TBA',
     stage: 'MAIN STAGE',
     description: 'This artist will be revealed soon. Read the clues and keep guessing.',
     img: 'https://images.unsplash.com/photo-1493225457224-eda0e6fdc758?auto=format&fit=crop&q=80&w=1200',
     revealed: false,
-    hintTags: ['Hoàng Tôn', 'Giọng hát Việt 2013', 'Em không quay về', 'Dành cho em', 'Sinh ra trong gia đình nghệ thuật', 'Giải Làn sóng xanh'],
+    hintTags: ['Giọng hát Việt 2013', 'Em không quay về', 'Dành cho em', 'Gia đình nghệ thuật', 'Giải Làn Sóng Xanh', 'R&B pop songwriter'],
   },
   {
     id: 4,
-    name: '2SPILLZ',
+    name: 'MYSTERY ACT 04',
     genre: 'MYSTERY PRODUCER',
     time: 'TBA',
     stage: 'MAIN STAGE',
     description: 'This artist will be revealed soon. Read the clues and keep guessing.',
     img: 'https://images.unsplash.com/photo-1510915361894-db8b60106cb1?auto=format&fit=crop&q=80&w=1200',
     revealed: false,
-    hintTags: ['2spillz', 'We go hard', '(Nhà sản xuất) Rap Việt', 'HIEUTHUHAI, tlinh, GREY D, Wren Evans', 'Dám rực rỡ'],
+    hintTags: ['We go hard', '(Nhà sản xuất) Rap Việt', 'Dám rực rỡ', 'HIEUTHUHAI', 'tlinh', 'GREY D', 'Wren Evans'],
   },
 ];
 
@@ -176,8 +176,17 @@ export function Lineup() {
                 This artist will be revealed soon. Stay tuned for the announcement.
               </p>
               <div className="mt-7 w-full max-w-xl overflow-hidden border-y-2 border-outline-variant bg-background/60 py-3">
-                <div className={cn('flex w-max gap-3 whitespace-nowrap', index % 2 === 0 ? 'animate-marquee' : 'animate-marquee2')}>
-                  {[...(artist.hintTags || []), ...(artist.hintTags || [])].map((hint, hintIndex) => (
+                <div
+                  className={cn(
+                    'flex w-max gap-3 whitespace-nowrap',
+                    index % 2 === 0 ? 'animate-marquee-seamless' : 'animate-marquee-seamless-reverse'
+                  )}
+                  style={{
+                    animationDuration: `${24 + index * 3}s`,
+                    animationDelay: `-${index * 4}s`,
+                  }}
+                >
+                  {[...(artist.hintTags || []), ...(artist.hintTags || []), ...(artist.hintTags || []), ...(artist.hintTags || [])].map((hint, hintIndex) => (
                     <span
                       key={`${artist.id}-${hintIndex}`}
                       className="rounded-full border border-tertiary/50 bg-tertiary/10 px-4 py-2 font-display text-xs font-black uppercase tracking-widest text-tertiary"

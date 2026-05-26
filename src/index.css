@@ -50,11 +50,25 @@
     0% { transform: translateX(100%); }
     100% { transform: translateX(0%); }
   }
+  @keyframes marquee-seamless {
+    0% { transform: translateX(0); }
+    100% { transform: translateX(-25%); }
+  }
+  @keyframes marquee-seamless-reverse {
+    0% { transform: translateX(-25%); }
+    100% { transform: translateX(0); }
+  }
   .animate-marquee {
     animation: marquee 25s linear infinite;
   }
   .animate-marquee2 {
     animation: marquee2 25s linear infinite;
+  }
+  .animate-marquee-seamless {
+    animation: marquee-seamless 26s linear infinite;
+  }
+  .animate-marquee-seamless-reverse {
+    animation: marquee-seamless-reverse 26s linear infinite;
   }
 }
 

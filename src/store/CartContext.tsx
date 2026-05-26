@@ -27,8 +27,8 @@ export interface CartState {
 }
 
 const INITIAL_MERCH: MerchItem[] = [
-  { id: 'rebels-tee', name: '"REBELS" OVERSIZED TEE', price: 200000, quantity: 0 },
-  { id: 'trucker-cap', name: 'VINUNI TRUCKER CAP', price: 150000, quantity: 0 },
+  { id: 'kaleido-lanyard-yoyo', name: 'COMBO LANYARD + YOYO KALEIDO', price: 69000, quantity: 0 },
+  { id: 'kaleido-badana', name: 'BADANA KALEIDO', price: 129000, quantity: 0 },
 ];
 
 const initialState: CartState = {
@@ -173,4 +173,3 @@ export function useCart() {
   if (!ctx) throw new Error('useCart must be used within CartProvider');
   return ctx;
 }
-

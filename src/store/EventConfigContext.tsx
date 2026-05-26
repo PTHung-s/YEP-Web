@@ -42,7 +42,7 @@ export const defaultEventConfig: EventConfigState = {
   salesStatus: 'open',
   earlyBirdEnabled: true,
   allowGuests: false,
-  salesStartDate: '2026-06-01T00:00:00',
+  salesStartDate: '2026-05-28T00:00:00',
   prices: {
     earlyBird: 250000,
     vinnunian: 300000,
