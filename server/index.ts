@@ -3,6 +3,7 @@ import express from 'express';
 import cors from 'cors';
 import path from 'path';
 import crypto from 'crypto';
+import QRCode from 'qrcode';
 import {
   appendCheckinRow,
   appendRegistrationRow,
@@ -36,7 +37,7 @@ import {
   readConfig,
   writeConfig,
 } from './config';
-import { sendTicketEmail } from './mailer';
+import { getTicketCheckinUrl, sendTicketEmail } from './mailer';
 import {
   createPaymentLink,
   generateOrderCode,
@@ -253,6 +254,31 @@ app.get('/api/config', async (_req, res) => {
   } catch (err) {
     console.error('[API] Error reading config:', err);
     res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+app.get('/api/ticket-qr/:ticketCode.png', async (req, res) => {
+  try {
+    const ticketCode = extractTicketCode(req.params.ticketCode || '');
+    if (!ticketCode || ticketCode.length > 80) {
+      res.status(400).send('Invalid ticket code');
+      return;
+    }
+
+    const checkinUrl = getTicketCheckinUrl(ticketCode);
+    const png = await QRCode.toBuffer(checkinUrl, {
+      type: 'png',
+      margin: 1,
+      width: 420,
+      errorCorrectionLevel: 'M',
+    });
+
+    res.setHeader('Content-Type', 'image/png');
+    res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+    res.send(png);
+  } catch (err) {
+    console.error('[API] Error generating ticket QR:', err);
+    res.status(500).send('Failed to generate QR code');
   }
 });
 
