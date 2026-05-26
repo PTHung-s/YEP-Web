@@ -78,7 +78,7 @@ export function getTicketCheckinUrl(ticketCode: string): string {
 
 function buildTicketEmailHtml(input: TicketEmailInput): string {
   const supportEmail = getSupportEmail();
-  const bannerUrl = `${getAppUrl()}/assets/yep/header-kaleido-wide.png`;
+  const bannerUrl = `${getAppUrl()}/assets/yep/email-banner-kaleido.jpg`;
   const orderDate = formatOrderDate(input.ticketItems);
   const ticketCards = input.ticketItems.map((ticket, index) => {
     const checkinUrl = getTicketCheckinUrl(ticket.ticketCode);
