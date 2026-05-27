@@ -24,9 +24,22 @@ interface CheckinRecord {
   checkedInBy: string;
 }
 
+interface MerchClaim {
+  merchClaimCode: string;
+  orderId: string;
+  buyerName: string;
+  email: string;
+  phone: string;
+  merchItems: string;
+  claimedAt: string;
+  claimedBy: string;
+}
+
 interface CheckinResult {
   ticket?: TicketItem;
-  status?: 'valid' | 'checked_in';
+  merchClaim?: MerchClaim;
+  kind?: 'ticket' | 'merch';
+  status?: 'valid' | 'checked_in' | 'merch_claimed';
   checkedIn?: CheckinRecord;
   success?: boolean;
   error?: string;
@@ -158,17 +171,17 @@ export function Checkin() {
       }
 
       setResult(data);
-      setQuery(data.ticket?.ticketCode || ticketCode);
+      setQuery(data.ticket?.ticketCode || data.merchClaim?.merchClaimCode || ticketCode);
 
       if (res.status === 409) {
-        setMessage('Ticket was already checked in.');
+        setMessage(data.kind === 'merch' ? 'Merch was already claimed.' : 'Ticket was already checked in.');
         showScanVisual('warning');
         playTone('warning');
         return;
       }
 
       if (!res.ok) throw new Error(data.error || 'Cannot check in');
-      setMessage('Checked in successfully.');
+      setMessage(data.kind === 'merch' ? 'Merch claimed successfully.' : 'Checked in successfully.');
       if (data.checkedIn) {
         setRecentCheckins(current => [data.checkedIn, ...current.filter(item => item.ticketCode !== data.checkedIn.ticketCode)].slice(0, 10));
       }
@@ -273,13 +286,25 @@ export function Checkin() {
   }
 
   const isCheckedIn = result?.status === 'checked_in';
+  const isMerchResult = result?.kind === 'merch' || Boolean(result?.merchClaim);
+  const isMerchClaimed = result?.status === 'merch_claimed';
   const isValid = result?.status === 'valid';
   const isSuccess = Boolean(result?.success);
   const hasError = Boolean(result?.error);
-  const statusLabel = isSuccess ? 'Checked In' : isCheckedIn ? 'Already Checked In' : hasError ? 'Not Found' : scannerActive ? 'Scanning' : 'Ready';
+  const statusLabel = isSuccess
+    ? (isMerchResult ? 'Merch Claimed' : 'Checked In')
+    : isMerchClaimed
+      ? 'Already Claimed'
+      : isCheckedIn
+        ? 'Already Checked In'
+        : hasError
+          ? 'Not Found'
+          : scannerActive
+            ? 'Scanning'
+            : 'Ready';
   const statusClass = isSuccess
     ? 'bg-emerald-500 text-white border-emerald-950 shadow-[0_0_28px_rgba(16,185,129,0.75)]'
-    : isCheckedIn
+    : isCheckedIn || isMerchClaimed
       ? 'bg-amber-400 text-primary border-amber-950 shadow-[0_0_24px_rgba(251,191,36,0.65)]'
       : hasError
         ? 'bg-secondary text-white shadow-[0_0_24px_rgba(236,72,153,0.65)]'
@@ -298,7 +323,11 @@ export function Checkin() {
     : scanVisualState === 'warning'
       ? 'bg-amber-400 text-primary border-amber-950'
       : 'bg-secondary text-white border-primary';
-  const overlayLabel = scanVisualState === 'success' ? 'Checked In' : scanVisualState === 'warning' ? 'Already In' : 'Not Found';
+  const overlayLabel = scanVisualState === 'success'
+    ? (isMerchResult ? 'Merch Claimed' : 'Checked In')
+    : scanVisualState === 'warning'
+      ? (isMerchResult ? 'Already Claimed' : 'Already In')
+      : 'Not Found';
   const overlayIcon = scanVisualState === 'success'
     ? <CheckCircle className="w-16 h-16 md:w-20 md:h-20" />
     : <XCircle className="w-16 h-16 md:w-20 md:h-20" />;
@@ -316,11 +345,55 @@ export function Checkin() {
         <p className="font-body text-sm font-bold text-on-surface-variant">Scan a ticket to check in immediately.</p>
       )}
 
-      {result?.error && !result.ticket && (
+      {result?.error && !result.ticket && !result.merchClaim && (
         <div className="space-y-3 md:space-y-4">
           <XCircle className="w-10 h-10 md:w-12 md:h-12 text-secondary" />
           <h2 className="font-display text-xl md:text-2xl font-black uppercase">Not Found</h2>
           <p className="font-body text-sm font-bold text-on-surface-variant">{result.error}</p>
+        </div>
+      )}
+
+      {result?.merchClaim && (
+        <div className="space-y-4 md:space-y-5">
+          <div className={cn('border-4 border-primary p-4', isMerchClaimed && !isSuccess ? 'bg-secondary text-white' : 'bg-primary-container')}>
+            <div className="flex items-center gap-3">
+              {isMerchClaimed && !isSuccess ? <XCircle className="w-7 h-7 md:w-8 md:h-8 shrink-0" /> : <CheckCircle className="w-7 h-7 md:w-8 md:h-8 shrink-0" />}
+              <div className="min-w-0">
+                <span className="font-display text-[10px] md:text-xs font-black uppercase tracking-widest">
+                  {isSuccess ? 'Merch Claimed' : 'Already Claimed'}
+                </span>
+                <p className="font-display text-lg md:text-xl font-black uppercase">Merch Pickup</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-3 text-sm">
+            <div className="sm:col-span-2 lg:col-span-1">
+              <span className="block font-display text-[10px] font-black uppercase tracking-widest text-on-surface-variant">Buyer</span>
+              <p className="font-display text-xl md:text-base font-black uppercase leading-tight">{result.merchClaim.buyerName}</p>
+            </div>
+            <div>
+              <span className="block font-display text-[10px] font-black uppercase tracking-widest text-on-surface-variant">Contact</span>
+              <p className="font-body font-bold break-all">{result.merchClaim.email}</p>
+              <p className="font-body font-bold">{result.merchClaim.phone}</p>
+            </div>
+            <div>
+              <span className="block font-display text-[10px] font-black uppercase tracking-widest text-on-surface-variant">Merch Code</span>
+              <p className="font-display text-xs md:text-sm font-black break-all">{result.merchClaim.merchClaimCode}</p>
+            </div>
+            <div className="sm:col-span-2 lg:col-span-1">
+              <span className="block font-display text-[10px] font-black uppercase tracking-widest text-on-surface-variant">Merch Items</span>
+              <p className="font-body text-sm font-bold">{result.merchClaim.merchItems}</p>
+            </div>
+          </div>
+
+          {result.merchClaim.claimedAt && (
+            <div className="border-2 border-primary bg-background p-3">
+              <span className="block font-display text-[10px] font-black uppercase tracking-widest text-on-surface-variant">Claimed At</span>
+              <p className="font-body text-sm font-bold">{result.merchClaim.claimedAt}</p>
+              <p className="font-body text-sm font-bold">By {result.merchClaim.claimedBy || 'Staff'}</p>
+            </div>
+          )}
         </div>
       )}
 
@@ -439,7 +512,7 @@ export function Checkin() {
           </label>
 
           <label className="block">
-            <span className="block font-display text-xs font-black uppercase tracking-widest mb-2">Ticket Code / QR URL</span>
+            <span className="block font-display text-xs font-black uppercase tracking-widest mb-2">Ticket / Merch QR Code</span>
             <div className="flex flex-col sm:flex-row gap-3">
               <input
                 value={query}
@@ -466,8 +539,8 @@ export function Checkin() {
                 <div className={cn('border-4 px-6 py-5 text-center shadow-[8px_8px_0_rgba(7,7,23,0.35)]', overlayClass)}>
                   <div className="flex justify-center">{overlayIcon}</div>
                   <p className="mt-2 font-display text-2xl md:text-4xl font-black uppercase leading-none tracking-tight">{overlayLabel}</p>
-                  {result?.ticket?.buyerName && (
-                    <p className="mt-2 max-w-[240px] truncate font-display text-sm md:text-base font-black uppercase">{result.ticket.buyerName}</p>
+                  {(result?.ticket?.buyerName || result?.merchClaim?.buyerName) && (
+                    <p className="mt-2 max-w-[240px] truncate font-display text-sm md:text-base font-black uppercase">{result.ticket?.buyerName || result.merchClaim?.buyerName}</p>
                   )}
                 </div>
               </div>

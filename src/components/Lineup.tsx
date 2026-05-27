@@ -205,7 +205,7 @@ export function Lineup() {
       <div className="mt-16 border-t-4 border-primary pt-10 flex flex-col md:flex-row justify-between items-center gap-6">
         <div>
           <p className="font-display text-lg md:text-xl font-black uppercase tracking-wider">READY TO SEE THEM LIVE?</p>
-          <p className="font-body text-sm text-on-surface-variant font-medium">June 27, 2026 at VinUni Amphitheatre</p>
+          <p className="font-body text-sm text-on-surface-variant font-medium">June 25, 2026 at VinUni Amphitheatre</p>
         </div>
         <Link
           to="/tickets"

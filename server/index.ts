@@ -7,23 +7,30 @@ import fs from 'fs/promises';
 import QRCode from 'qrcode';
 import {
   appendCheckinRow,
+  appendMerchClaimRows,
   appendRegistrationRow,
   appendTicketItemRows,
   appendTicketRow,
   findCheckinByCode,
+  findMerchClaimByCode,
   findTicketItemByCode,
   getRecentCheckins,
   getSheetSummary,
+  markMerchClaimedByCode,
   type CheckinRow,
+  type MerchClaimRow,
   type TicketItemRow,
 } from './sheets';
 import {
   findCheckinCSV,
+  findMerchClaimCSV,
   findTicketItemCSV,
   getCheckinsCSV,
+  markMerchClaimedCSV,
   getTicketItemsCSV,
   getTicketsCSV,
   saveCheckinCSV,
+  saveMerchClaimsCSV,
   saveRegistrationCSV,
   saveTicketCSV,
   saveTicketItemsCSV,
@@ -170,6 +177,13 @@ function generateTicketCode(): string {
   return `Y26-${body}`;
 }
 
+function generateMerchClaimCode(): string {
+  const alphabet = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
+  const bytes = crypto.randomBytes(6);
+  const body = Array.from(bytes, (b) => alphabet[b % alphabet.length]).join('');
+  return `M26-${body}`;
+}
+
 function nowVN(): string {
   const d = new Date();
   const pad = (n: number) => String(n).padStart(2, '0');
@@ -232,6 +246,11 @@ function requireAdmin(req: express.Request, res: express.Response, next: express
 function getTicketTypeLabel(userType: string, earlyBirdEnabled: boolean): string {
   if (userType === 'vinnunian') return earlyBirdEnabled ? 'VinUnian Early Bird' : 'VinUnian Regular';
   return 'Guest';
+}
+
+function hasMerchOrder(merchItems: string, merchTotal: number): boolean {
+  const normalized = String(merchItems || '').trim();
+  return merchTotal > 0 && normalized !== '' && normalized !== '[]';
 }
 
 function extractTicketCode(input: string): string {
@@ -373,7 +392,17 @@ app.get('/api/checkin/search', requireAdmin, async (req, res) => {
 
     const ticket = await findTicketItemByCode(ticketCode) || await findTicketItemCSV(ticketCode);
     if (!ticket) {
-      res.status(404).json({ error: 'Ticket not found', ticketCode });
+      const merchClaim = await findMerchClaimByCode(ticketCode) || await findMerchClaimCSV(ticketCode);
+      if (!merchClaim) {
+        res.status(404).json({ error: 'Ticket or merch claim not found', ticketCode });
+        return;
+      }
+
+      res.json({
+        status: merchClaim.claimedAt ? 'merch_claimed' : 'valid',
+        kind: 'merch',
+        merchClaim,
+      });
       return;
     }
 
@@ -401,7 +430,37 @@ app.post('/api/checkin', requireAdmin, async (req, res) => {
 
     const ticket = await findTicketItemByCode(ticketCode) || await findTicketItemCSV(ticketCode);
     if (!ticket) {
-      res.status(404).json({ error: 'Ticket not found', ticketCode });
+      const merchClaim = await findMerchClaimByCode(ticketCode) || await findMerchClaimCSV(ticketCode);
+      if (!merchClaim) {
+        res.status(404).json({ error: 'Ticket or merch claim not found', ticketCode });
+        return;
+      }
+
+      if (merchClaim.claimedAt) {
+        res.status(409).json({
+          error: 'Merch already claimed',
+          status: 'merch_claimed',
+          kind: 'merch',
+          merchClaim,
+        });
+        return;
+      }
+
+      const claimedAt = nowVN();
+      const claimed = await markMerchClaimedByCode(ticketCode, claimedAt, checkedInBy)
+        || await markMerchClaimedCSV(ticketCode, claimedAt, checkedInBy);
+
+      if (!claimed) {
+        res.status(500).json({ error: 'Cannot claim merch right now' });
+        return;
+      }
+
+      res.status(201).json({
+        success: true,
+        status: 'merch_claimed',
+        kind: 'merch',
+        merchClaim: claimed,
+      });
       return;
     }
 
@@ -552,6 +611,18 @@ app.post('/api/tickets', publicWriteLimiter, async (req, res) => {
         ticketNo: String(index + 1),
         orderTicketQuantity: String(normalizedTicketQuantity),
       }));
+      const merchClaims: MerchClaimRow[] = hasMerchOrder(normalizedMerchItems, normalizedMerchTotal)
+        ? [{
+            merchClaimCode: generateMerchClaimCode(),
+            orderId,
+            buyerName: normalizedFullName,
+            email: normalizedEmail,
+            phone: normalizedPhone,
+            merchItems: normalizedMerchItems,
+            claimedAt: '',
+            claimedBy: '',
+          }]
+        : [];
 
       const orderData: PayOSOrderData = {
         fullName: normalizedFullName,
@@ -573,7 +644,7 @@ app.post('/api/tickets', publicWriteLimiter, async (req, res) => {
         paymentMethod: 'payos',
       };
 
-      storePendingOrder(orderCode, orderData, ticketItems, orderId, statusKey);
+      storePendingOrder(orderCode, orderData, ticketItems, merchClaims, orderId, statusKey);
 
       const { checkoutUrl, qrCode } = await createPaymentLink(orderData, orderCode);
 
@@ -626,10 +697,23 @@ app.post('/api/tickets', publicWriteLimiter, async (req, res) => {
       ticketNo: String(index + 1),
       orderTicketQuantity: String(normalizedTicketQuantity),
     }));
+    const merchClaims: MerchClaimRow[] = hasMerchOrder(normalizedMerchItems, normalizedMerchTotal)
+      ? [{
+          merchClaimCode: generateMerchClaimCode(),
+          orderId: record.id,
+          buyerName: normalizedFullName,
+          email: normalizedEmail,
+          phone: normalizedPhone,
+          merchItems: normalizedMerchItems,
+          claimedAt: '',
+          claimedBy: '',
+        }]
+      : [];
 
     const sheetOk = await appendTicketRow(record);
 
     const itemSheetOk = await appendTicketItemRows(ticketItems);
+    const merchSheetOk = await appendMerchClaimRows(merchClaims);
 
     if (!sheetOk) {
       await saveTicketCSV({
@@ -648,6 +732,11 @@ app.post('/api/tickets', publicWriteLimiter, async (req, res) => {
       console.log('[CSV] Ticket items saved locally:', ticketItems.length);
     }
 
+    if (merchClaims.length > 0 && !merchSheetOk) {
+      await saveMerchClaimsCSV(merchClaims);
+      console.log('[CSV] Merch claim saved locally:', merchClaims[0].merchClaimCode);
+    }
+
     const emailResult = await sendTicketEmail({
       to: normalizedEmail,
       buyerName: normalizedFullName,
@@ -655,6 +744,8 @@ app.post('/api/tickets', publicWriteLimiter, async (req, res) => {
       totalAmount: record.totalAmount,
       paymentMethod: record.paymentMethod,
       ticketItems,
+      merchItems: normalizedMerchItems,
+      merchClaims,
     });
     if (!emailResult.sent) {
       console.log('[Email] Ticket email not sent:', emailResult.error || 'not configured');
@@ -723,6 +814,8 @@ app.post('/api/payos/webhook', async (req, res) => {
 
     const sheetOk = await appendTicketRow(record);
     const itemSheetOk = await appendTicketItemRows(pending.ticketItems);
+    const pendingMerchClaims = pending.merchClaims || [];
+    const merchSheetOk = await appendMerchClaimRows(pendingMerchClaims);
 
     if (!sheetOk) {
       await saveTicketCSV({
@@ -741,6 +834,11 @@ app.post('/api/payos/webhook', async (req, res) => {
       console.log('[CSV] PayOS ticket items saved locally:', pending.ticketItems.length);
     }
 
+    if (pendingMerchClaims.length > 0 && !merchSheetOk) {
+      await saveMerchClaimsCSV(pendingMerchClaims);
+      console.log('[CSV] PayOS merch claim saved locally:', pendingMerchClaims[0].merchClaimCode);
+    }
+
     const emailResult = await sendTicketEmail({
       to: orderData.email,
       buyerName: orderData.fullName,
@@ -748,6 +846,8 @@ app.post('/api/payos/webhook', async (req, res) => {
       totalAmount: record.totalAmount,
       paymentMethod: record.paymentMethod,
       ticketItems: pending.ticketItems,
+      merchItems: orderData.merchItems,
+      merchClaims: pendingMerchClaims,
     });
     if (!emailResult.sent) {
       console.log('[Email] PayOS ticket email not sent:', emailResult.error || 'not configured');
@@ -834,6 +934,8 @@ app.get('/api/payos/status/:orderCode', paymentStatusLimiter, async (req, res) =
 
     const sheetOk = await appendTicketRow(record);
     const itemSheetOk = await appendTicketItemRows(pending.ticketItems);
+    const pendingMerchClaims = pending.merchClaims || [];
+    const merchSheetOk = await appendMerchClaimRows(pendingMerchClaims);
 
     if (!sheetOk) {
       await saveTicketCSV({
@@ -852,6 +954,11 @@ app.get('/api/payos/status/:orderCode', paymentStatusLimiter, async (req, res) =
       console.log('[CSV] PayOS ticket items saved locally (status check):', pending.ticketItems.length);
     }
 
+    if (pendingMerchClaims.length > 0 && !merchSheetOk) {
+      await saveMerchClaimsCSV(pendingMerchClaims);
+      console.log('[CSV] PayOS merch claim saved locally (status check):', pendingMerchClaims[0].merchClaimCode);
+    }
+
     const emailResult = await sendTicketEmail({
       to: orderData.email,
       buyerName: orderData.fullName,
@@ -859,6 +966,8 @@ app.get('/api/payos/status/:orderCode', paymentStatusLimiter, async (req, res) =
       totalAmount: record.totalAmount,
       paymentMethod: record.paymentMethod,
       ticketItems: pending.ticketItems,
+      merchItems: orderData.merchItems,
+      merchClaims: pendingMerchClaims,
     });
     if (!emailResult.sent) {
       console.log('[Email] PayOS ticket email not sent (status check):', emailResult.error || 'not configured');

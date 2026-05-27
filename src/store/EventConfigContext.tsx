@@ -67,7 +67,7 @@ export const defaultEventConfig: EventConfigState = {
       rate: 0.1,
     },
     serviceFee: {
-      enabled: true,
+      enabled: false,
       rate: 0.03,
     },
   },

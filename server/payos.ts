@@ -3,7 +3,7 @@ import type { Webhook, WebhookData } from '@payos/node';
 import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
-import type { TicketItemRow } from './sheets';
+import type { MerchClaimRow, TicketItemRow } from './sheets';
 
 function getPayOS(): PayOS | null {
   if (!process.env.PAYOS_CLIENT_ID || !process.env.PAYOS_API_KEY || !process.env.PAYOS_CHECKSUM_KEY) {
@@ -45,6 +45,7 @@ export interface PayOSOrderData {
 interface PendingOrder {
   data: PayOSOrderData;
   ticketItems: TicketItemRow[];
+  merchClaims: MerchClaimRow[];
   orderId: string;
   statusKey: string;
   createdAt: number;
@@ -98,12 +99,14 @@ export function storePendingOrder(
   orderCode: number,
   orderData: PayOSOrderData,
   ticketItems: TicketItemRow[],
+  merchClaims: MerchClaimRow[],
   orderId: string,
   statusKey: string,
 ) {
   pendingOrders.set(orderCode, {
     data: orderData,
     ticketItems,
+    merchClaims,
     orderId,
     statusKey,
     createdAt: Date.now(),

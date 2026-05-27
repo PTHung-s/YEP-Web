@@ -63,10 +63,22 @@ export interface CheckinRecord {
   checkedInBy: string;
 }
 
+export interface MerchClaimRecord {
+  merchClaimCode: string;
+  orderId: string;
+  buyerName: string;
+  email: string;
+  phone: string;
+  merchItems: string;
+  claimedAt: string;
+  claimedBy: string;
+}
+
 const TICKETS_CSV = path.join(DATA_DIR, 'tickets.csv');
 const REGISTRATIONS_CSV = path.join(DATA_DIR, 'registrations.csv');
 const TICKET_ITEMS_CSV = path.join(DATA_DIR, 'ticket-items.csv');
 const CHECKINS_CSV = path.join(DATA_DIR, 'checked-in.csv');
+const MERCH_CLAIMS_CSV = path.join(DATA_DIR, 'merch-claims.csv');
 
 const ticketHeaders = [
   { id: 'id', title: 'ID' },
@@ -121,6 +133,17 @@ const checkinHeaders = [
   { id: 'checkedInBy', title: 'Checked In By' },
 ];
 
+const merchClaimHeaders = [
+  { id: 'merchClaimCode', title: 'Merch Claim Code' },
+  { id: 'orderId', title: 'Order ID' },
+  { id: 'buyerName', title: 'Buyer Name' },
+  { id: 'email', title: 'Email' },
+  { id: 'phone', title: 'Phone' },
+  { id: 'merchItems', title: 'Merch Items' },
+  { id: 'claimedAt', title: 'Claimed At' },
+  { id: 'claimedBy', title: 'Claimed By' },
+];
+
 const ticketCsvWriter = createObjectCsvWriter({
   path: TICKETS_CSV,
   header: ticketHeaders,
@@ -142,6 +165,12 @@ const ticketItemCsvWriter = createObjectCsvWriter({
 const checkinCsvWriter = createObjectCsvWriter({
   path: CHECKINS_CSV,
   header: checkinHeaders,
+  append: true,
+});
+
+const merchClaimCsvWriter = createObjectCsvWriter({
+  path: MERCH_CLAIMS_CSV,
+  header: merchClaimHeaders,
   append: true,
 });
 
@@ -179,6 +208,13 @@ export async function saveCheckinCSV(data: CheckinRecord): Promise<void> {
   ensureDir();
   await writeHeaderIfNeeded(CHECKINS_CSV, checkinHeaders);
   await checkinCsvWriter.writeRecords([data]);
+}
+
+export async function saveMerchClaimsCSV(data: MerchClaimRecord[]): Promise<void> {
+  ensureDir();
+  if (data.length === 0) return;
+  await writeHeaderIfNeeded(MERCH_CLAIMS_CSV, merchClaimHeaders);
+  await merchClaimCsvWriter.writeRecords(data);
 }
 
 export async function getTicketsCSV(): Promise<TicketRecord[]> {
@@ -238,10 +274,50 @@ export async function getCheckinsCSV(): Promise<CheckinRecord[]> {
   }));
 }
 
+export async function getMerchClaimsCSV(): Promise<MerchClaimRecord[]> {
+  const rows = await readCsv<any>(MERCH_CLAIMS_CSV);
+  return rows.map(row => ({
+    merchClaimCode: row.merchClaimCode || row['Merch Claim Code'] || '',
+    orderId: row.orderId || row['Order ID'] || '',
+    buyerName: row.buyerName || row['Buyer Name'] || '',
+    email: row.email || row.Email || '',
+    phone: row.phone || row.Phone || '',
+    merchItems: row.merchItems || row['Merch Items'] || '',
+    claimedAt: row.claimedAt || row['Claimed At'] || '',
+    claimedBy: row.claimedBy || row['Claimed By'] || '',
+  }));
+}
+
 export async function findTicketItemCSV(ticketCode: string): Promise<TicketItemRecord | null> {
   const normalized = ticketCode.trim().toUpperCase();
   const items = await getTicketItemsCSV();
   return items.find(item => String(item.ticketCode || '').trim().toUpperCase() === normalized) || null;
+}
+
+export async function findMerchClaimCSV(merchClaimCode: string): Promise<MerchClaimRecord | null> {
+  const normalized = merchClaimCode.trim().toUpperCase();
+  const claims = await getMerchClaimsCSV();
+  return claims.find(item => String(item.merchClaimCode || '').trim().toUpperCase() === normalized) || null;
+}
+
+export async function markMerchClaimedCSV(merchClaimCode: string, claimedAt: string, claimedBy: string): Promise<MerchClaimRecord | null> {
+  ensureDir();
+  const normalized = merchClaimCode.trim().toUpperCase();
+  const claims = await getMerchClaimsCSV();
+  const index = claims.findIndex(item => String(item.merchClaimCode || '').trim().toUpperCase() === normalized);
+  if (index < 0) return null;
+
+  if (!claims[index].claimedAt) {
+    claims[index] = { ...claims[index], claimedAt, claimedBy };
+    const writer = createObjectCsvWriter({
+      path: MERCH_CLAIMS_CSV,
+      header: merchClaimHeaders,
+      append: false,
+    });
+    await writer.writeRecords(claims);
+  }
+
+  return claims[index];
 }
 
 export async function findCheckinCSV(ticketCode: string): Promise<CheckinRecord | null> {

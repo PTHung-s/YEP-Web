@@ -71,7 +71,7 @@ export const defaultConfig: AppConfig = {
       rate: 0.1,
     },
     serviceFee: {
-      enabled: true,
+      enabled: false,
       rate: 0.03,
     },
   },

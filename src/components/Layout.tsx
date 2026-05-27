@@ -61,7 +61,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 path === '/vote' ? "text-white underline decoration-secondary decoration-2 underline-offset-8" : "text-on-surface hover:text-white"
               )}
             >
-              VOTE
+              YEP ICON
             </Link>
           </nav>
           <Link
@@ -99,7 +99,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
             <Link to="/" className="font-display text-xs font-bold uppercase tracking-widest text-on-surface hover:text-white transition-colors">HOME</Link>
             <Link to="/lineup" className="font-display text-xs font-bold uppercase tracking-widest text-on-surface hover:text-white transition-colors">LINEUP</Link>
             <Link to="/tickets" className="font-display text-xs font-bold uppercase tracking-widest text-on-surface hover:text-white transition-colors">TICKETS</Link>
-            <Link to="/vote" className="font-display text-xs font-bold uppercase tracking-widest text-on-surface hover:text-white transition-colors">VOTE</Link>
+            <Link to="/vote" className="font-display text-xs font-bold uppercase tracking-widest text-on-surface hover:text-white transition-colors">YEP ICON</Link>
           </nav>
             <nav className="flex flex-col gap-4" aria-label="Social links">
               <span className="font-display font-black text-sm uppercase tracking-widest text-secondary mb-2">SOCIAL</span>
@@ -122,7 +122,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
            <span className="font-display font-bold text-xs uppercase tracking-wider">TICKETS</span>
         </Link>
         <Link to="/vote" className={cn("flex-1 h-full flex items-center justify-center", path === '/vote' ? "bg-white text-primary" : "text-on-surface")}>
-            <span className="font-display font-bold text-xs uppercase tracking-wider">VOTE</span>
+            <span className="font-display font-bold text-xs uppercase tracking-wider">ICON</span>
         </Link>
       </nav>
     </div>

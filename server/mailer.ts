@@ -1,4 +1,4 @@
-import type { TicketItemRow } from './sheets';
+import type { MerchClaimRow, TicketItemRow } from './sheets';
 
 interface TicketEmailInput {
   to: string;
@@ -7,6 +7,8 @@ interface TicketEmailInput {
   totalAmount: string;
   paymentMethod: string;
   ticketItems: TicketItemRow[];
+  merchItems?: string;
+  merchClaims?: MerchClaimRow[];
 }
 
 interface EmailResult {
@@ -67,7 +69,8 @@ function getBuyerPhone(input: TicketEmailInput): string {
 function getPurchaseInfo(input: TicketEmailInput): string {
   const quantity = input.ticketItems.length;
   const typeText = uniqueTicketTypes(input.ticketItems);
-  return `${quantity} ticket${quantity > 1 ? 's' : ''} - ${typeText} - ${formatVND(input.totalAmount)}`;
+  const merchText = input.merchItems ? ` - ${input.merchItems}` : '';
+  return `${quantity} ticket${quantity > 1 ? 's' : ''} - ${typeText}${merchText} - ${formatVND(input.totalAmount)}`;
 }
 
 function getShortTicketCode(ticketCode: string): string {
@@ -140,6 +143,38 @@ function buildTicketCards(input: TicketEmailInput): string {
                 <img src="${escapeHtml(qrUrl)}" width="118" height="118" alt="Check-in QR code for ${escapeHtml(ticket.ticketCode)}" style="display:block;width:118px;height:118px;border:0;margin:0 auto;" />
               </div>
               <div style="display:block;margin:9px auto 0;padding:8px 10px;max-width:132px;border-radius:4px;background:rgba(255,255,255,0.78);border:1px solid rgba(79,42,167,0.16);color:#24133f;text-decoration:none;font-size:12px;font-weight:900;letter-spacing:.08em;">${escapeHtml(shortCode)}</div>
+            </td>
+          </tr>
+        </table>
+      </div>
+    `;
+  }).join('');
+}
+
+function buildMerchClaimCards(input: TicketEmailInput): string {
+  if (!input.merchClaims?.length) return '';
+
+  return input.merchClaims.map(claim => {
+    const qrUrl = getTicketQrUrl(claim.merchClaimCode);
+    const shortCode = getShortTicketCode(claim.merchClaimCode);
+
+    return `
+      <div style="margin:18px 0 0;border-radius:14px;overflow:hidden;background:#ffffff;box-shadow:0 10px 22px rgba(40,24,92,0.08);border:1px solid #d8cdef;">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse;">
+          <tr>
+            <td class="ticket-info" style="padding:18px 20px;vertical-align:middle;background:#ffffff;">
+              <p style="margin:0 0 6px;color:#20d9ff;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.16em;">Merch Pickup Pass</p>
+              <p style="margin:0;color:#111827;font-size:22px;line-height:1.08;font-weight:900;text-transform:uppercase;">Collect Your Merch</p>
+              <p style="margin:8px 0 0;color:#4b5563;font-size:13px;line-height:1.5;">Show this QR at the SC booth to collect all merchandise in this order.</p>
+              <p style="margin:12px 0 0;color:#111827;font-size:13px;line-height:1.5;font-weight:800;">${escapeHtml(claim.merchItems)}</p>
+            </td>
+            <td class="ticket-qr" width="176" style="padding:14px;text-align:center;vertical-align:middle;background:#f4f1fb;background-image:linear-gradient(135deg,#fbfaff 0%,#f4efff 62%,#eefcff 100%);border-left:2px dashed #bba9e8;">
+              <div style="height:2px;width:42px;background:#20d9ff;margin:0 auto 8px;border-radius:99px;opacity:.55;"></div>
+              <p style="margin:0 0 8px;color:#4f2aa7;font-size:13px;line-height:1.15;font-weight:900;letter-spacing:.1em;text-transform:uppercase;">Merch</p>
+              <div style="display:inline-block;padding:8px;border:1px solid #e5e0f2;border-radius:12px;background:#ffffff;box-shadow:0 7px 16px rgba(79,42,167,0.08);">
+                <img src="${escapeHtml(qrUrl)}" width="118" height="118" alt="Merch pickup QR code for ${escapeHtml(claim.merchClaimCode)}" style="display:block;width:118px;height:118px;border:0;margin:0 auto;" />
+              </div>
+              <div style="display:block;margin:9px auto 0;padding:8px 10px;max-width:132px;border-radius:4px;background:rgba(255,255,255,0.78);border:1px solid rgba(79,42,167,0.16);color:#24133f;font-size:12px;font-weight:900;letter-spacing:.08em;">${escapeHtml(shortCode)}</div>
             </td>
           </tr>
         </table>
@@ -246,6 +281,7 @@ export function buildTicketEmailHtml(input: TicketEmailInput): string {
               </table>
 
               ${buildTicketCards(input)}
+              ${buildMerchClaimCards(input)}
 
               <p style="margin:24px 0 16px;color:#1f2937;font-size:15px;line-height:1.75;">If any of the information above is incorrect, please contact us via email or our fanpage for assistance.</p>
               <p style="margin:0 0 12px;color:#1f2937;font-size:15px;line-height:1.75;">Before <strong>YEP'26: The Kaleido Soul</strong>, we would like to remind you of the following:</p>
@@ -294,6 +330,12 @@ export function buildTicketEmailText(input: TicketEmailInput): string {
     `Ticket type: ${ticket.ticketType}`,
     `Open Ticket QR: ${getTicketCheckinUrl(ticket.ticketCode)}`,
   ].join('\n')).join('\n\n');
+  const merchLines = (input.merchClaims || []).map(claim => [
+    'Merch Pickup Pass:',
+    `Merch claim code: ${claim.merchClaimCode}`,
+    `Merch items: ${claim.merchItems}`,
+    `Open Merch QR: ${getTicketCheckinUrl(claim.merchClaimCode)}`,
+  ].join('\n')).join('\n\n');
 
   return [
     `Dear ${input.buyerName},`,
@@ -307,6 +349,7 @@ export function buildTicketEmailText(input: TicketEmailInput): string {
     `Purchase info: ${getPurchaseInfo(input)}`,
     '',
     ticketLines,
+    merchLines ? `\n${merchLines}` : '',
     '',
     'If any of the information above is incorrect, please contact us via email or our fanpage for assistance.',
     '',

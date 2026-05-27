@@ -91,6 +91,17 @@ const CHECKIN_HEADERS = [
   'Checked In By',
 ];
 
+const MERCH_CLAIM_HEADERS = [
+  'Merch Claim Code',
+  'Order ID',
+  'Buyer Name',
+  'Email',
+  'Phone',
+  'Merch Items',
+  'Claimed At',
+  'Claimed By',
+];
+
 async function ensureHeaders(sheetName: string, headers: string[]): Promise<void> {
   const sheets = getSheetsClient();
   const spreadsheetId = getSpreadsheetId();
@@ -233,6 +244,17 @@ export interface CheckinRow {
   checkedInBy: string;
 }
 
+export interface MerchClaimRow {
+  merchClaimCode: string;
+  orderId: string;
+  buyerName: string;
+  email: string;
+  phone: string;
+  merchItems: string;
+  claimedAt: string;
+  claimedBy: string;
+}
+
 export async function appendRegistrationRow(row: RegistrationRow): Promise<boolean> {
   const sheets = getSheetsClient();
   const spreadsheetId = getSpreadsheetId();
@@ -293,6 +315,40 @@ export async function appendTicketItemRows(rows: TicketItemRow[]): Promise<boole
   }
 }
 
+export async function appendMerchClaimRows(rows: MerchClaimRow[]): Promise<boolean> {
+  const sheets = getSheetsClient();
+  const spreadsheetId = getSpreadsheetId();
+
+  if (!sheets || !spreadsheetId || rows.length === 0) return false;
+
+  try {
+    await ensureHeaders('MerchClaims', MERCH_CLAIM_HEADERS);
+
+    await sheets.spreadsheets.values.append({
+      spreadsheetId,
+      range: 'MerchClaims!A1',
+      valueInputOption: 'USER_ENTERED',
+      requestBody: {
+        values: rows.map(row => [
+          row.merchClaimCode,
+          row.orderId,
+          row.buyerName,
+          row.email,
+          row.phone,
+          row.merchItems,
+          row.claimedAt,
+          row.claimedBy,
+        ]),
+      },
+    });
+    console.log('[Sheets] Merch claims appended:', rows.length);
+    return true;
+  } catch (err) {
+    console.error('[Sheets] Failed to append merch claims:', err);
+    return false;
+  }
+}
+
 export async function findTicketItemByCode(ticketCode: string): Promise<TicketItemRow | null> {
   const sheets = getSheetsClient();
   const spreadsheetId = getSpreadsheetId();
@@ -323,6 +379,95 @@ export async function findTicketItemByCode(ticketCode: string): Promise<TicketIt
     };
   } catch (err) {
     console.error('[Sheets] Failed to find ticket item:', err);
+    return null;
+  }
+}
+
+export async function findMerchClaimByCode(merchClaimCode: string): Promise<MerchClaimRow | null> {
+  const sheets = getSheetsClient();
+  const spreadsheetId = getSpreadsheetId();
+
+  if (!sheets || !spreadsheetId) return null;
+
+  try {
+    await ensureHeaders('MerchClaims', MERCH_CLAIM_HEADERS);
+    const res = await sheets.spreadsheets.values.get({
+      spreadsheetId,
+      range: 'MerchClaims!A2:H',
+    });
+
+    const normalized = merchClaimCode.trim().toUpperCase();
+    const row = (res.data.values || []).find(item => String(item[0] || '').trim().toUpperCase() === normalized);
+    if (!row) return null;
+
+    return {
+      merchClaimCode: String(row[0] || ''),
+      orderId: String(row[1] || ''),
+      buyerName: String(row[2] || ''),
+      email: String(row[3] || ''),
+      phone: String(row[4] || ''),
+      merchItems: String(row[5] || ''),
+      claimedAt: String(row[6] || ''),
+      claimedBy: String(row[7] || ''),
+    };
+  } catch (err) {
+    console.error('[Sheets] Failed to find merch claim:', err);
+    return null;
+  }
+}
+
+export async function markMerchClaimedByCode(merchClaimCode: string, claimedAt: string, claimedBy: string): Promise<MerchClaimRow | null> {
+  const sheets = getSheetsClient();
+  const spreadsheetId = getSpreadsheetId();
+
+  if (!sheets || !spreadsheetId) return null;
+
+  try {
+    await ensureHeaders('MerchClaims', MERCH_CLAIM_HEADERS);
+    const res = await sheets.spreadsheets.values.get({
+      spreadsheetId,
+      range: 'MerchClaims!A2:H',
+    });
+
+    const normalized = merchClaimCode.trim().toUpperCase();
+    const rows = res.data.values || [];
+    const index = rows.findIndex(item => String(item[0] || '').trim().toUpperCase() === normalized);
+    if (index < 0) return null;
+
+    const row = rows[index];
+    if (String(row[6] || '').trim()) {
+      return {
+        merchClaimCode: String(row[0] || ''),
+        orderId: String(row[1] || ''),
+        buyerName: String(row[2] || ''),
+        email: String(row[3] || ''),
+        phone: String(row[4] || ''),
+        merchItems: String(row[5] || ''),
+        claimedAt: String(row[6] || ''),
+        claimedBy: String(row[7] || ''),
+      };
+    }
+
+    const sheetRowNumber = index + 2;
+    await sheets.spreadsheets.values.update({
+      spreadsheetId,
+      range: `MerchClaims!G${sheetRowNumber}:H${sheetRowNumber}`,
+      valueInputOption: 'USER_ENTERED',
+      requestBody: { values: [[claimedAt, claimedBy]] },
+    });
+
+    return {
+      merchClaimCode: String(row[0] || ''),
+      orderId: String(row[1] || ''),
+      buyerName: String(row[2] || ''),
+      email: String(row[3] || ''),
+      phone: String(row[4] || ''),
+      merchItems: String(row[5] || ''),
+      claimedAt,
+      claimedBy,
+    };
+  } catch (err) {
+    console.error('[Sheets] Failed to mark merch claimed:', err);
     return null;
   }
 }
