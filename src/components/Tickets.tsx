@@ -57,6 +57,7 @@ export function Tickets() {
   const ticketBulkDiscount = getTicketBulkDiscount();
   const merchBulkDiscount = getMerchBulkDiscount();
   const isEarlyBirdOrder = state.userType === 'vinnunian' && config.earlyBirdEnabled;
+  const hasMerch = state.merch.some(item => item.quantity > 0);
 
   const canNextStep1 = state.userType !== null && !isLocked;
   const canNextStep2 = (() => {
@@ -71,7 +72,7 @@ export function Tickets() {
     }
     return true;
   })();
-  const canNextStep3 = state.ticketQuantity >= 1 && !isLocked;
+  const canNextStep3 = (state.ticketQuantity >= 1 || hasMerch) && !isLocked;
 
   const nextStep = () => {
     if (step === 1 && !canNextStep1) return;
@@ -495,6 +496,13 @@ export function Tickets() {
                   <div className="bg-primary-container border-2 border-primary p-3">
                     <p className="font-body text-xs font-bold uppercase tracking-wider text-secondary">
                       Bulk ticket discount applied: -{formatVND(ticketBulkDiscount)}
+                    </p>
+                  </div>
+                )}
+                {state.ticketQuantity === 0 && (
+                  <div className="bg-primary-container border-2 border-primary p-3">
+                    <p className="font-body text-xs font-bold uppercase tracking-wider text-on-surface-variant">
+                      Merch-only order selected. No event entrance ticket will be issued.
                     </p>
                   </div>
                 )}

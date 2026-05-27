@@ -20,6 +20,8 @@ export function Confirmation() {
   const total = getTotal();
   const ticketBulkDiscount = getTicketBulkDiscount();
   const merchBulkDiscount = getMerchBulkDiscount();
+  const merchTotal = state.merch.reduce((sum, m) => sum + m.price * m.quantity, 0);
+  const hasPurchases = state.ticketQuantity > 0 || merchTotal > 0;
 
   const emailMismatch = emailConfirm.trim().toLowerCase() !== state.email.trim().toLowerCase();
 
@@ -27,7 +29,7 @@ export function Confirmation() {
     && state.fullName.trim()
     && state.email.trim()
     && state.phone.trim()
-    && state.ticketQuantity >= 1
+    && hasPurchases
     && !(state.userType === 'non-vinnunian' && state.upcomingStudent && !state.applicationId.trim())
     && !emailMismatch
     && !processing;
@@ -58,7 +60,7 @@ export function Confirmation() {
           ticketQuantity: state.ticketQuantity,
           ticketPrice,
           merchItems: merchData.join('; '),
-          merchTotal: state.merch.reduce((sum, m) => sum + m.price * m.quantity, 0),
+          merchTotal,
           totalAmount: total,
           ticketBulkDiscount,
           merchBulkDiscount,
@@ -151,9 +153,11 @@ export function Confirmation() {
             <div className="bg-surface border-4 border-primary p-6 md:p-8">
               <h3 className="font-display text-xl md:text-2xl font-black uppercase mb-6 border-b-4 border-primary pb-3">ORDER SUMMARY</h3>
               <div className="space-y-3 mb-6">
-                <div className="flex justify-between text-sm font-display font-bold uppercase tracking-wider"><span>{state.userType === 'vinnunian' ? 'VINUNIAN' : 'NON-VINUNIAN'} TICKET ×{state.ticketQuantity}</span><span>{formatVND(ticketPrice * state.ticketQuantity)}</span></div>
+                {state.ticketQuantity > 0 && (
+                  <div className="flex justify-between text-sm font-display font-bold uppercase tracking-wider"><span>{state.userType === 'vinnunian' ? 'VINUNIAN' : 'NON-VINUNIAN'} TICKET ×{state.ticketQuantity}</span><span>{formatVND(ticketPrice * state.ticketQuantity)}</span></div>
+                )}
                 {state.merch.filter(m => m.quantity > 0).map(m => <div key={m.id} className="flex justify-between text-sm font-display font-bold"><span className="uppercase tracking-wider">{m.name} ×{m.quantity}</span><span>{formatVND(m.price * m.quantity)}</span></div>)}
-                <div className="border-t-2 border-primary pt-3 flex justify-between text-xs font-display font-bold uppercase tracking-widest text-on-surface-variant"><span>SERVICE FEE (3%)</span><span>{formatVND(serviceFee)}</span></div>
+                {serviceFee > 0 && <div className="border-t-2 border-primary pt-3 flex justify-between text-xs font-display font-bold uppercase tracking-widest text-on-surface-variant"><span>SERVICE FEE (3%)</span><span>{formatVND(serviceFee)}</span></div>}
                 {ticketBulkDiscount > 0 && <div className="flex justify-between text-xs font-display font-bold uppercase tracking-widest text-secondary"><span>TICKET BULK DISCOUNT</span><span>-{formatVND(ticketBulkDiscount)}</span></div>}
                 {merchBulkDiscount > 0 && <div className="flex justify-between text-xs font-display font-bold uppercase tracking-widest text-secondary"><span>MERCH BUNDLE DISCOUNT</span><span>-{formatVND(merchBulkDiscount)}</span></div>}
               </div>

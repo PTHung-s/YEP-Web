@@ -79,7 +79,7 @@ function cartReducer(state: CartState, action: CartAction): CartState {
         applicationId: action.payload ? state.applicationId : '',
       };
     case 'SET_TICKET_QUANTITY':
-      return { ...state, ticketQuantity: Math.max(1, action.payload) };
+      return { ...state, ticketQuantity: Math.max(0, action.payload) };
     case 'SET_MERCH_QUANTITY':
       return {
         ...state,

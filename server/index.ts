@@ -530,7 +530,7 @@ app.post('/api/tickets', publicWriteLimiter, async (req, res) => {
       merchItems, merchTotal,
     } = req.body;
 
-    if (!fullName || !email || !phone || !userType || !ticketQuantity) {
+    if (!fullName || !email || !phone || !userType || ticketQuantity === undefined || ticketQuantity === null) {
       res.status(400).json({ error: 'Missing required fields' });
       return;
     }
@@ -578,7 +578,7 @@ app.post('/api/tickets', publicWriteLimiter, async (req, res) => {
       return;
     }
 
-    const normalizedTicketQuantity = Math.min(MAX_TICKETS_PER_ORDER, Math.max(1, Math.floor(Number(ticketQuantity) || 1)));
+    const normalizedTicketQuantity = Math.min(MAX_TICKETS_PER_ORDER, Math.max(0, Math.floor(Number(ticketQuantity) || 0)));
     const normalizedTicketPrice = getTicketPriceForUser(config, normalizedUserType);
     const normalizedMerchTotal = Math.max(0, Number(merchTotal) || 0);
     const normalizedMerchItems = cleanText(
@@ -594,6 +594,11 @@ app.post('/api/tickets', publicWriteLimiter, async (req, res) => {
       : calculateTicketBulkDiscount(config, ticketSubtotal, normalizedTicketQuantity);
     const merchBulkDiscount = calculateMerchBundleDiscount(config, normalizedMerchTotal, normalizedTicketQuantity);
     const totalAmount = Math.max(0, subtotal + serviceFee - ticketBulkDiscount - merchBulkDiscount);
+
+    if (normalizedTicketQuantity < 1 && normalizedMerchTotal < 1) {
+      res.status(400).json({ error: 'Please select at least one ticket or one merch item' });
+      return;
+    }
 
     if (isPayOSConfigured()) {
       const orderCode = generateOrderCode();

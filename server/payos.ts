@@ -153,6 +153,14 @@ export async function createPaymentLink(
     payosOrder: String(orderCode),
   });
 
+  const paymentItems = [
+    {
+      name: orderData.ticketQuantity > 0 ? "YEP'26 Order" : "YEP'26 Merchandise",
+      quantity: 1,
+      price: orderData.totalAmount,
+    },
+  ];
+
   const result = await payos.paymentRequests.create({
     orderCode,
     amount: orderData.totalAmount,
@@ -162,13 +170,7 @@ export async function createPaymentLink(
     buyerName: orderData.fullName,
     buyerEmail: orderData.email,
     buyerPhone: orderData.phone,
-    items: [
-      {
-        name: `YEP'26 Ticket x${orderData.ticketQuantity}`,
-        quantity: orderData.ticketQuantity,
-        price: orderData.ticketPrice,
-      },
-    ],
+    items: paymentItems,
     expiredAt: Math.floor(Date.now() / 1000) + 900,
   });
 

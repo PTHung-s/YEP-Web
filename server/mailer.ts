@@ -63,14 +63,15 @@ function uniqueTicketTypes(ticketItems: TicketItemRow[]): string {
 }
 
 function getBuyerPhone(input: TicketEmailInput): string {
-  return input.ticketItems[0]?.phone || '';
+  return input.ticketItems[0]?.phone || input.merchClaims?.[0]?.phone || '';
 }
 
 function getPurchaseInfo(input: TicketEmailInput): string {
   const quantity = input.ticketItems.length;
   const typeText = uniqueTicketTypes(input.ticketItems);
+  const ticketText = quantity > 0 ? `${quantity} ticket${quantity > 1 ? 's' : ''} - ${typeText}` : 'Merch only';
   const merchText = input.merchItems ? ` - ${input.merchItems}` : '';
-  return `${quantity} ticket${quantity > 1 ? 's' : ''} - ${typeText}${merchText} - ${formatVND(input.totalAmount)}`;
+  return `${ticketText}${merchText} - ${formatVND(input.totalAmount)}`;
 }
 
 function getShortTicketCode(ticketCode: string): string {
@@ -272,7 +273,7 @@ export function buildTicketEmailHtml(input: TicketEmailInput): string {
               <p style="margin:0 0 20px;color:#111827;font-size:18px;line-height:1.6;">Dear ${escapeHtml(input.buyerName)},</p>
 
               <p style="margin:0 0 16px;color:#1f2937;font-size:15px;line-height:1.75;">The YEP '26 Organizing Team is delighted to confirm your ticket purchase at <strong>YEP '26: The Kaleido Soul</strong>.</p>
-              <p style="margin:0 0 22px;color:#1f2937;font-size:15px;line-height:1.75;">Your ticket QR code has been attached to this email. Please also review your ticket information below:</p>
+              <p style="margin:0 0 22px;color:#1f2937;font-size:15px;line-height:1.75;">Your ticket or merch pickup QR code has been attached to this email. Please also review your purchase information below:</p>
 
               <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse;margin:0 0 24px;color:#1f2937;font-size:14px;line-height:1.55;">
                 <tr><td width="120" style="padding:5px 0;color:#6b7280;">Full name:</td><td style="padding:5px 0;font-weight:700;">${escapeHtml(input.buyerName)}</td></tr>

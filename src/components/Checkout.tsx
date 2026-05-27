@@ -220,10 +220,12 @@ export function Checkout() {
               </h3>
 
               <div className="space-y-3 mb-6">
-                <div className="flex justify-between text-sm font-display font-bold uppercase tracking-wider">
-                  <span>{state.userType === 'vinnunian' ? 'VINUNIAN' : 'NON-VINUNIAN'} ×{state.ticketQuantity}</span>
-                  <span>{formatVND(ticketPrice * state.ticketQuantity)}</span>
-                </div>
+                {state.ticketQuantity > 0 && (
+                  <div className="flex justify-between text-sm font-display font-bold uppercase tracking-wider">
+                    <span>{state.userType === 'vinnunian' ? 'VINUNIAN' : 'NON-VINUNIAN'} ×{state.ticketQuantity}</span>
+                    <span>{formatVND(ticketPrice * state.ticketQuantity)}</span>
+                  </div>
+                )}
 
                 {state.merch.filter(m => m.quantity > 0).map(m => (
                   <div key={m.id} className="flex justify-between text-sm font-display font-bold">
@@ -232,10 +234,12 @@ export function Checkout() {
                   </div>
                 ))}
 
-                <div className="border-t-2 border-primary pt-3 flex justify-between text-xs font-display font-bold uppercase tracking-widest text-on-surface-variant">
-                  <span>SERVICE FEE (3%)</span>
-                  <span>{formatVND(serviceFee)}</span>
-                </div>
+                {serviceFee > 0 && (
+                  <div className="border-t-2 border-primary pt-3 flex justify-between text-xs font-display font-bold uppercase tracking-widest text-on-surface-variant">
+                    <span>SERVICE FEE (3%)</span>
+                    <span>{formatVND(serviceFee)}</span>
+                  </div>
+                )}
 
                 {ticketBulkDiscount > 0 && (
                   <div className="flex justify-between text-xs font-display font-bold uppercase tracking-widest text-secondary">

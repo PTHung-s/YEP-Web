@@ -143,10 +143,12 @@ export function Success() {
           ORDER RECAP
         </h3>
         <div className="space-y-3 mb-6">
-          <div className="flex justify-between text-sm font-display font-bold uppercase tracking-wider">
-            <span>{state.userType === 'vinnunian' ? 'VINUNIAN' : 'NON-VINUNIAN'} TICKET ×{state.ticketQuantity}</span>
-            <span>{formatVND(ticketPrice * state.ticketQuantity)}</span>
-          </div>
+          {state.ticketQuantity > 0 && (
+            <div className="flex justify-between text-sm font-display font-bold uppercase tracking-wider">
+              <span>{state.userType === 'vinnunian' ? 'VINUNIAN' : 'NON-VINUNIAN'} TICKET ×{state.ticketQuantity}</span>
+              <span>{formatVND(ticketPrice * state.ticketQuantity)}</span>
+            </div>
+          )}
           {state.merch.filter(m => m.quantity > 0).map(m => (
             <div key={m.id} className="flex justify-between text-sm font-display font-bold">
               <span className="uppercase tracking-wider">{m.name} ×{m.quantity}</span>
