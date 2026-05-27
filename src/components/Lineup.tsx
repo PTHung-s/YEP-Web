@@ -14,7 +14,7 @@ const artists = [
     description: 'This artist will be revealed soon. Read the clues and keep guessing.',
     img: 'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?auto=format&fit=crop&q=80&w=1200',
     revealed: false,
-    hintTags: ['?Ng?i ??i bi?t bao m?a...?', 'Billie Eilish Vi?t Nam', 'Em Xinh Say Hi', 'not a pitbull', 'alt-pop energy', 'soft whale frequency'],
+    hintTags: ['\u201cNg\u1ed3i \u0111\u1ee3i bi\u1ebft bao m\u00f9a...\u201d', 'Billie Eilish Vi\u1ec7t Nam', 'Em Xinh Say Hi', 'not a pitbull', 'alt-pop energy', 'soft whale frequency'],
   },
   {
     id: 2,
@@ -25,7 +25,7 @@ const artists = [
     description: 'This artist will be revealed soon. Read the clues and keep guessing.',
     img: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=1200',
     revealed: false,
-    hintTags: ['C?u th?nh vi?n P336', 'T?t nghi?p Ng?n ng? Anh ?HKHXH&NV', '?? Vi?t Ti?n', 'T-up', 'Ho? ?m ph?i kh? trong 5 ng?y', 'boygroup roots'],
+    hintTags: ['C\u1ef1u th\u00e0nh vi\u00ean P336', 'T\u1ed1t nghi\u1ec7p Ng\u00f4n ng\u1eef Anh \u0110HKHXH&NV', '\u0110\u1ed7 Vi\u1ec7t Ti\u1ebfn', 'T-up', 'Ho\u00e0 \u00e2m ph\u1ed1i kh\u00ed trong 5 ng\u00e0y', 'boygroup roots'],
   },
   {
     id: 3,
@@ -36,7 +36,7 @@ const artists = [
     description: 'This artist will be revealed soon. Read the clues and keep guessing.',
     img: 'https://images.unsplash.com/photo-1493225457224-eda0e6fdc758?auto=format&fit=crop&q=80&w=1200',
     revealed: false,
-    hintTags: ['Gi?ng h?t Vi?t 2013', 'Em kh?ng quay v?', 'D?nh cho em', 'Gia ??nh ngh? thu?t', 'Gi?i L?n S?ng Xanh', 'R&B pop songwriter'],
+    hintTags: ['Gi\u1ecdng h\u00e1t Vi\u1ec7t 2013', 'Em kh\u00f4ng quay v\u1ec1', 'D\u00e0nh cho em', 'Gia \u0111\u00ecnh ngh\u1ec7 thu\u1eadt', 'Gi\u1ea3i L\u00e0n S\u00f3ng Xanh', 'R&B pop songwriter'],
   },
   {
     id: 4,
@@ -47,7 +47,7 @@ const artists = [
     description: 'This artist will be revealed soon. Read the clues and keep guessing.',
     img: 'https://images.unsplash.com/photo-1510915361894-db8b60106cb1?auto=format&fit=crop&q=80&w=1200',
     revealed: false,
-    hintTags: ['We go hard', '(Nh? s?n xu?t) Rap Vi?t', 'D?m r?c r?', 'HIEUTHUHAI', 'tlinh', 'GREY D', 'Wren Evans'],
+    hintTags: ['We go hard', '(Nh\u00e0 s\u1ea3n xu\u1ea5t) Rap Vi\u1ec7t', 'D\u00e1m r\u1ef1c r\u1ee1', 'HIEUTHUHAI', 'tlinh', 'GREY D', 'Wren Evans'],
   },
 ];
 
