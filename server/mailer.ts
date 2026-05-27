@@ -174,17 +174,17 @@ function buildMerchClaimCards(input: TicketEmailInput): string {
                   <td class="ticket-logo-cell" style="width:120px;text-align:center;vertical-align:middle;padding:8px 6px;border-right:1px solid rgba(255,255,255,0.18);">
                     <img class="ticket-logo" src="${escapeHtml(logoUrl)}" width="108" alt="The Kaleido Soul" style="display:block;width:108px;height:auto;border:0;margin:0 auto;" />
                   </td>
-                  <td class="ticket-title-cell" style="padding:15px 18px 10px;vertical-align:top;">
-                    <p class="ticket-kicker" style="margin:0 0 6px;color:#20d9ff;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.16em;">Merch Pickup Pass</p>
-                    <p class="ticket-title" style="margin:0;color:#ffffff;font-size:22px;line-height:1.05;font-weight:900;letter-spacing:.02em;text-transform:uppercase;text-shadow:0 1px 3px rgba(0,0,0,0.4);">Collect Your Merch</p>
-                    <p class="ticket-meta" style="margin:6px 0 0;color:rgba(255,255,255,0.9);font-size:12px;line-height:1.35;font-weight:400;text-shadow:0 1px 2px rgba(0,0,0,0.45);">Show this QR at the SC booth to collect all merchandise in this order.</p>
+                  <td class="ticket-title-cell" style="padding:14px 18px 8px;vertical-align:top;">
+                    <p class="ticket-kicker" style="margin:0 0 5px;color:#20d9ff;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.16em;">Merch Claim Pass</p>
+                    <p class="ticket-title" style="margin:0;color:#ffffff;font-size:21px;line-height:1.05;font-weight:900;letter-spacing:.02em;text-transform:uppercase;text-shadow:0 1px 3px rgba(0,0,0,0.4);">Merch Pickup</p>
+                    <p class="ticket-meta" style="margin:5px 0 0;color:rgba(255,255,255,0.9);font-size:12px;line-height:1.3;font-weight:400;text-shadow:0 1px 2px rgba(0,0,0,0.45);">Show this QR at the SC booth.</p>
                   </td>
                 </tr>
               </table>
-              <div class="ticket-detail-wrap" style="padding:0 18px 15px;">
-                <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse;color:#ffffff;font-size:12px;line-height:1.35;border-top:1px solid rgba(255,255,255,0.18);">
+              <div class="ticket-detail-wrap" style="padding:0 18px 13px;">
+                <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse;color:#ffffff;font-size:11px;line-height:1.25;border-top:1px solid rgba(255,255,255,0.18);">
                   <tr>
-                    <td style="padding:11px 0 6px;color:rgba(255,255,255,0.72);font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.1em;">Merch Items</td>
+                    <td style="padding:9px 0 5px;color:rgba(255,255,255,0.72);font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.1em;">Merch Items</td>
                   </tr>
                   <tr>
                     <td style="padding:0;font-weight:800;color:#ffffff;text-shadow:0 1px 2px rgba(0,0,0,0.35);">${escapeHtml(claim.merchItems)}</td>
