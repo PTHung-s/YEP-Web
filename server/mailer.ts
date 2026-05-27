@@ -144,6 +144,7 @@ function buildTicketCards(input: TicketEmailInput): string {
                 <img src="${escapeHtml(qrUrl)}" width="118" height="118" alt="Check-in QR code for ${escapeHtml(ticket.ticketCode)}" style="display:block;width:118px;height:118px;border:0;margin:0 auto;" />
               </div>
               <div style="display:block;margin:9px auto 0;padding:8px 10px;max-width:132px;border-radius:4px;background:rgba(255,255,255,0.78);border:1px solid rgba(79,42,167,0.16);color:#24133f;text-decoration:none;font-size:12px;font-weight:900;letter-spacing:.08em;">${escapeHtml(shortCode)}</div>
+              <p style="margin:8px auto 0;max-width:150px;color:#6b5f84;font-size:10px;line-height:1.35;">If the QR is hidden, choose Download external images/materials.</p>
             </td>
           </tr>
         </table>
@@ -176,6 +177,7 @@ function buildMerchClaimCards(input: TicketEmailInput): string {
                 <img src="${escapeHtml(qrUrl)}" width="118" height="118" alt="Merch pickup QR code for ${escapeHtml(claim.merchClaimCode)}" style="display:block;width:118px;height:118px;border:0;margin:0 auto;" />
               </div>
               <div style="display:block;margin:9px auto 0;padding:8px 10px;max-width:132px;border-radius:4px;background:rgba(255,255,255,0.78);border:1px solid rgba(79,42,167,0.16);color:#24133f;font-size:12px;font-weight:900;letter-spacing:.08em;">${escapeHtml(shortCode)}</div>
+              <p style="margin:8px auto 0;max-width:150px;color:#6b5f84;font-size:10px;line-height:1.35;">If the QR is hidden, choose Download external images/materials.</p>
             </td>
           </tr>
         </table>
