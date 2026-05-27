@@ -103,17 +103,17 @@ function buildTicketCards(input: TicketEmailInput): string {
             <td class="ticket-info" background="${escapeHtml(ticketBackgroundUrl)}" style="padding:0;vertical-align:stretch;background:#201047;background-image:url('${escapeHtml(ticketBackgroundUrl)}');background-size:cover;background-position:center;">
               <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse;">
                 <tr>
-                  <td class="ticket-logo-cell" style="width:150px;text-align:center;vertical-align:middle;padding:12px 10px;border-right:1px solid rgba(255,255,255,0.18);">
-                    <img class="ticket-logo" src="${escapeHtml(logoUrl)}" width="132" alt="The Kaleido Soul" style="display:block;width:132px;height:auto;border:0;margin:0 auto;" />
+                  <td class="ticket-logo-cell" style="width:120px;text-align:center;vertical-align:middle;padding:8px 6px;border-right:1px solid rgba(255,255,255,0.18);">
+                    <img class="ticket-logo" src="${escapeHtml(logoUrl)}" width="108" alt="The Kaleido Soul" style="display:block;width:108px;height:auto;border:0;margin:0 auto;" />
                   </td>
                   <td class="ticket-title-cell" style="padding:15px 18px 10px;vertical-align:top;">
-                    <p class="ticket-kicker" style="margin:0 0 6px;color:#20d9ff;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.16em;">${escapeHtml(title)} · Check-in Pass</p>
+                    <p class="ticket-kicker" style="margin:0 0 6px;color:#20d9ff;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.16em;">${escapeHtml(title)} &middot; Check-in Pass</p>
                     <p class="ticket-title" style="margin:0;color:#ffffff;font-size:23px;line-height:1.05;font-weight:900;letter-spacing:.02em;text-transform:uppercase;">The Kaleido Soul</p>
-                    <p class="ticket-meta" style="margin:6px 0 0;color:rgba(255,255,255,0.82);font-size:12px;line-height:1.35;">Amphitheatre, VinUniversity · Thursday, 25/6/2026</p>
+                    <p class="ticket-meta" style="margin:6px 0 0;color:rgba(255,255,255,0.9);font-size:12px;line-height:1.35;font-weight:400;text-shadow:0 1px 2px rgba(0,0,0,0.45);">Amphitheatre, VinUniversity &middot; Thursday, 25/6/2026</p>
                   </td>
                 </tr>
               </table>
-              <div class="ticket-detail-wrap" style="padding:0 18px 15px 170px;">
+              <div class="ticket-detail-wrap" style="padding:0 18px 15px;">
                 <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse;color:#ffffff;font-size:12px;line-height:1.35;border-top:1px solid rgba(255,255,255,0.18);">
                 <tr>
                   <td class="ticket-detail-label" style="padding:11px 10px 6px 0;color:rgba(255,255,255,0.68);font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.1em;">Ticket Type</td>
@@ -157,6 +157,9 @@ function buildTicketCards(input: TicketEmailInput): string {
 function buildMerchClaimCards(input: TicketEmailInput): string {
   if (!input.merchClaims?.length) return '';
 
+  const logoUrl = `${getAppUrl()}/assets/yep/event_name.png`;
+  const ticketBackgroundUrl = `${getAppUrl()}/assets/yep/Background_Ticket.png`;
+
   return input.merchClaims.map(claim => {
     const qrUrl = getTicketQrUrl(claim.merchClaimCode);
     const shortCode = getShortTicketCode(claim.merchClaimCode);
@@ -165,11 +168,29 @@ function buildMerchClaimCards(input: TicketEmailInput): string {
       <div style="margin:18px 0 0;border-radius:14px;overflow:hidden;background:#ffffff;box-shadow:0 10px 22px rgba(40,24,92,0.08);border:1px solid #d8cdef;">
         <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse;">
           <tr>
-            <td class="ticket-info" style="padding:18px 20px;vertical-align:middle;background:#ffffff;">
-              <p style="margin:0 0 6px;color:#20d9ff;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.16em;">Merch Pickup Pass</p>
-              <p style="margin:0;color:#111827;font-size:22px;line-height:1.08;font-weight:900;text-transform:uppercase;">Collect Your Merch</p>
-              <p style="margin:8px 0 0;color:#4b5563;font-size:13px;line-height:1.5;">Show this QR at the SC booth to collect all merchandise in this order.</p>
-              <p style="margin:12px 0 0;color:#111827;font-size:13px;line-height:1.5;font-weight:800;">${escapeHtml(claim.merchItems)}</p>
+            <td class="ticket-info" background="${escapeHtml(ticketBackgroundUrl)}" style="padding:0;vertical-align:stretch;background:#201047;background-image:url('${escapeHtml(ticketBackgroundUrl)}');background-size:cover;background-position:center;">
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse;">
+                <tr>
+                  <td class="ticket-logo-cell" style="width:120px;text-align:center;vertical-align:middle;padding:8px 6px;border-right:1px solid rgba(255,255,255,0.18);">
+                    <img class="ticket-logo" src="${escapeHtml(logoUrl)}" width="108" alt="The Kaleido Soul" style="display:block;width:108px;height:auto;border:0;margin:0 auto;" />
+                  </td>
+                  <td class="ticket-title-cell" style="padding:15px 18px 10px;vertical-align:top;">
+                    <p class="ticket-kicker" style="margin:0 0 6px;color:#20d9ff;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.16em;">Merch Pickup Pass</p>
+                    <p class="ticket-title" style="margin:0;color:#ffffff;font-size:22px;line-height:1.05;font-weight:900;letter-spacing:.02em;text-transform:uppercase;text-shadow:0 1px 3px rgba(0,0,0,0.4);">Collect Your Merch</p>
+                    <p class="ticket-meta" style="margin:6px 0 0;color:rgba(255,255,255,0.9);font-size:12px;line-height:1.35;font-weight:400;text-shadow:0 1px 2px rgba(0,0,0,0.45);">Show this QR at the SC booth to collect all merchandise in this order.</p>
+                  </td>
+                </tr>
+              </table>
+              <div class="ticket-detail-wrap" style="padding:0 18px 15px;">
+                <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse;color:#ffffff;font-size:12px;line-height:1.35;border-top:1px solid rgba(255,255,255,0.18);">
+                  <tr>
+                    <td style="padding:11px 0 6px;color:rgba(255,255,255,0.72);font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.1em;">Merch Items</td>
+                  </tr>
+                  <tr>
+                    <td style="padding:0;font-weight:800;color:#ffffff;text-shadow:0 1px 2px rgba(0,0,0,0.35);">${escapeHtml(claim.merchItems)}</td>
+                  </tr>
+                </table>
+              </div>
             </td>
             <td class="ticket-qr" width="176" style="padding:14px;text-align:center;vertical-align:middle;background:#f4f1fb;background-image:linear-gradient(135deg,#fbfaff 0%,#f4efff 62%,#eefcff 100%);border-left:2px dashed #bba9e8;">
               <div style="height:2px;width:42px;background:#20d9ff;margin:0 auto 8px;border-radius:99px;opacity:.55;"></div>
@@ -216,11 +237,11 @@ export function buildTicketEmailHtml(input: TicketEmailInput): string {
               border-top: 2px dashed #bba9e8 !important;
             }
             .ticket-logo-cell {
-              width: 92px !important;
-              padding: 6px !important;
+              width: 78px !important;
+              padding: 5px !important;
             }
             .ticket-logo {
-              width: 82px !important;
+              width: 68px !important;
               height: auto !important;
             }
             .ticket-title-cell {
@@ -428,3 +449,4 @@ export async function sendTicketEmail(input: TicketEmailInput): Promise<EmailRes
     return { configured: true, sent: false, provider: 'brevo', error: err.message || 'Failed to send email' };
   }
 }
+
