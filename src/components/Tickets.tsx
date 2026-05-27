@@ -161,7 +161,7 @@ export function Tickets() {
               <span className="bg-secondary text-white px-2 py-0.5 text-xs font-black tracking-widest border-2 border-primary">LIMITED</span>
             </h3>
             <p className="font-body text-sm font-bold uppercase tracking-wider text-on-surface-variant mt-1">
-              VINNUNIAN tickets only {formatVND(config.prices.earlyBird)}! Exclusive for VinUni community.
+              VinUnian tickets only {formatVND(config.prices.earlyBird)}! Exclusive for VinUni community.
             </p>
           </div>
         </div>
@@ -170,7 +170,7 @@ export function Tickets() {
       {!isLocked && !config.earlyBirdEnabled && (
         <div className="bg-surface border-4 border-primary p-4 mb-8 flex items-center gap-4">
           <Clock className="w-6 h-6 shrink-0" />
-          <p className="font-body text-sm font-bold uppercase tracking-wider">Regular pricing. Tickets available for both Vinnunian and Non-Vinnunian.</p>
+          <p className="font-body text-sm font-bold uppercase tracking-wider">Regular pricing. Tickets available for both VinUnian and Non-VinUnian.</p>
         </div>
       )}
 
@@ -206,7 +206,7 @@ export function Tickets() {
                     </div>
                   )}
                   <div className="flex justify-between items-start mb-4">
-                    <h4 className="font-display text-xl md:text-2xl font-black uppercase tracking-tight">VINNUNIAN</h4>
+                    <h4 className="font-display text-xl md:text-2xl font-black uppercase tracking-tight">VINUNIAN</h4>
                     <School className="w-7 h-7" />
                   </div>
                   <div className="mb-3">
@@ -241,7 +241,7 @@ export function Tickets() {
                     </div>
                   )}
                   <div className="flex justify-between items-start mb-4">
-                    <h4 className="font-display text-xl md:text-2xl font-black uppercase tracking-tight">NON-VINNUNIAN</h4>
+                    <h4 className="font-display text-xl md:text-2xl font-black uppercase tracking-tight">NON-VINUNIAN</h4>
                     <Users className="w-7 h-7" />
                   </div>
                   <div className="mb-3">
@@ -467,7 +467,7 @@ export function Tickets() {
                 <div className="flex items-center gap-3 mb-4">
                   <Ticket className="w-6 h-6" />
                   <h4 className="font-display text-xl font-black uppercase tracking-tight">
-                    {state.userType === 'vinnunian' ? 'VINNUNIAN TICKET' : 'NON-VINNUNIAN TICKET'}
+                    {state.userType === 'vinnunian' ? 'VINUNIAN TICKET' : 'NON-VINUNIAN TICKET'}
                   </h4>
                 </div>
                 <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">

@@ -72,6 +72,9 @@ export function Confirmation() {
 
       const data = await res.json();
       if (data.payos) {
+        if (data.orderCode && data.statusKey) {
+          sessionStorage.setItem(`yep-payos-status:${data.orderCode}`, data.statusKey);
+        }
         window.location.href = data.checkoutUrl;
       } else {
         navigate('/success', { state: { ticketId: data.ticketId, ticketCodes: data.ticketCodes || [], storedIn: data.storedIn } });
@@ -125,7 +128,7 @@ export function Confirmation() {
               <div><span className="block font-display text-xs font-bold uppercase tracking-widest text-on-surface-variant">Name</span><span className="font-display font-black text-lg uppercase">{state.fullName || '---'}</span></div>
               <div><span className="block font-display text-xs font-bold uppercase tracking-widest text-on-surface-variant">Email</span><span className="font-display font-black text-lg">{state.email || '---'}</span></div>
               <div><span className="block font-display text-xs font-bold uppercase tracking-widest text-on-surface-variant">Phone</span><span className="font-display font-black text-lg">{state.phone || '---'}</span></div>
-              <div><span className="block font-display text-xs font-bold uppercase tracking-widest text-on-surface-variant">Type</span><span className="font-display font-black text-lg uppercase">{state.userType === 'vinnunian' ? `VINNUNIAN · ${state.userCategory?.toUpperCase() || ''}` : 'NON-VINNUNIAN'}</span></div>
+              <div><span className="block font-display text-xs font-bold uppercase tracking-widest text-on-surface-variant">Type</span><span className="font-display font-black text-lg uppercase">{state.userType === 'vinnunian' ? `VINUNIAN · ${state.userCategory?.toUpperCase() || ''}` : 'NON-VINUNIAN'}</span></div>
               {state.userType === 'vinnunian' && state.studentId && <div><span className="block font-display text-xs font-bold uppercase tracking-widest text-on-surface-variant">Student ID</span><span className="font-display font-black text-lg">{state.studentId}</span></div>}
               {state.userType === 'non-vinnunian' && state.workplace && <div><span className="block font-display text-xs font-bold uppercase tracking-widest text-on-surface-variant">Workplace</span><span className="font-display font-black text-lg">{state.workplace}</span></div>}
               {state.userType === 'non-vinnunian' && state.upcomingStudent && (
@@ -148,7 +151,7 @@ export function Confirmation() {
             <div className="bg-surface border-4 border-primary p-6 md:p-8">
               <h3 className="font-display text-xl md:text-2xl font-black uppercase mb-6 border-b-4 border-primary pb-3">ORDER SUMMARY</h3>
               <div className="space-y-3 mb-6">
-                <div className="flex justify-between text-sm font-display font-bold uppercase tracking-wider"><span>{state.userType === 'vinnunian' ? 'VINNUNIAN' : 'NON-VINNUNIAN'} TICKET ×{state.ticketQuantity}</span><span>{formatVND(ticketPrice * state.ticketQuantity)}</span></div>
+                <div className="flex justify-between text-sm font-display font-bold uppercase tracking-wider"><span>{state.userType === 'vinnunian' ? 'VINUNIAN' : 'NON-VINUNIAN'} TICKET ×{state.ticketQuantity}</span><span>{formatVND(ticketPrice * state.ticketQuantity)}</span></div>
                 {state.merch.filter(m => m.quantity > 0).map(m => <div key={m.id} className="flex justify-between text-sm font-display font-bold"><span className="uppercase tracking-wider">{m.name} ×{m.quantity}</span><span>{formatVND(m.price * m.quantity)}</span></div>)}
                 <div className="border-t-2 border-primary pt-3 flex justify-between text-xs font-display font-bold uppercase tracking-widest text-on-surface-variant"><span>SERVICE FEE (3%)</span><span>{formatVND(serviceFee)}</span></div>
                 {ticketBulkDiscount > 0 && <div className="flex justify-between text-xs font-display font-bold uppercase tracking-widest text-secondary"><span>TICKET BULK DISCOUNT</span><span>-{formatVND(ticketBulkDiscount)}</span></div>}

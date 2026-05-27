@@ -145,12 +145,9 @@ export async function createPaymentLink(
     throw new Error('PayOS is not configured');
   }
 
-  const pending = getPendingOrder(orderCode);
-  const statusKey = pending?.statusKey || '';
   const baseUrl = (process.env.APP_URL || 'http://localhost:3000').replace(/\/$/, '');
   const returnParams = new URLSearchParams({
     payosOrder: String(orderCode),
-    payosKey: statusKey,
   });
 
   const result = await payos.paymentRequests.create({

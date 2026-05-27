@@ -3,6 +3,7 @@ import express from 'express';
 import cors from 'cors';
 import path from 'path';
 import crypto from 'crypto';
+import fs from 'fs/promises';
 import QRCode from 'qrcode';
 import {
   appendCheckinRow,
@@ -60,6 +61,20 @@ const ADMIN_TOKEN_TTL_MS = 1000 * 60 * 60 * 18;
 
 app.disable('x-powered-by');
 app.use((_req, res, next) => {
+  const csp = [
+    "default-src 'self'",
+    "script-src 'self'",
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+    "font-src 'self' https://fonts.gstatic.com data:",
+    "img-src 'self' data: blob: https:",
+    "connect-src 'self'",
+    "object-src 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+    "frame-ancestors 'none'",
+  ].join('; ');
+
+  res.setHeader('Content-Security-Policy', csp);
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('X-Frame-Options', 'DENY');
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
@@ -98,12 +113,16 @@ app.use(express.json({ limit: '64kb' }));
 const adminTokens = new Set<string>();
 const MAX_TICKETS_PER_ORDER = 10;
 
-function createRateLimiter(options: { windowMs: number; max: number }) {
+function getClientIp(req: express.Request): string {
+  const forwardedIp = String(req.header('cf-connecting-ip') || req.header('x-forwarded-for') || '').split(',')[0].trim();
+  return forwardedIp || req.ip || req.socket.remoteAddress || 'unknown';
+}
+
+function createRateLimiter(options: { windowMs: number; max: number; scope?: string }) {
   const hits = new Map<string, { count: number; resetAt: number }>();
 
   return (req: express.Request, res: express.Response, next: express.NextFunction) => {
-    const forwardedIp = String(req.header('cf-connecting-ip') || req.header('x-forwarded-for') || '').split(',')[0].trim();
-    const key = `${forwardedIp || req.ip || req.socket.remoteAddress || 'unknown'}:${req.path}`;
+    const key = `${getClientIp(req)}:${options.scope || req.path}`;
     const now = Date.now();
     const current = hits.get(key);
 
@@ -123,9 +142,10 @@ function createRateLimiter(options: { windowMs: number; max: number }) {
   };
 }
 
-const adminLoginLimiter = createRateLimiter({ windowMs: 60 * 1000, max: 6 });
-const publicWriteLimiter = createRateLimiter({ windowMs: 60 * 1000, max: 12 });
-const paymentStatusLimiter = createRateLimiter({ windowMs: 60 * 1000, max: 30 });
+const adminLoginLimiter = createRateLimiter({ windowMs: 60 * 1000, max: 5, scope: 'admin-login' });
+const publicWriteLimiter = createRateLimiter({ windowMs: 60 * 1000, max: 12, scope: 'public-write' });
+const paymentStatusLimiter = createRateLimiter({ windowMs: 60 * 1000, max: 10, scope: 'payos-status' });
+const adminExportLimiter = createRateLimiter({ windowMs: 60 * 60 * 1000, max: 3, scope: 'admin-ticket-export' });
 
 function cleanText(value: unknown, maxLength = 160): string {
   return String(value ?? '').trim().slice(0, maxLength);
@@ -210,7 +230,7 @@ function requireAdmin(req: express.Request, res: express.Response, next: express
 }
 
 function getTicketTypeLabel(userType: string, earlyBirdEnabled: boolean): string {
-  if (userType === 'vinnunian') return earlyBirdEnabled ? 'Vinnunian Early Bird' : 'Vinnunian Regular';
+  if (userType === 'vinnunian') return earlyBirdEnabled ? 'VinUnian Early Bird' : 'VinUnian Regular';
   return 'Guest';
 }
 
@@ -248,9 +268,31 @@ function getRequestAppUrl(req: express.Request): string | undefined {
   return undefined;
 }
 
+function getPublicConfig(config: Awaited<ReturnType<typeof readConfig>>) {
+  const { limits: _limits, ...publicConfig } = config;
+  return publicConfig;
+}
+
+async function writeAdminAuditLog(req: express.Request, action: string, detail: Record<string, unknown> = {}) {
+  try {
+    const auditPath = path.resolve('server', 'data', 'admin-audit.log');
+    const event = {
+      at: new Date().toISOString(),
+      action,
+      ip: getClientIp(req),
+      userAgent: req.header('user-agent') || '',
+      ...detail,
+    };
+    await fs.mkdir(path.dirname(auditPath), { recursive: true });
+    await fs.appendFile(auditPath, `${JSON.stringify(event)}\n`, 'utf-8');
+  } catch (err) {
+    console.error('[Audit] Failed to write admin audit log:', err);
+  }
+}
+
 app.get('/api/config', async (_req, res) => {
   try {
-    res.json(await readConfig());
+    res.json(getPublicConfig(await readConfig()));
   } catch (err) {
     console.error('[API] Error reading config:', err);
     res.status(500).json({ error: 'Internal server error' });
@@ -282,20 +324,23 @@ app.get('/api/ticket-qr/:ticketCode.png', async (req, res) => {
   }
 });
 
-app.post('/api/admin/login', adminLoginLimiter, (req, res) => {
+app.post('/api/admin/login', adminLoginLimiter, async (req, res) => {
   const passcode = getAdminPasscode();
   if (!passcode) {
+    await writeAdminAuditLog(req, 'admin_login_unconfigured');
     res.status(503).json({ error: 'Admin passcode is not configured' });
     return;
   }
 
   if (req.body?.passcode !== passcode) {
+    await writeAdminAuditLog(req, 'admin_login_failed');
     res.status(401).json({ error: 'Invalid passcode' });
     return;
   }
 
   const token = createAdminToken(passcode);
   adminTokens.add(token);
+  await writeAdminAuditLog(req, 'admin_login_success');
   res.json({ token });
 });
 
@@ -730,16 +775,18 @@ app.post('/api/payos/webhook', async (req, res) => {
 app.get('/api/payos/status/:orderCode', paymentStatusLimiter, async (req, res) => {
   try {
     const orderCode = Number(req.params.orderCode);
-    const statusKey = cleanText(req.query.key, 96);
+    const statusKey = cleanText(req.header('x-payos-status-key'), 96);
+    const denyStatusLookup = () => res.status(404).json({ error: 'Payment status unavailable' });
+
     if (!orderCode || Number.isNaN(orderCode)) {
-      res.status(400).json({ error: 'Invalid order code' });
+      denyStatusLookup();
       return;
     }
 
     const paidResult = getPaidResult(orderCode);
     if (paidResult) {
       if (!statusKey || statusKey !== paidResult.statusKey) {
-        res.status(401).json({ error: 'Unauthorized payment status lookup' });
+        denyStatusLookup();
         return;
       }
       res.json({ status: 'paid', ...paidResult });
@@ -748,12 +795,12 @@ app.get('/api/payos/status/:orderCode', paymentStatusLimiter, async (req, res) =
 
     const pending = getPendingOrder(orderCode);
     if (!pending) {
-      res.status(404).json({ error: 'Order not found', orderCode });
+      denyStatusLookup();
       return;
     }
 
     if (!statusKey || statusKey !== pending.statusKey) {
-      res.status(401).json({ error: 'Unauthorized payment status lookup' });
+      denyStatusLookup();
       return;
     }
 
@@ -901,11 +948,19 @@ app.get('/api/admin/summary', requireAdmin, async (_req, res) => {
   }
 });
 
-// GET /api/admin/tickets - Export all tickets (for Excel)
-app.get('/api/admin/tickets', requireAdmin, async (_req, res) => {
+// GET /api/admin/tickets - Export recent ticket rows for admin review
+app.get('/api/admin/tickets', requireAdmin, adminExportLimiter, async (req, res) => {
   try {
+    const requestedLimit = Number(req.query.limit);
+    const limit = Math.min(500, Math.max(1, Math.floor(requestedLimit || 500)));
     const tickets = await getTicketsCSV();
-    res.json({ source: 'csv', tickets });
+    const exportedTickets = tickets.slice(-limit);
+    await writeAdminAuditLog(req, 'admin_tickets_export', {
+      exportedCount: exportedTickets.length,
+      totalAvailable: tickets.length,
+      limit,
+    });
+    res.json({ source: 'csv', tickets: exportedTickets, totalAvailable: tickets.length, limit });
   } catch (err) {
     console.error('[API] Error getting tickets:', err);
     res.status(500).json({ error: 'Internal server error' });

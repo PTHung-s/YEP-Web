@@ -22,6 +22,12 @@ export function Checkout() {
   const ticketBulkDiscount = getTicketBulkDiscount();
   const merchBulkDiscount = getMerchBulkDiscount();
 
+  const rememberPayOSStatusKey = () => {
+    if (payosData?.orderCode && payosData.statusKey) {
+      sessionStorage.setItem(`yep-payos-status:${payosData.orderCode}`, payosData.statusKey);
+    }
+  };
+
   const handlePay = async () => {
     if (processing || !state.paymentMethod) return;
     setProcessing(true);
@@ -171,6 +177,7 @@ export function Checkout() {
                 <p className="font-body text-sm font-medium">Order Code: <span className="font-display font-bold">{payosData.orderCode}</span></p>
                 <a
                   href={payosData.checkoutUrl}
+                  onClick={rememberPayOSStatusKey}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-2 bg-secondary text-white border-4 border-primary px-6 py-3 font-display font-black text-sm uppercase tracking-widest hover:bg-primary transition-colors"
@@ -214,7 +221,7 @@ export function Checkout() {
 
               <div className="space-y-3 mb-6">
                 <div className="flex justify-between text-sm font-display font-bold uppercase tracking-wider">
-                  <span>{state.userType === 'vinnunian' ? 'VINNUNIAN' : 'NON-VINNUNIAN'} ×{state.ticketQuantity}</span>
+                  <span>{state.userType === 'vinnunian' ? 'VINUNIAN' : 'NON-VINUNIAN'} ×{state.ticketQuantity}</span>
                   <span>{formatVND(ticketPrice * state.ticketQuantity)}</span>
                 </div>
 

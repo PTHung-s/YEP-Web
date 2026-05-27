@@ -18,9 +18,10 @@ export function Success() {
   const [searchParams] = useSearchParams();
   const orderCode = (location.state as any)?.orderCode as number | undefined
     || (searchParams.get('payosOrder') ? Number(searchParams.get('payosOrder')) : undefined);
-  const statusKey = (location.state as any)?.statusKey as string | undefined
-    || searchParams.get('payosKey')
-    || undefined;
+  const statusKeyFromState = (location.state as any)?.statusKey as string | undefined;
+  const statusStorageKey = orderCode ? `yep-payos-status:${orderCode}` : '';
+  const statusKey = statusKeyFromState
+    || (statusStorageKey ? sessionStorage.getItem(statusStorageKey) || undefined : undefined);
   const [ticketId, setTicketId] = useState((location.state as any)?.ticketId || null);
   const [ticketCodes, setTicketCodes] = useState(((location.state as any)?.ticketCodes || []) as string[]);
   const [storedIn, setStoredIn] = useState((location.state as any)?.storedIn || 'payos');
@@ -34,6 +35,9 @@ export function Success() {
 
   useEffect(() => {
     if (!orderCode) return;
+    if (statusKeyFromState && statusStorageKey) {
+      sessionStorage.setItem(statusStorageKey, statusKeyFromState);
+    }
     if (!statusKey) {
       setPollError('Payment confirmation link is missing its security key. Please check your email for your tickets.');
       setPolling(false);
@@ -45,7 +49,9 @@ export function Success() {
     async function poll() {
       while (attempts < 30 && !cancelled) {
         try {
-          const res = await fetch(`/api/payos/status/${orderCode}?key=${encodeURIComponent(statusKey)}`);
+          const res = await fetch(`/api/payos/status/${orderCode}`, {
+            headers: { 'X-PayOS-Status-Key': statusKey },
+          });
           const data = await res.json();
           if (data.status === 'paid') {
             if (!cancelled) {
@@ -53,6 +59,7 @@ export function Success() {
               setTicketCodes(data.ticketCodes || []);
               setStoredIn(data.storedIn || 'payos');
               setPolling(false);
+              if (statusStorageKey) sessionStorage.removeItem(statusStorageKey);
             }
             return;
           }
@@ -70,7 +77,7 @@ export function Success() {
     poll();
 
     return () => { cancelled = true; };
-  }, [orderCode, statusKey]);
+  }, [orderCode, statusKey, statusKeyFromState, statusStorageKey]);
 
   useEffect(() => {
     let cancelled = false;
@@ -137,7 +144,7 @@ export function Success() {
         </h3>
         <div className="space-y-3 mb-6">
           <div className="flex justify-between text-sm font-display font-bold uppercase tracking-wider">
-            <span>{state.userType === 'vinnunian' ? 'VINNUNIAN' : 'NON-VINNUNIAN'} TICKET ×{state.ticketQuantity}</span>
+            <span>{state.userType === 'vinnunian' ? 'VINUNIAN' : 'NON-VINUNIAN'} TICKET ×{state.ticketQuantity}</span>
             <span>{formatVND(ticketPrice * state.ticketQuantity)}</span>
           </div>
           {state.merch.filter(m => m.quantity > 0).map(m => (

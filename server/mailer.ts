@@ -88,7 +88,6 @@ function buildTicketCards(input: TicketEmailInput): string {
 
   return input.ticketItems.map((ticket, index) => {
     const qrUrl = getTicketQrUrl(ticket.ticketCode);
-    const checkinUrl = getTicketCheckinUrl(ticket.ticketCode);
     const title = input.ticketItems.length > 1 ? `Ticket ${index + 1}` : 'Your Ticket';
     const shortCode = getShortTicketCode(ticket.ticketCode);
 
@@ -135,14 +134,12 @@ function buildTicketCards(input: TicketEmailInput): string {
               </div>
             </td>
             <td class="ticket-qr" width="176" style="padding:14px 14px;text-align:center;vertical-align:middle;background:#f3efff;background-image:linear-gradient(135deg,#fbfaff 0%,#f0eaff 62%,#eafaff 100%);border-left:2px dashed #bba9e8;position:relative;">
-              <div style="height:16px;width:32px;border-radius:0 0 32px 32px;background:#ffffff;margin:-18px auto 8px;border-left:1px solid #d8cdef;border-right:1px solid #d8cdef;border-bottom:1px solid #d8cdef;"></div>
               <div style="height:2px;width:42px;background:#20d9ff;margin:0 auto 8px;border-radius:99px;opacity:.55;"></div>
               <p style="margin:0 0 8px;color:#4f2aa7;font-size:13px;line-height:1.15;font-weight:900;letter-spacing:.1em;text-transform:uppercase;">Check-in</p>
               <div style="display:inline-block;padding:8px;border:1px solid #e5e0f2;border-radius:12px;background:#ffffff;box-shadow:0 7px 16px rgba(79,42,167,0.08);">
                 <img src="${escapeHtml(qrUrl)}" width="118" height="118" alt="Check-in QR code for ${escapeHtml(ticket.ticketCode)}" style="display:block;width:118px;height:118px;border:0;margin:0 auto;" />
               </div>
-              <a href="${escapeHtml(checkinUrl)}" style="display:block;margin:9px auto 0;padding:8px 10px;max-width:132px;border-radius:4px;background:rgba(255,255,255,0.72);border:1px solid rgba(79,42,167,0.18);color:#24133f;text-decoration:none;font-size:12px;font-weight:900;letter-spacing:.08em;">${escapeHtml(shortCode)}</a>
-              <div style="height:16px;width:32px;border-radius:32px 32px 0 0;background:#ffffff;margin:9px auto -18px;border-left:1px solid #d8cdef;border-right:1px solid #d8cdef;border-top:1px solid #d8cdef;"></div>
+              <div style="display:block;margin:9px auto 0;padding:8px 10px;max-width:132px;border-radius:4px;background:rgba(255,255,255,0.78);border:1px solid rgba(79,42,167,0.16);color:#24133f;text-decoration:none;font-size:12px;font-weight:900;letter-spacing:.08em;">${escapeHtml(shortCode)}</div>
             </td>
           </tr>
         </table>
@@ -155,6 +152,7 @@ export function buildTicketEmailHtml(input: TicketEmailInput): string {
   const supportEmail = getSupportEmail();
   const phone = getBuyerPhone(input);
   const purchaseInfo = getPurchaseInfo(input);
+  const bannerUrl = `${getAppUrl()}/assets/yep/email-banner-kaleido.jpg`;
 
   return `<!doctype html>
     <html>
@@ -163,8 +161,9 @@ export function buildTicketEmailHtml(input: TicketEmailInput): string {
         <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
         <style>
           @media only screen and (max-width: 640px) {
-            .email-shell { padding: 12px !important; }
-            .email-card { border-radius: 14px !important; }
+            .email-shell { padding: 0 !important; }
+            .email-card { border-radius: 0 !important; }
+            .email-banner { height: 178px !important; }
             .email-body { padding: 24px 18px !important; }
             .ticket-info, .ticket-qr {
               display: block !important;
@@ -215,13 +214,23 @@ export function buildTicketEmailHtml(input: TicketEmailInput): string {
           }
         </style>
       </head>
-      <body style="margin:0;padding:0;background:#f5f5f7;color:#111827;font-family:Arial,Helvetica,sans-serif;">
+      <body style="margin:0;padding:0;background:#ffffff;color:#111827;font-family:Arial,Helvetica,sans-serif;">
         <div style="display:none;max-height:0;overflow:hidden;opacity:0;">Your YEP'26 ticket QR code is ready.</div>
-        <div class="email-shell" style="padding:28px 14px;background:#f5f5f7;">
-          <div class="email-card" style="max-width:760px;margin:0 auto;background:#ffffff;border:1px solid #e5e7eb;border-radius:18px;overflow:hidden;">
-            <div style="padding:22px 28px;border-bottom:1px solid #ececf0;background:#ffffff;">
-              <p style="margin:0;color:#4f2aa7;font-size:24px;line-height:1.1;font-weight:900;">YEP'26</p>
-              <p style="margin:5px 0 0;color:#4b5563;font-size:14px;line-height:1.45;">The Kaleido Soul by VinUni Student Council</p>
+        <div class="email-shell" style="padding:0;background:#ffffff;">
+          <div class="email-card" style="max-width:760px;margin:0 auto;background:#ffffff;border-radius:0;overflow:visible;">
+            <div class="email-banner" style="height:210px;overflow:hidden;background:#2a145a;">
+              <img src="${escapeHtml(bannerUrl)}" width="760" alt="YEP'26: The Kaleido Soul" style="display:block;width:100%;height:100%;object-fit:cover;object-position:center 43%;border:0;" />
+            </div>
+            <div style="padding:20px 28px;border-bottom:1px solid #ececf0;background:#ffffff;">
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse;">
+                <tr>
+                  <td style="vertical-align:middle;">
+                    <p style="margin:0;color:#4f2aa7;font-size:24px;line-height:1.1;font-weight:900;">YEP'26</p>
+                    <p style="margin:5px 0 0;color:#4b5563;font-size:14px;line-height:1.45;">The Kaleido Soul</p>
+                  </td>
+                  <td style="vertical-align:middle;text-align:right;color:#4f2aa7;font-size:15px;font-weight:800;">VinUni Student Council</td>
+                </tr>
+              </table>
             </div>
 
             <div class="email-body" style="padding:30px 34px 34px;">

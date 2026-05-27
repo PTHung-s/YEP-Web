@@ -177,7 +177,7 @@ export async function appendTicketRow(row: TicketRow): Promise<boolean> {
           row.fullName,
           row.email,
           row.phone,
-          row.userType === 'vinnunian' ? 'Vinnunian' : 'Non-Vinnunian',
+          row.userType === 'vinnunian' ? 'VinUnian' : 'Non-VinUnian',
           row.userCategory || '',
           row.studentId || '',
           row.workplace || '',
