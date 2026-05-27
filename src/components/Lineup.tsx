@@ -14,7 +14,7 @@ const artists = [
     description: 'This artist will be revealed soon. Read the clues and keep guessing.',
     img: 'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?auto=format&fit=crop&q=80&w=1200',
     revealed: false,
-    hintTags: ['“Ngồi đợi biết bao mùa...”', 'Billie Eilish Việt Nam', 'Em Xinh Say Hi', 'not a pitbull', 'alt-pop energy', 'soft whale frequency'],
+    hintTags: ['?Ng?i ??i bi?t bao m?a...?', 'Billie Eilish Vi?t Nam', 'Em Xinh Say Hi', 'not a pitbull', 'alt-pop energy', 'soft whale frequency'],
   },
   {
     id: 2,
@@ -25,7 +25,7 @@ const artists = [
     description: 'This artist will be revealed soon. Read the clues and keep guessing.',
     img: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=1200',
     revealed: false,
-    hintTags: ['Cựu thành viên P336', 'Tốt nghiệp Ngôn ngữ Anh ĐHKHXH&NV', 'Đỗ Việt Tiến', 'T-up', 'Hoà âm phối khí trong 5 ngày', 'boygroup roots'],
+    hintTags: ['C?u th?nh vi?n P336', 'T?t nghi?p Ng?n ng? Anh ?HKHXH&NV', '?? Vi?t Ti?n', 'T-up', 'Ho? ?m ph?i kh? trong 5 ng?y', 'boygroup roots'],
   },
   {
     id: 3,
@@ -36,7 +36,7 @@ const artists = [
     description: 'This artist will be revealed soon. Read the clues and keep guessing.',
     img: 'https://images.unsplash.com/photo-1493225457224-eda0e6fdc758?auto=format&fit=crop&q=80&w=1200',
     revealed: false,
-    hintTags: ['Giọng hát Việt 2013', 'Em không quay về', 'Dành cho em', 'Gia đình nghệ thuật', 'Giải Làn Sóng Xanh', 'R&B pop songwriter'],
+    hintTags: ['Gi?ng h?t Vi?t 2013', 'Em kh?ng quay v?', 'D?nh cho em', 'Gia ??nh ngh? thu?t', 'Gi?i L?n S?ng Xanh', 'R&B pop songwriter'],
   },
   {
     id: 4,
@@ -47,7 +47,7 @@ const artists = [
     description: 'This artist will be revealed soon. Read the clues and keep guessing.',
     img: 'https://images.unsplash.com/photo-1510915361894-db8b60106cb1?auto=format&fit=crop&q=80&w=1200',
     revealed: false,
-    hintTags: ['We go hard', '(Nhà sản xuất) Rap Việt', 'Dám rực rỡ', 'HIEUTHUHAI', 'tlinh', 'GREY D', 'Wren Evans'],
+    hintTags: ['We go hard', '(Nh? s?n xu?t) Rap Vi?t', 'D?m r?c r?', 'HIEUTHUHAI', 'tlinh', 'GREY D', 'Wren Evans'],
   },
 ];
 
@@ -56,10 +56,10 @@ const totalCount = artists.length;
 
 export function Lineup() {
   return (
-    <div className="w-full max-w-7xl mx-auto px-6 md:px-12 py-12 md:py-16">
+    <div className="w-full max-w-7xl mx-auto px-4 md:px-12 py-10 md:py-16">
       {/* Header */}
       <section className="mb-12 md:mb-16 relative">
-        <div className="border-4 border-primary p-8 md:p-14 bg-primary text-white neo-shadow relative overflow-hidden min-h-[420px] md:min-h-[520px] flex items-center">
+        <div className="border-4 border-primary p-6 md:p-14 bg-primary text-white neo-shadow relative overflow-hidden min-h-[360px] md:min-h-[520px] flex items-center">
           <img
             src={yepAsset('background-stage-light.webp')}
             alt=""
@@ -68,14 +68,14 @@ export function Lineup() {
           />
           <div className="absolute inset-0 bg-primary/65" />
           <div className="relative z-10 max-w-3xl">
-            <span className="inline-block font-display text-on-surface-variant font-bold tracking-widest uppercase text-xs md:text-sm mb-4 bg-secondary/10 border-2 border-secondary/30 px-3 py-1">
+            <span className="inline-block font-display text-on-surface-variant font-bold tracking-widest uppercase text-[10px] md:text-sm mb-4 bg-secondary/10 border-2 border-secondary/30 px-3 py-1">
               THE COMPLETE LINEUP
             </span>
-            <h1 className="font-display text-6xl md:text-8xl lg:text-[8rem] font-black uppercase leading-[0.82] tracking-tighter">
+            <h1 className="font-display text-[3.25rem] sm:text-6xl md:text-8xl lg:text-[8rem] font-black uppercase leading-[0.86] tracking-normal md:tracking-tighter break-words">
               ARTIST<br />
               <span className="text-tertiary">SHOWCASE</span>
             </h1>
-            <p className="font-body text-base md:text-lg text-white/75 max-w-xl leading-relaxed mt-6">
+            <p className="font-body text-sm md:text-lg text-white/75 max-w-xl leading-relaxed mt-5 md:mt-6">
               Four mystery acts. One main stage. One unforgettable night at YEP'26: The Kaleido Soul.
             </p>
           </div>

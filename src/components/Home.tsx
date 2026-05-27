@@ -206,14 +206,13 @@ export function Home() {
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto">
             {[
-              ['VINUNIANS EARLY', '250K', '100 tickets', 'bg-secondary text-white'],
-              ['VINUNIANS REGULAR', '300K', '400 tickets', 'bg-primary text-white'],
-              ['GUEST', '400K', '200 tickets', 'bg-tertiary text-background'],
-            ].map(([label, price, note, buttonClass]) => (
+              ['VINUNIANS EARLY', '250K', 'bg-secondary text-white'],
+              ['VINUNIANS REGULAR', '300K', 'bg-primary text-white'],
+              ['GUEST', '400K', 'bg-tertiary text-background'],
+            ].map(([label, price, buttonClass]) => (
               <div key={label} className="bg-surface p-6 border border-outline-variant flex flex-col items-center text-on-surface transition-transform duration-300 hover:-translate-y-2">
                 <span className="font-display text-lg md:text-xl font-bold uppercase mb-3 tracking-widest text-on-surface-variant">{label}</span>
-                <span className="font-display text-4xl md:text-5xl font-black mb-2 tracking-tighter text-white">{price}</span>
-                <span className="font-display text-xs font-bold uppercase tracking-widest text-on-surface-variant mb-4">{note}</span>
+                <span className="font-display text-4xl md:text-5xl font-black mb-6 tracking-tighter text-white">{price}</span>
                 <Link to="/tickets" className={`${buttonClass} px-6 py-3 font-display font-bold uppercase hover:bg-primary transition-colors w-full border-2 border-primary neo-shadow active:translate-x-1 active:translate-y-1 active:shadow-none`}>
                   Select
                 </Link>
