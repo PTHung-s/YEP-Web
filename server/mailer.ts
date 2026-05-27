@@ -88,7 +88,8 @@ export function getTicketCheckinUrl(ticketCode: string): string {
 }
 
 function buildTicketCards(input: TicketEmailInput): string {
-  const logoUrl = `${getAppUrl()}/assets/yep/yep-logo.png`;
+  const logoUrl = `${getAppUrl()}/assets/yep/event_name.png`;
+  const ticketBackgroundUrl = `${getAppUrl()}/assets/yep/Background_Ticket.png`;
 
   return input.ticketItems.map((ticket, index) => {
     const qrUrl = getTicketQrUrl(ticket.ticketCode);
@@ -96,43 +97,43 @@ function buildTicketCards(input: TicketEmailInput): string {
     const shortCode = getShortTicketCode(ticket.ticketCode);
 
     return `
-      <div style="margin:18px 0 0;border-radius:16px;overflow:hidden;background:#ffffff;box-shadow:0 12px 24px rgba(40,24,92,0.09);border:1px solid #d8cdef;">
+      <div style="margin:18px 0 0;border-radius:16px;overflow:hidden;background:#201047;box-shadow:0 12px 24px rgba(40,24,92,0.09);border:1px solid #d8cdef;">
         <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse;">
           <tr>
-            <td class="ticket-info" style="padding:0;vertical-align:stretch;background:#ffffff;">
+            <td class="ticket-info" background="${escapeHtml(ticketBackgroundUrl)}" style="padding:0;vertical-align:stretch;background:#201047;background-image:url('${escapeHtml(ticketBackgroundUrl)}');background-size:cover;background-position:center;">
               <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse;">
                 <tr>
-                  <td class="ticket-logo-cell" style="width:80px;background:#ffffff;color:#4f2aa7;text-align:center;vertical-align:middle;padding:4px;border-right:1px solid #ece7f5;">
-                    <img class="ticket-logo" src="${escapeHtml(logoUrl)}" width="72" height="72" alt="YEP'26" style="display:block;width:72px;height:72px;object-fit:contain;border:0;margin:0 auto;" />
+                  <td class="ticket-logo-cell" style="width:150px;text-align:center;vertical-align:middle;padding:12px 10px;border-right:1px solid rgba(255,255,255,0.18);">
+                    <img class="ticket-logo" src="${escapeHtml(logoUrl)}" width="132" alt="The Kaleido Soul" style="display:block;width:132px;height:auto;border:0;margin:0 auto;" />
                   </td>
                   <td class="ticket-title-cell" style="padding:15px 18px 10px;vertical-align:top;">
                     <p class="ticket-kicker" style="margin:0 0 6px;color:#20d9ff;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.16em;">${escapeHtml(title)} · Check-in Pass</p>
-                    <p class="ticket-title" style="margin:0;color:#111827;font-size:23px;line-height:1.05;font-weight:900;letter-spacing:.02em;text-transform:uppercase;">The Kaleido Soul</p>
-                    <p class="ticket-meta" style="margin:6px 0 0;color:#4b5563;font-size:12px;line-height:1.35;">Amphitheatre, VinUniversity · Thursday, 25/6/2026</p>
+                    <p class="ticket-title" style="margin:0;color:#ffffff;font-size:23px;line-height:1.05;font-weight:900;letter-spacing:.02em;text-transform:uppercase;">The Kaleido Soul</p>
+                    <p class="ticket-meta" style="margin:6px 0 0;color:rgba(255,255,255,0.82);font-size:12px;line-height:1.35;">Amphitheatre, VinUniversity · Thursday, 25/6/2026</p>
                   </td>
                 </tr>
               </table>
-              <div class="ticket-detail-wrap" style="padding:0 18px 15px 98px;">
-                <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse;color:#1f2937;font-size:12px;line-height:1.35;border-top:1px solid #ece7f5;">
+              <div class="ticket-detail-wrap" style="padding:0 18px 15px 170px;">
+                <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse;color:#ffffff;font-size:12px;line-height:1.35;border-top:1px solid rgba(255,255,255,0.18);">
                 <tr>
-                  <td class="ticket-detail-label" style="padding:11px 10px 6px 0;color:#6b7280;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.1em;">Ticket Type</td>
-                  <td class="ticket-detail-label" style="padding:11px 10px 6px 0;color:#6b7280;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.1em;">Check-in</td>
-                  <td class="ticket-detail-label" style="padding:11px 0 6px;color:#6b7280;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.1em;">Quantity</td>
+                  <td class="ticket-detail-label" style="padding:11px 10px 6px 0;color:rgba(255,255,255,0.68);font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.1em;">Ticket Type</td>
+                  <td class="ticket-detail-label" style="padding:11px 10px 6px 0;color:rgba(255,255,255,0.68);font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.1em;">Check-in</td>
+                  <td class="ticket-detail-label" style="padding:11px 0 6px;color:rgba(255,255,255,0.68);font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.1em;">Quantity</td>
                 </tr>
                 <tr>
-                  <td class="ticket-detail-value" style="padding:0 10px 0 0;font-weight:800;color:#111827;">${escapeHtml(ticket.ticketType)}</td>
-                  <td class="ticket-detail-value" style="padding:0 10px 12px 0;font-weight:800;color:#4f2aa7;">17:00 - 19:00</td>
-                  <td class="ticket-detail-value" style="padding:0 0 12px;font-weight:800;color:#111827;">${escapeHtml(ticket.ticketNo)} / ${escapeHtml(ticket.orderTicketQuantity || input.ticketItems.length)}</td>
+                  <td class="ticket-detail-value" style="padding:0 10px 0 0;font-weight:800;color:#ffffff;">${escapeHtml(ticket.ticketType)}</td>
+                  <td class="ticket-detail-value" style="padding:0 10px 12px 0;font-weight:800;color:#20d9ff;">17:00 - 19:00</td>
+                  <td class="ticket-detail-value" style="padding:0 0 12px;font-weight:800;color:#ffffff;">${escapeHtml(ticket.ticketNo)} / ${escapeHtml(ticket.orderTicketQuantity || input.ticketItems.length)}</td>
                 </tr>
                 <tr>
-                  <td class="ticket-detail-label" style="padding:10px 10px 0 0;border-top:1px solid #ece7f5;color:#6b7280;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.1em;">Guest Name</td>
-                  <td class="ticket-detail-label" style="padding:10px 10px 0 0;border-top:1px solid #ece7f5;color:#6b7280;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.1em;">Event</td>
-                  <td class="ticket-detail-label" style="padding:10px 0 0;border-top:1px solid #ece7f5;color:#6b7280;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.1em;">Date</td>
+                  <td class="ticket-detail-label" style="padding:10px 10px 0 0;border-top:1px solid rgba(255,255,255,0.18);color:rgba(255,255,255,0.68);font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.1em;">Guest Name</td>
+                  <td class="ticket-detail-label" style="padding:10px 10px 0 0;border-top:1px solid rgba(255,255,255,0.18);color:rgba(255,255,255,0.68);font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.1em;">Event</td>
+                  <td class="ticket-detail-label" style="padding:10px 0 0;border-top:1px solid rgba(255,255,255,0.18);color:rgba(255,255,255,0.68);font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.1em;">Date</td>
                 </tr>
                 <tr>
-                  <td class="ticket-detail-value" style="padding:0 10px 0 0;font-weight:800;color:#111827;">${escapeHtml(input.buyerName)}</td>
-                  <td class="ticket-detail-value" style="padding:0 10px 0 0;font-weight:800;color:#111827;">YEP'26</td>
-                  <td class="ticket-detail-value" style="padding:0;font-weight:800;color:#111827;">25/6</td>
+                  <td class="ticket-detail-value" style="padding:0 10px 0 0;font-weight:800;color:#ffffff;">${escapeHtml(input.buyerName)}</td>
+                  <td class="ticket-detail-value" style="padding:0 10px 0 0;font-weight:800;color:#ffffff;">YEP'26</td>
+                  <td class="ticket-detail-value" style="padding:0;font-weight:800;color:#ffffff;">25/6</td>
                 </tr>
               </table>
               </div>
@@ -215,12 +216,12 @@ export function buildTicketEmailHtml(input: TicketEmailInput): string {
               border-top: 2px dashed #bba9e8 !important;
             }
             .ticket-logo-cell {
-              width: 62px !important;
+              width: 92px !important;
               padding: 6px !important;
             }
             .ticket-logo {
-              width: 52px !important;
-              height: 52px !important;
+              width: 82px !important;
+              height: auto !important;
             }
             .ticket-title-cell {
               padding: 12px 12px 8px !important;
