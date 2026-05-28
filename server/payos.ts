@@ -164,7 +164,7 @@ export async function createPaymentLink(
   const result = await payos.paymentRequests.create({
     orderCode,
     amount: orderData.totalAmount,
-    description: `YEP26 Ticket - ${orderData.fullName}`,
+    description: `YEP26 - ${orderData.fullName}`.slice(0, 25),
     cancelUrl: `${baseUrl}/yep26/checkout`,
     returnUrl: `${baseUrl}/yep26/success?${returnParams.toString()}`,
     buyerName: orderData.fullName,
