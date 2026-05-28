@@ -152,6 +152,10 @@ export function Admin() {
     setConfig(prev => ({ ...prev, limits: { ...prev.limits, [key]: Math.max(0, Math.round(value)) } }));
   };
 
+  const updateMerchLimits = (key: keyof EventConfigState['merchLimits'], value: number) => {
+    setConfig(prev => ({ ...prev, merchLimits: { ...prev.merchLimits, [key]: Math.max(0, Math.round(value)) } }));
+  };
+
   const updateTier = (index: number, patch: Partial<TicketBulkDiscountTier>) => {
     setConfig(prev => ({
       ...prev,
@@ -335,6 +339,29 @@ export function Admin() {
                 />
               </label>
             ))}
+          </div>
+
+          <div className="border-2 border-primary p-4 space-y-4">
+            <div>
+              <h3 className="font-display font-black uppercase tracking-widest">Merch Limits</h3>
+              <p className="font-body text-xs font-bold text-on-surface-variant">Set total stock per merch item. Use 0 to mark an item sold out.</p>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {[
+                ['kaleidoLanyardYoyo', 'Combo Lanyard + Yoyo'],
+                ['kaleidoBadana', 'Badana Kaleido'],
+              ].map(([key, label]) => (
+                <label key={key} className="space-y-2">
+                  <span className="block font-display text-xs font-black uppercase tracking-widest">{label}</span>
+                  <input
+                    type="number"
+                    value={config.merchLimits[key as keyof EventConfigState['merchLimits']]}
+                    onChange={event => updateMerchLimits(key as keyof EventConfigState['merchLimits'], numberValue(event.target.value))}
+                    className="w-full bg-white text-background border-2 border-primary px-3 py-3 font-display font-black focus:outline-none"
+                  />
+                </label>
+              ))}
+            </div>
           </div>
         </section>
 

@@ -20,6 +20,10 @@ export interface EventConfigState {
     vinnunian: number;
     guest: number;
   };
+  merchLimits: {
+    kaleidoLanyardYoyo: number;
+    kaleidoBadana: number;
+  };
   discounts: {
     ticketBulk: {
       enabled: boolean;
@@ -52,6 +56,10 @@ export const defaultEventConfig: EventConfigState = {
     earlyBird: 100,
     vinnunian: 400,
     guest: 200,
+  },
+  merchLimits: {
+    kaleidoLanyardYoyo: 9999,
+    kaleidoBadana: 9999,
   },
   discounts: {
     ticketBulk: {

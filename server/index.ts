@@ -1,4 +1,4 @@
-import 'dotenv/config';
+﻿import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import path from 'path';
@@ -16,6 +16,7 @@ import {
   findTicketItemByCode,
   getRecentCheckins,
   getSheetSummary,
+  getTicketRows,
   markMerchClaimedByCode,
   type CheckinRow,
   type MerchClaimRow,
@@ -46,6 +47,7 @@ import {
   writeConfig,
 } from './config';
 import { getTicketCheckinUrl, sendTicketEmail } from './mailer';
+import { renderTicketCardPng } from './ticket-card';
 import {
   createPaymentLink,
   generateOrderCode,
@@ -253,6 +255,70 @@ function hasMerchOrder(merchItems: string, merchTotal: number): boolean {
   return merchTotal > 0 && normalized !== '' && normalized !== '[]';
 }
 
+type MerchLimitKey = 'kaleidoLanyardYoyo' | 'kaleidoBadana';
+
+const MERCH_LIMIT_LABELS: Record<MerchLimitKey, string> = {
+  kaleidoLanyardYoyo: 'Combo Lanyard + Yoyo Kaleido',
+  kaleidoBadana: 'Badana Kaleido',
+};
+
+function parseMerchQuantities(merchItems: string): Record<MerchLimitKey, number> {
+  const counts: Record<MerchLimitKey, number> = {
+    kaleidoLanyardYoyo: 0,
+    kaleidoBadana: 0,
+  };
+
+  for (const part of String(merchItems || '').split(';')) {
+    const normalized = part.toUpperCase();
+    const quantityMatch = normalized.match(/\bX\s*(\d+)\b/) || normalized.match(/^\s*(\d+)\s*X\b/);
+    const quantity = Math.max(0, Number(quantityMatch?.[1] || 0));
+    if (!quantity) continue;
+
+    if (normalized.includes('LANYARD') || normalized.includes('YOYO')) {
+      counts.kaleidoLanyardYoyo += quantity;
+    } else if (normalized.includes('BADANA')) {
+      counts.kaleidoBadana += quantity;
+    }
+  }
+
+  return counts;
+}
+
+async function getSoldMerchCounts(): Promise<Record<MerchLimitKey, number>> {
+  const counts: Record<MerchLimitKey, number> = {
+    kaleidoLanyardYoyo: 0,
+    kaleidoBadana: 0,
+  };
+
+  const sheetRows = await getTicketRows();
+  const ticketRows: Array<{ merchItems?: string }> = sheetRows || await getTicketsCSV();
+
+  for (const row of ticketRows) {
+    const rowCounts = parseMerchQuantities(row.merchItems || '');
+    counts.kaleidoLanyardYoyo += rowCounts.kaleidoLanyardYoyo;
+    counts.kaleidoBadana += rowCounts.kaleidoBadana;
+  }
+
+  return counts;
+}
+
+async function getMerchLimitError(config: Awaited<ReturnType<typeof readConfig>>, requestedMerchItems: string): Promise<string> {
+  const requested = parseMerchQuantities(requestedMerchItems);
+  if (!requested.kaleidoLanyardYoyo && !requested.kaleidoBadana) return '';
+
+  const sold = await getSoldMerchCounts();
+
+  for (const key of Object.keys(requested) as MerchLimitKey[]) {
+    const limit = config.merchLimits[key];
+    if (sold[key] + requested[key] > limit) {
+      const remaining = Math.max(0, limit - sold[key]);
+      return `${MERCH_LIMIT_LABELS[key]} is sold out or only ${remaining} left.`;
+    }
+  }
+
+  return '';
+}
+
 function extractTicketCode(input: string): string {
   const trimmed = String(input || '').trim();
   if (!trimmed) return '';
@@ -340,6 +406,75 @@ app.get('/api/ticket-qr/:ticketCode.png', async (req, res) => {
   } catch (err) {
     console.error('[API] Error generating ticket QR:', err);
     res.status(500).send('Failed to generate QR code');
+  }
+});
+
+app.get('/api/ticket-card/:ticketCode.png', async (req, res) => {
+  try {
+    const ticketCode = extractTicketCode(req.params.ticketCode || '');
+    if (!ticketCode || ticketCode.length > 80) {
+      res.status(400).send('Invalid ticket code');
+      return;
+    }
+
+    const ticket = await findTicketItemByCode(ticketCode) || await findTicketItemCSV(ticketCode);
+    if (ticket) {
+      const png = await renderTicketCardPng({
+        kind: 'ticket',
+        code: ticket.ticketCode,
+        kicker: `${Number(ticket.orderTicketQuantity) > 1 ? `Ticket ${ticket.ticketNo}` : 'Your Ticket'} - Check-in Pass`,
+        title: 'The Kaleido Soul',
+        subtitle: 'Amphitheatre, VinUniversity - 25/6/2026',
+        primaryLabel: 'Ticket Type',
+        primaryValue: ticket.ticketType,
+        secondaryLabel: 'Check-in',
+        secondaryValue: '17:00 - 19:00',
+        tertiaryLabel: 'Quantity',
+        tertiaryValue: `${ticket.ticketNo} / ${ticket.orderTicketQuantity || '1'}`,
+        bottomLeftLabel: 'Guest Name',
+        bottomLeftValue: ticket.buyerName,
+        bottomMiddleLabel: 'Event',
+        bottomMiddleValue: "YEP'26",
+        bottomRightLabel: 'Date',
+        bottomRightValue: '25/6',
+      });
+      res.setHeader('Content-Type', 'image/png');
+      res.setHeader('Cache-Control', 'public, max-age=86400');
+      res.send(png);
+      return;
+    }
+
+    const merchClaim = await findMerchClaimByCode(ticketCode) || await findMerchClaimCSV(ticketCode);
+    if (merchClaim) {
+      const png = await renderTicketCardPng({
+        kind: 'merch',
+        code: merchClaim.merchClaimCode,
+        kicker: 'Merch Claim Pass',
+        title: 'Merch Pickup',
+        subtitle: 'Show this QR at the SC booth.',
+        primaryLabel: 'Merch Items',
+        primaryValue: merchClaim.merchItems,
+        secondaryLabel: '',
+        secondaryValue: '',
+        tertiaryLabel: '',
+        tertiaryValue: '',
+        bottomLeftLabel: '',
+        bottomLeftValue: '',
+        bottomMiddleLabel: '',
+        bottomMiddleValue: '',
+        bottomRightLabel: '',
+        bottomRightValue: '',
+      });
+      res.setHeader('Content-Type', 'image/png');
+      res.setHeader('Cache-Control', 'public, max-age=86400');
+      res.send(png);
+      return;
+    }
+
+    res.status(404).send('Ticket or merch claim not found');
+  } catch (err) {
+    console.error('[API] Error generating ticket card:', err);
+    res.status(500).send('Failed to generate ticket card');
   }
 });
 
@@ -597,6 +732,12 @@ app.post('/api/tickets', publicWriteLimiter, async (req, res) => {
 
     if (normalizedTicketQuantity < 1 && normalizedMerchTotal < 1) {
       res.status(400).json({ error: 'Please select at least one ticket or one merch item' });
+      return;
+    }
+
+    const merchLimitError = await getMerchLimitError(config, normalizedMerchItems);
+    if (merchLimitError) {
+      res.status(409).json({ error: merchLimitError });
       return;
     }
 
@@ -1111,14 +1252,15 @@ app.listen(PORT, () => {
   console.log('  GET  /api/admin/tickets');
 
   if (!process.env.GOOGLE_SHEETS_SPREADSHEET_ID) {
-    console.log('[Server] ⚠ Google Sheets not configured. Using CSV fallback.');
+    console.log('[Server] â  Google Sheets not configured. Using CSV fallback.');
     console.log('[Server] To enable Sheets: set GOOGLE_SHEETS_SPREADSHEET_ID, GOOGLE_SHEETS_CLIENT_EMAIL, GOOGLE_SHEETS_PRIVATE_KEY in .env');
   }
   if (!process.env.PAYOS_CLIENT_ID) {
-    console.log('[Server] ⚠ PayOS not configured. PayOS payment disabled.');
+    console.log('[Server] â  PayOS not configured. PayOS payment disabled.');
     console.log('[Server] To enable PayOS: set PAYOS_CLIENT_ID, PAYOS_API_KEY, PAYOS_CHECKSUM_KEY in .env');
   } else {
     const appUrl = process.env.APP_URL || `http://localhost:${PORT}`;
     confirmWebhook(appUrl);
   }
 });
+

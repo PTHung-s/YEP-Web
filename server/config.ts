@@ -21,6 +21,10 @@ export interface AppConfig {
     vinnunian: number;
     guest: number;
   };
+  merchLimits: {
+    kaleidoLanyardYoyo: number;
+    kaleidoBadana: number;
+  };
   discounts: {
     ticketBulk: {
       enabled: boolean;
@@ -56,6 +60,10 @@ export const defaultConfig: AppConfig = {
     earlyBird: 100,
     vinnunian: 400,
     guest: 200,
+  },
+  merchLimits: {
+    kaleidoLanyardYoyo: 9999,
+    kaleidoBadana: 9999,
   },
   discounts: {
     ticketBulk: {
@@ -132,6 +140,10 @@ export function normalizeConfig(input: Partial<AppConfig> | null | undefined): A
       earlyBird: clampCount(source.limits?.earlyBird, defaultConfig.limits.earlyBird),
       vinnunian: clampCount(source.limits?.vinnunian, defaultConfig.limits.vinnunian),
       guest: clampCount(source.limits?.guest, defaultConfig.limits.guest),
+    },
+    merchLimits: {
+      kaleidoLanyardYoyo: clampCount(source.merchLimits?.kaleidoLanyardYoyo, defaultConfig.merchLimits.kaleidoLanyardYoyo),
+      kaleidoBadana: clampCount(source.merchLimits?.kaleidoBadana, defaultConfig.merchLimits.kaleidoBadana),
     },
     discounts: {
       ticketBulk: {

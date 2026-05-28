@@ -1,4 +1,6 @@
 import type { MerchClaimRow, TicketItemRow } from './sheets';
+import nodemailer from 'nodemailer';
+import { renderTicketCardPdf, renderTicketCardPng, type TicketCardOptions } from './ticket-card';
 
 interface TicketEmailInput {
   to: string;
@@ -19,8 +21,31 @@ interface EmailResult {
   error?: string;
 }
 
+interface BrevoAttachment {
+  name: string;
+  content: string;
+}
+
+interface GeneratedPassFile {
+  code: string;
+  imageUrl: string;
+  cid: string;
+  pngName: string;
+  png: Buffer;
+  pdfName: string;
+  pdf: Buffer;
+}
+
 function isEmailConfigured(): boolean {
-  return Boolean(process.env.BREVO_API_KEY && process.env.MAIL_FROM_EMAIL);
+  return Boolean(process.env.MAIL_FROM_EMAIL && (process.env.BREVO_API_KEY || isSmtpConfigured()));
+}
+
+function isSmtpConfigured(): boolean {
+  return Boolean(
+    process.env.MAIL_FROM_EMAIL &&
+    (process.env.SMTP_USER || process.env.BREVO_SMTP_LOGIN) &&
+    (process.env.SMTP_PASS || process.env.BREVO_SMTP_KEY),
+  );
 }
 
 function getAppUrl(): string {
@@ -79,8 +104,165 @@ function getShortTicketCode(ticketCode: string): string {
   return normalized.slice(-6) || ticketCode.slice(-6).toUpperCase();
 }
 
+function sanitizeFilePart(value: string): string {
+  return value
+    .replace(/[^a-zA-Z0-9_-]/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '')
+    .slice(0, 48) || 'pass';
+}
+
+function buildTicketCardOptions(ticket: TicketItemRow): TicketCardOptions {
+  return {
+    kind: 'ticket',
+    code: ticket.ticketCode,
+    kicker: `${Number(ticket.orderTicketQuantity) > 1 ? `Ticket ${ticket.ticketNo}` : 'Your Ticket'} - Check-in Pass`,
+    title: 'The Kaleido Soul',
+    subtitle: 'Amphitheatre, VinUniversity - 25/6/2026',
+    primaryLabel: 'Ticket Type',
+    primaryValue: ticket.ticketType,
+    secondaryLabel: 'Check-in',
+    secondaryValue: '17:00 - 19:00',
+    tertiaryLabel: 'Quantity',
+    tertiaryValue: `${ticket.ticketNo} / ${ticket.orderTicketQuantity || '1'}`,
+    bottomLeftLabel: 'Guest Name',
+    bottomLeftValue: ticket.buyerName,
+    bottomMiddleLabel: 'Event',
+    bottomMiddleValue: "YEP'26",
+    bottomRightLabel: 'Date',
+    bottomRightValue: '25/6',
+  };
+}
+
+function buildMerchCardOptions(claim: MerchClaimRow): TicketCardOptions {
+  return {
+    kind: 'merch',
+    code: claim.merchClaimCode,
+    kicker: 'Merch Claim Pass',
+    title: 'Merch Pickup',
+    subtitle: 'Show this QR at the SC booth.',
+    primaryLabel: 'Merch Items',
+    primaryValue: claim.merchItems,
+    secondaryLabel: '',
+    secondaryValue: '',
+    tertiaryLabel: '',
+    tertiaryValue: '',
+    bottomLeftLabel: '',
+    bottomLeftValue: '',
+    bottomMiddleLabel: '',
+    bottomMiddleValue: '',
+    bottomRightLabel: '',
+    bottomRightValue: '',
+  };
+}
+
+async function buildTicketEmailAttachments(input: TicketEmailInput): Promise<BrevoAttachment[]> {
+  const files = await buildTicketEmailPassFiles(input);
+
+  return files.map(file => ({
+    name: file.pdfName,
+    content: file.pdf.toString('base64'),
+  }));
+}
+
+async function buildTicketEmailPassFiles(input: TicketEmailInput): Promise<GeneratedPassFile[]> {
+  const ticketFiles = await Promise.all(input.ticketItems.map(async (ticket, index) => {
+    const options = buildTicketCardOptions(ticket);
+    const [png, pdf] = await Promise.all([
+      renderTicketCardPng(options),
+      renderTicketCardPdf(options),
+    ]);
+    const code = sanitizeFilePart(getShortTicketCode(ticket.ticketCode));
+    const ticketNo = input.ticketItems.length > 1 ? `-${index + 1}` : '';
+
+    return {
+      code: ticket.ticketCode,
+      imageUrl: getTicketCardUrl(ticket.ticketCode),
+      cid: `ticket-${index + 1}-${code}@yep26`,
+      pngName: `YEP26-ticket${ticketNo}-${code}.png`,
+      png,
+      pdfName: `YEP26-ticket${ticketNo}-${code}.pdf`,
+      pdf,
+    };
+  }));
+
+  const merchFiles = await Promise.all((input.merchClaims || []).map(async (claim, index) => {
+    const options = buildMerchCardOptions(claim);
+    const [png, pdf] = await Promise.all([
+      renderTicketCardPng(options),
+      renderTicketCardPdf(options),
+    ]);
+    const code = sanitizeFilePart(getShortTicketCode(claim.merchClaimCode));
+
+    return {
+      code: claim.merchClaimCode,
+      imageUrl: getTicketCardUrl(claim.merchClaimCode),
+      cid: `merch-${index + 1}-${code}@yep26`,
+      pngName: `YEP26-merch-${code}.png`,
+      png,
+      pdfName: `YEP26-merch-${code}.pdf`,
+      pdf,
+    };
+  }));
+
+  return [...ticketFiles, ...merchFiles];
+}
+
+function applyInlineCidImages(html: string, files: GeneratedPassFile[]): string {
+  return files.reduce((updated, file) => (
+    updated.split(escapeHtml(file.imageUrl)).join(`cid:${file.cid}`)
+  ), html);
+}
+
+async function sendTicketEmailViaSmtp(input: TicketEmailInput): Promise<EmailResult> {
+  const senderName = process.env.MAIL_FROM_NAME || "YEP'26";
+  const supportEmail = getSupportEmail();
+  const files = await buildTicketEmailPassFiles(input);
+  const html = applyInlineCidImages(buildTicketEmailHtml(input), files);
+  const transporter = nodemailer.createTransport({
+    host: process.env.SMTP_HOST || process.env.BREVO_SMTP_HOST || 'smtp-relay.brevo.com',
+    port: Number(process.env.SMTP_PORT || process.env.BREVO_SMTP_PORT || 587),
+    secure: String(process.env.SMTP_SECURE || '').toLowerCase() === 'true',
+    auth: {
+      user: process.env.SMTP_USER || process.env.BREVO_SMTP_LOGIN,
+      pass: process.env.SMTP_PASS || process.env.BREVO_SMTP_KEY,
+    },
+  });
+
+  const info = await transporter.sendMail({
+    from: { name: senderName, address: process.env.MAIL_FROM_EMAIL || '' },
+    to: { name: input.buyerName, address: input.to },
+    replyTo: { name: 'VinUni Student Council', address: supportEmail },
+    subject: `Your YEP'26 Ticket - Order ${input.orderId}`,
+    html,
+    text: buildTicketEmailText(input),
+    headers: {
+      'List-Unsubscribe': buildListUnsubscribeHeader(),
+    },
+    attachments: files.flatMap(file => [
+      {
+        filename: file.pngName,
+        content: file.png,
+        contentType: 'image/png',
+        cid: file.cid,
+      },
+      {
+        filename: file.pdfName,
+        content: file.pdf,
+        contentType: 'application/pdf',
+      },
+    ]),
+  });
+
+  return { configured: true, sent: true, provider: 'smtp', messageId: info.messageId };
+}
+
 export function getTicketQrUrl(ticketCode: string): string {
   return `${getRootAppUrl()}/api/ticket-qr/${encodeURIComponent(ticketCode)}.png`;
+}
+
+export function getTicketCardUrl(ticketCode: string): string {
+  return `${getRootAppUrl()}/api/ticket-card/${encodeURIComponent(ticketCode)}.png`;
 }
 
 export function getTicketCheckinUrl(ticketCode: string): string {
@@ -88,66 +270,14 @@ export function getTicketCheckinUrl(ticketCode: string): string {
 }
 
 function buildTicketCards(input: TicketEmailInput): string {
-  const logoUrl = `${getAppUrl()}/assets/yep/event_name.png`;
-  const ticketBackgroundUrl = `${getAppUrl()}/assets/yep/Background_Ticket.png`;
-
   return input.ticketItems.map((ticket, index) => {
-    const qrUrl = getTicketQrUrl(ticket.ticketCode);
     const title = input.ticketItems.length > 1 ? `Ticket ${index + 1}` : 'Your Ticket';
-    const shortCode = getShortTicketCode(ticket.ticketCode);
+    const cardUrl = getTicketCardUrl(ticket.ticketCode);
 
     return `
-      <div style="margin:18px 0 0;border-radius:16px;overflow:hidden;background:#201047;box-shadow:0 12px 24px rgba(40,24,92,0.09);border:1px solid #d8cdef;">
-        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse;">
-          <tr>
-            <td class="ticket-info" background="${escapeHtml(ticketBackgroundUrl)}" style="padding:0;vertical-align:stretch;background:#201047;background-image:url('${escapeHtml(ticketBackgroundUrl)}');background-size:cover;background-position:center;">
-              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse;">
-                <tr>
-                  <td class="ticket-logo-cell" style="width:96px;text-align:center;vertical-align:middle;padding:8px 5px;border-right:1px solid rgba(255,255,255,0.18);">
-                    <img class="ticket-logo" src="${escapeHtml(logoUrl)}" width="84" alt="The Kaleido Soul" style="display:block;width:84px;height:auto;border:0;margin:0 auto;" />
-                  </td>
-                  <td class="ticket-title-cell" style="padding:14px 14px 9px;vertical-align:top;">
-                    <p class="ticket-kicker" style="margin:0 0 5px;color:#20d9ff;font-size:9px;font-weight:900;text-transform:uppercase;letter-spacing:.1em;">${escapeHtml(title)} &middot; Check-in Pass</p>
-                    <p class="ticket-title" style="margin:0;color:#ffffff;font-size:20px;line-height:1.04;font-weight:900;letter-spacing:.02em;text-transform:uppercase;">The Kaleido Soul</p>
-                    <p class="ticket-meta" style="margin:5px 0 0;color:rgba(255,255,255,0.9);font-size:11px;line-height:1.3;font-weight:400;text-shadow:0 1px 2px rgba(0,0,0,0.45);">Amphitheatre, VinUniversity &middot; 25/6/2026</p>
-                  </td>
-                </tr>
-              </table>
-              <div class="ticket-detail-wrap" style="padding:0 14px 14px;">
-                <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse;color:#ffffff;font-size:11px;line-height:1.3;border-top:1px solid rgba(255,255,255,0.18);">
-                <tr>
-                  <td class="ticket-detail-label" style="padding:11px 10px 6px 0;color:rgba(255,255,255,0.68);font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.1em;">Ticket Type</td>
-                  <td class="ticket-detail-label" style="padding:11px 10px 6px 0;color:rgba(255,255,255,0.68);font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.1em;">Check-in</td>
-                  <td class="ticket-detail-label" style="padding:11px 0 6px;color:rgba(255,255,255,0.68);font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.1em;">Quantity</td>
-                </tr>
-                <tr>
-                  <td class="ticket-detail-value" style="padding:0 10px 0 0;font-weight:800;color:#ffffff;">${escapeHtml(ticket.ticketType)}</td>
-                  <td class="ticket-detail-value" style="padding:0 10px 12px 0;font-weight:800;color:#20d9ff;">17:00 - 19:00</td>
-                  <td class="ticket-detail-value" style="padding:0 0 12px;font-weight:800;color:#ffffff;">${escapeHtml(ticket.ticketNo)} / ${escapeHtml(ticket.orderTicketQuantity || input.ticketItems.length)}</td>
-                </tr>
-                <tr>
-                  <td class="ticket-detail-label" style="padding:10px 10px 0 0;border-top:1px solid rgba(255,255,255,0.18);color:rgba(255,255,255,0.68);font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.1em;">Guest Name</td>
-                  <td class="ticket-detail-label" style="padding:10px 10px 0 0;border-top:1px solid rgba(255,255,255,0.18);color:rgba(255,255,255,0.68);font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.1em;">Event</td>
-                  <td class="ticket-detail-label" style="padding:10px 0 0;border-top:1px solid rgba(255,255,255,0.18);color:rgba(255,255,255,0.68);font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.1em;">Date</td>
-                </tr>
-                <tr>
-                  <td class="ticket-detail-value" style="padding:0 10px 0 0;font-weight:800;color:#ffffff;">${escapeHtml(input.buyerName)}</td>
-                  <td class="ticket-detail-value" style="padding:0 10px 0 0;font-weight:800;color:#ffffff;">YEP'26</td>
-                  <td class="ticket-detail-value" style="padding:0;font-weight:800;color:#ffffff;">25/6</td>
-                </tr>
-              </table>
-              </div>
-            </td>
-            <td class="ticket-qr" width="156" style="padding:12px;text-align:center;vertical-align:middle;background:#f3efff;background-image:linear-gradient(135deg,#fbfaff 0%,#f0eaff 62%,#eafaff 100%);border-left:2px dashed #bba9e8;position:relative;">
-              <div style="height:2px;width:42px;background:#20d9ff;margin:0 auto 8px;border-radius:99px;opacity:.55;"></div>
-              <p style="margin:0 0 8px;color:#4f2aa7;font-size:13px;line-height:1.15;font-weight:900;letter-spacing:.1em;text-transform:uppercase;">Check-in</p>
-              <div style="display:inline-block;padding:8px;border:1px solid #e5e0f2;border-radius:12px;background:#ffffff;box-shadow:0 7px 16px rgba(79,42,167,0.08);">
-                <img src="${escapeHtml(qrUrl)}" width="108" height="108" alt="Check-in QR code for ${escapeHtml(ticket.ticketCode)}" style="display:block;width:108px;height:108px;border:0;margin:0 auto;" />
-              </div>
-              <div style="display:block;margin:9px auto 0;padding:8px 10px;max-width:132px;border-radius:4px;background:rgba(255,255,255,0.78);border:1px solid rgba(79,42,167,0.16);color:#24133f;text-decoration:none;font-size:12px;font-weight:900;letter-spacing:.08em;">${escapeHtml(shortCode)}</div>
-            </td>
-          </tr>
-        </table>
+      <div style="margin:18px 0 0;">
+        <img src="${escapeHtml(cardUrl)}" width="760" alt="${escapeHtml(title)} check-in pass ${escapeHtml(ticket.ticketCode)}" style="display:block;width:100%;max-width:760px;height:auto;border:0;border-radius:16px;" />
+        <p style="margin:6px 0 0;color:#4b5563;font-size:12px;line-height:1.45;">${escapeHtml(title)} code: <strong>${escapeHtml(ticket.ticketCode)}</strong></p>
       </div>
     `;
   }).join('');
@@ -156,51 +286,13 @@ function buildTicketCards(input: TicketEmailInput): string {
 function buildMerchClaimCards(input: TicketEmailInput): string {
   if (!input.merchClaims?.length) return '';
 
-  const logoUrl = `${getAppUrl()}/assets/yep/event_name.png`;
-  const ticketBackgroundUrl = `${getAppUrl()}/assets/yep/Background_Ticket.png`;
-
   return input.merchClaims.map(claim => {
-    const qrUrl = getTicketQrUrl(claim.merchClaimCode);
-    const shortCode = getShortTicketCode(claim.merchClaimCode);
+    const cardUrl = getTicketCardUrl(claim.merchClaimCode);
 
     return `
-      <div style="margin:18px 0 0;border-radius:14px;overflow:hidden;background:#ffffff;box-shadow:0 10px 22px rgba(40,24,92,0.08);border:1px solid #d8cdef;">
-        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse;">
-          <tr>
-            <td class="ticket-info" background="${escapeHtml(ticketBackgroundUrl)}" style="padding:0;vertical-align:stretch;background:#201047;background-image:url('${escapeHtml(ticketBackgroundUrl)}');background-size:cover;background-position:center;">
-              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse;">
-                <tr>
-                  <td class="ticket-logo-cell" style="width:96px;text-align:center;vertical-align:middle;padding:8px 5px;border-right:1px solid rgba(255,255,255,0.18);">
-                    <img class="ticket-logo" src="${escapeHtml(logoUrl)}" width="84" alt="The Kaleido Soul" style="display:block;width:84px;height:auto;border:0;margin:0 auto;" />
-                  </td>
-                  <td class="ticket-title-cell" style="padding:14px 14px 8px;vertical-align:top;">
-                    <p class="ticket-kicker" style="margin:0 0 5px;color:#20d9ff;font-size:9px;font-weight:900;text-transform:uppercase;letter-spacing:.1em;">Merch Claim Pass</p>
-                    <p class="ticket-title" style="margin:0;color:#ffffff;font-size:20px;line-height:1.04;font-weight:900;letter-spacing:.02em;text-transform:uppercase;text-shadow:0 1px 3px rgba(0,0,0,0.4);">Merch Pickup</p>
-                    <p class="ticket-meta" style="margin:5px 0 0;color:rgba(255,255,255,0.9);font-size:11px;line-height:1.3;font-weight:400;text-shadow:0 1px 2px rgba(0,0,0,0.45);">Show this QR at the SC booth.</p>
-                  </td>
-                </tr>
-              </table>
-              <div class="ticket-detail-wrap" style="padding:0 14px 13px;">
-                <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse;color:#ffffff;font-size:11px;line-height:1.25;border-top:1px solid rgba(255,255,255,0.18);">
-                  <tr>
-                    <td style="padding:9px 0 5px;color:rgba(255,255,255,0.72);font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.1em;">Merch Items</td>
-                  </tr>
-                  <tr>
-                    <td style="padding:0;font-weight:800;color:#ffffff;text-shadow:0 1px 2px rgba(0,0,0,0.35);">${escapeHtml(claim.merchItems)}</td>
-                  </tr>
-                </table>
-              </div>
-            </td>
-            <td class="ticket-qr" width="156" style="padding:12px;text-align:center;vertical-align:middle;background:#f4f1fb;background-image:linear-gradient(135deg,#fbfaff 0%,#f4efff 62%,#eefcff 100%);border-left:2px dashed #bba9e8;">
-              <div style="height:2px;width:42px;background:#20d9ff;margin:0 auto 8px;border-radius:99px;opacity:.55;"></div>
-              <p style="margin:0 0 8px;color:#4f2aa7;font-size:13px;line-height:1.15;font-weight:900;letter-spacing:.1em;text-transform:uppercase;">Merch</p>
-              <div style="display:inline-block;padding:8px;border:1px solid #e5e0f2;border-radius:12px;background:#ffffff;box-shadow:0 7px 16px rgba(79,42,167,0.08);">
-                <img src="${escapeHtml(qrUrl)}" width="108" height="108" alt="Merch pickup QR code for ${escapeHtml(claim.merchClaimCode)}" style="display:block;width:108px;height:108px;border:0;margin:0 auto;" />
-              </div>
-              <div style="display:block;margin:9px auto 0;padding:8px 10px;max-width:132px;border-radius:4px;background:rgba(255,255,255,0.78);border:1px solid rgba(79,42,167,0.16);color:#24133f;font-size:12px;font-weight:900;letter-spacing:.08em;">${escapeHtml(shortCode)}</div>
-            </td>
-          </tr>
-        </table>
+      <div style="margin:18px 0 0;">
+        <img src="${escapeHtml(cardUrl)}" width="760" alt="Merch pickup pass ${escapeHtml(claim.merchClaimCode)}" style="display:block;width:100%;max-width:760px;height:auto;border:0;border-radius:16px;" />
+        <p style="margin:6px 0 0;color:#4b5563;font-size:12px;line-height:1.45;">Merch code: <strong>${escapeHtml(claim.merchClaimCode)}</strong></p>
       </div>
     `;
   }).join('');
@@ -416,8 +508,13 @@ export async function sendTicketEmail(input: TicketEmailInput): Promise<EmailRes
   }
 
   try {
+    if (isSmtpConfigured()) {
+      return await sendTicketEmailViaSmtp(input);
+    }
+
     const senderName = process.env.MAIL_FROM_NAME || "YEP'26";
     const supportEmail = getSupportEmail();
+    const attachments = await buildTicketEmailAttachments(input);
     const res = await fetch('https://api.brevo.com/v3/smtp/email', {
       method: 'POST',
       headers: {
@@ -432,6 +529,7 @@ export async function sendTicketEmail(input: TicketEmailInput): Promise<EmailRes
         subject: `Your YEP'26 Ticket - Order ${input.orderId}`,
         htmlContent: buildTicketEmailHtml(input),
         textContent: buildTicketEmailText(input),
+        attachment: attachments,
         headers: {
           'List-Unsubscribe': buildListUnsubscribeHeader(),
         },

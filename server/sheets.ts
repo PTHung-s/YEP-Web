@@ -146,7 +146,7 @@ async function ensureHeaders(sheetName: string, headers: string[]): Promise<void
   }
 }
 
-interface TicketRow {
+export interface TicketRow {
   id: string;
   timestamp: string;
   fullName: string;
@@ -208,6 +208,45 @@ export async function appendTicketRow(row: TicketRow): Promise<boolean> {
   } catch (err) {
     console.error('[Sheets] Failed to append ticket:', err);
     return false;
+  }
+}
+
+export async function getTicketRows(): Promise<TicketRow[] | null> {
+  const sheets = getSheetsClient();
+  const spreadsheetId = getSpreadsheetId();
+
+  if (!sheets || !spreadsheetId) return null;
+
+  try {
+    await ensureHeaders('Tickets', TICKET_HEADERS);
+    const res = await sheets.spreadsheets.values.get({
+      spreadsheetId,
+      range: 'Tickets!A2:R',
+    });
+
+    return (res.data.values || []).map(row => ({
+      id: String(row[0] || ''),
+      timestamp: String(row[1] || ''),
+      fullName: String(row[2] || ''),
+      email: String(row[3] || ''),
+      phone: String(row[4] || ''),
+      userType: String(row[5] || ''),
+      userCategory: String(row[6] || ''),
+      studentId: String(row[7] || ''),
+      workplace: String(row[8] || ''),
+      upcomingStudent: String(row[9] || '').toLowerCase() === 'yes',
+      applicationId: String(row[10] || ''),
+      ticketQuantity: String(row[11] || ''),
+      ticketPrice: String(row[12] || ''),
+      merchItems: String(row[13] || ''),
+      discountCode: String(row[14] || ''),
+      discountAmount: String(row[15] || ''),
+      totalAmount: String(row[16] || ''),
+      paymentMethod: String(row[17] || ''),
+    }));
+  } catch (err) {
+    console.error('[Sheets] Failed to get ticket rows:', err);
+    return null;
   }
 }
 
