@@ -64,6 +64,7 @@ export function Confirmation() {
           totalAmount: total,
           ticketBulkDiscount,
           merchBulkDiscount,
+          appUrl: window.location.origin,
         }),
       });
 
