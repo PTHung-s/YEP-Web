@@ -48,7 +48,7 @@ export function Home() {
           <div className="max-w-7xl mx-auto flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6">
             <div className="max-w-xl md:hidden">
               <p className="font-display text-xs md:text-sm font-black uppercase tracking-[0.3em] text-white/85 mb-3 drop-shadow-[0_2px_8px_rgba(0,0,0,0.65)]">
-                June 27, 2026 / Amphitheatre - VinUni Campus
+                June 25, 2026 / Amphitheatre - VinUni Campus
               </p>
               <h1 className="md:sr-only font-display text-4xl font-black uppercase tracking-tighter leading-[0.82] mb-4">
                 YEP'26<br />
@@ -134,7 +134,7 @@ export function Home() {
               Timing Is<br /><span className="text-secondary">Everything</span>
             </h2>
             <p className="font-body text-base md:text-lg mb-6 font-medium text-on-surface-variant">
-              June 27, 2026 - Amphitheatre, VinUni Campus.
+              June 25, 2026 - Amphitheatre, VinUni Campus.
             </p>
             <div className="bg-tertiary text-background p-4 md:p-5 border-2 border-primary neo-shadow-blue inline-block w-full md:w-auto">
               <p className="font-display font-black text-xl md:text-2xl uppercase tracking-wider mb-1">Main Stage</p>

@@ -9,42 +9,42 @@ const VOTE_URL = ''; // Set to Google Form voting URL when voting opens
 
 const rounds = [
   {
-    phase: 'VÒNG 1',
+    phase: 'ROUND 1',
     subtitle: 'Registration - Stardust Call',
     period: '30/5 - 04/6',
     icon: Users2,
     details: [
-      'Các cặp đôi đăng ký tham gia YEP Icons.',
-      'BTC ghi nhận hồ sơ và câu chuyện của từng cặp đôi.',
-      'Những gương mặt nổi bật bước tiếp vào hành trình The Constellations.',
+      'Duos register to join YEP Icons.',
+      'The organizers record each pair profile and story.',
+      'Standout faces advance to The Constellations journey.',
     ],
     criteria: [
       { label: 'Registration', pct: 'Stardust Call' },
     ],
   },
   {
-    phase: 'VÒNG 2',
+    phase: 'ROUND 2',
     subtitle: 'Campaign - Constellation',
     period: '15/6 - 20/6',
     icon: Camera,
     details: [
-      'Các cặp đôi bước vào giai đoạn campaign chính thức.',
-      'Hình ảnh và câu chuyện được lan tỏa trên các kênh truyền thông.',
-      'Khán giả theo dõi, tương tác và cổ vũ cho constellation mình yêu thích.',
+      'Duos enter the official campaign phase.',
+      'Photos and stories spread across media channels.',
+      'Audiences follow, engage, and cheer for their favorite constellation.',
     ],
     criteria: [
       { label: 'Campaign', pct: 'Constellation' },
     ],
   },
   {
-    phase: 'VÒNG 3',
+    phase: 'ROUND 3',
     subtitle: 'Final',
     period: '25/6',
     icon: Crown,
     details: [
-      'Các cặp đôi xuất hiện trong đêm YEP’26: The Kaleido Soul.',
-      'Khoảnh khắc final diễn ra trực tiếp tại sự kiện.',
-      'Ngôi vị YEP Icons được công bố trong đêm chung kết.',
+      'Duos appear at YEP\u201926: The Kaleido Soul.',
+      'The final moment unfolds live at the event.',
+      'YEP Icons are crowned on finale night.',
     ],
     criteria: [
       { label: 'Final', pct: '25/6' },
@@ -63,58 +63,58 @@ interface Top8Entry {
 const top8Data: Top8Entry[] = [
   {
     id: '1',
-    name: 'Tên cặp đôi 1',
+    name: 'T\u00ean c\u1eb7p \u0111\u00f4i 1',
     subtitle: 'CLASS OF 2027',
-    description: '"Chúng mình là định nghĩa của sự đồng điệu. Cùng nhau, chúng mình tạo nên một Kaleidoscope rực rỡ sắc màu tại VinUni."',
+    description: '"We are the definition of harmony. Together, we create a Kaleidoscope bursting with color at VinUni."',
     imageUrl: 'https://images.unsplash.com/photo-1516571748831-5d81767b788d?w=400&h=400&fit=crop',
   },
   {
     id: '2',
-    name: 'Tên cặp đôi 2',
+    name: 'T\u00ean c\u1eb7p \u0111\u00f4i 2',
     subtitle: 'CLASS OF 2026',
-    description: '"Từ những buổi học nhóm đến những đêm thức trắng làm project — chúng mình đã luôn sát cánh bên nhau."',
+    description: '"From late-night study sessions to all-nighter projects \u2014 we have always stood by each other."',
     imageUrl: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=400&h=400&fit=crop',
   },
   {
     id: '3',
-    name: 'Tên cặp đôi 3',
+    name: 'T\u00ean c\u1eb7p \u0111\u00f4i 3',
     subtitle: 'CLASS OF 2028',
-    description: '"Hai mảnh ghép tưởng như đối lập, nhưng khi kết hợp lại tạo nên một bức tranh hoàn hảo."',
+    description: '"Two seemingly opposite pieces, yet when combined, they create a perfect picture."',
     imageUrl: 'https://images.unsplash.com/photo-1506863530036-1efeddceb993?w=400&h=400&fit=crop',
   },
   {
     id: '4',
-    name: 'Tên cặp đôi 4',
+    name: 'T\u00ean c\u1eb7p \u0111\u00f4i 4',
     subtitle: 'CLASS OF 2025',
-    description: '"Năng lượng của tuổi trẻ, đam mê của nghệ thuật — chúng mình mang tất cả lên sân khấu YEP."',
+    description: '"The energy of youth, the passion of art \u2014 we bring it all to the YEP stage."',
     imageUrl: 'https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e?w=400&h=400&fit=crop',
   },
   {
     id: '5',
-    name: 'Tên cặp đôi 5',
+    name: 'T\u00ean c\u1eb7p \u0111\u00f4i 5',
     subtitle: 'CLASS OF 2026',
-    description: '"Không chỉ là bạn học, chúng mình là soulmate — nơi mỗi khoảnh khắc đều là một kỷ niệm đáng nhớ."',
+    description: '"More than classmates, we are soulmates \u2014 where every moment becomes a cherished memory."',
     imageUrl: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=400&h=400&fit=crop',
   },
   {
     id: '6',
-    name: 'Tên cặp đôi 6',
+    name: 'T\u00ean c\u1eb7p \u0111\u00f4i 6',
     subtitle: 'CLASS OF 2027',
-    description: '"Cùng nhau chúng mình vượt qua mọi thử thách, và YEP là sân khấu để chúng mình tỏa sáng."',
+    description: '"Together we overcome every challenge, and YEP is the stage where we shine."',
     imageUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&h=400&fit=crop',
   },
   {
     id: '7',
-    name: 'Tên cặp đôi 7',
+    name: 'T\u00ean c\u1eb7p \u0111\u00f4i 7',
     subtitle: 'CLASS OF 2028',
-    description: '"Mỗi ngày bên nhau là một chương mới trong câu chuyện của chúng mình. YEP sẽ là chương đẹp nhất."',
+    description: '"Every day together is a new chapter in our story. YEP will be the most beautiful one."',
     imageUrl: 'https://images.unsplash.com/photo-1521119989659-a83eee488004?w=400&h=400&fit=crop',
   },
   {
     id: '8',
-    name: 'Tên cặp đôi 8',
+    name: 'T\u00ean c\u1eb7p \u0111\u00f4i 8',
     subtitle: 'CLASS OF 2026',
-    description: '"Từ những bước chân đầu tiên ở VinUni đến sân khấu YEP — hành trình này là của chúng mình."',
+    description: '"From our first steps at VinUni to the YEP stage \u2014 this journey is ours."',
     imageUrl: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=400&h=400&fit=crop',
   },
 ];
@@ -141,7 +141,7 @@ export function Vote() {
             </h2>
             <div className="mt-6 md:mt-8 border-l-8 border-primary-container pl-4 md:pl-6">
               <p className="font-display text-lg md:text-xl font-bold max-w-2xl text-white/85 uppercase leading-tight">
-                HÀNH TRÌNH TÌM KIẾM CẶP ĐÔI TỎA SÁNG NHẤT VINUNI 2026
+                THE JOURNEY TO FIND THE MOST RADIANT DUO AT VINUNI 2026
               </p>
             </div>
           </div>
@@ -200,19 +200,19 @@ export function Vote() {
           {/* Overview */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-0 border-2 border-outline-variant mb-12">
             <div className="border-b-2 md:border-b-0 md:border-r-2 border-outline-variant p-6 text-center bg-surface-container-high">
-              <span className="text-4xl mb-3 block">👥</span>
-              <h4 className="font-display text-lg font-extrabold uppercase mb-1">Tham gia theo cặp</h4>
-              <p className="font-body text-xs text-on-surface font-medium">Nam x Nữ, Nữ x Nữ, Nam x Nam — mọi kết hợp đều được chào đón.</p>
+              <span className="text-4xl mb-3 block">\uD83D\uDC65</span>
+              <h4 className="font-display text-lg font-extrabold uppercase mb-1">Join as a Duo</h4>
+              <p className="font-body text-xs text-on-surface font-medium">M x F, F x F, M x M \u2014 every combination is welcome.</p>
             </div>
             <div className="border-b-2 md:border-b-0 md:border-r-2 border-outline-variant p-6 text-center bg-surface-container-high">
-              <span className="text-4xl mb-3 block">🎯</span>
-              <h4 className="font-display text-lg font-extrabold uppercase mb-1">3 Vòng thi</h4>
-              <p className="font-body text-xs text-on-surface font-medium">Tuyển chọn → Truyền thông → Chung kết trực tiếp D-Day.</p>
+              <span className="text-4xl mb-3 block">\uD83C\uDFAF</span>
+              <h4 className="font-display text-lg font-extrabold uppercase mb-1">3 Rounds</h4>
+              <p className="font-body text-xs text-on-surface font-medium">Selection \u2192 Campaign \u2192 Live Final on D-Day.</p>
             </div>
             <div className="p-6 text-center bg-surface-container-high">
-              <span className="text-4xl mb-3 block">💎</span>
-              <h4 className="font-display text-lg font-extrabold uppercase mb-1">Giải thưởng giá trị</h4>
-              <p className="font-body text-xs text-on-surface font-medium">Tổng 3.000.000 VND + quà tặng từ Nhà tài trợ.</p>
+              <span className="text-4xl mb-3 block">\uD83D\uDC8E</span>
+              <h4 className="font-display text-lg font-extrabold uppercase mb-1">Valuable Prizes</h4>
+              <p className="font-body text-xs text-on-surface font-medium">Total 3,000,000 VND + gifts from sponsors.</p>
             </div>
           </div>
 
@@ -226,7 +226,7 @@ export function Vote() {
                   </div>
                   <div>
                     <span className="font-display text-xs font-bold uppercase tracking-widest text-secondary">{r.period}</span>
-                    <h3 className="font-display text-2xl md:text-3xl font-black uppercase tracking-tight">{r.phase} — {r.subtitle}</h3>
+                    <h3 className="font-display text-2xl md:text-3xl font-black uppercase tracking-tight">{r.phase} \u2014 {r.subtitle}</h3>
                   </div>
                 </div>
                 <div className="p-6">
@@ -259,16 +259,16 @@ export function Vote() {
             <div className="flex items-center gap-4 mb-6">
               <Trophy className="w-10 h-10 text-secondary" />
               <div>
-                <h3 className="font-display text-2xl md:text-3xl font-black uppercase tracking-tight">YEP ICONS — The Constellations</h3>
-                <p className="font-display text-xs font-bold uppercase tracking-widest text-on-surface-variant">Quán quân</p>
+                <h3 className="font-display text-2xl md:text-3xl font-black uppercase tracking-tight">YEP ICONS \u2014 The Constellations</h3>
+                <p className="font-display text-xs font-bold uppercase tracking-widest text-on-surface-variant">Champion</p>
               </div>
             </div>
             <div className="bg-primary text-white p-6 border-2 border-primary">
-              <span className="font-display text-3xl md:text-4xl font-black tracking-tighter">2.000.000 VND</span>
-              <span className="font-display text-sm font-bold uppercase tracking-wider ml-3">/ cặp</span>
+              <span className="font-display text-3xl md:text-4xl font-black tracking-tighter">2,000,000 VND</span>
+              <span className="font-display text-sm font-bold uppercase tracking-wider ml-3">/ duo</span>
             </div>
             <ul className="mt-6 space-y-3">
-              {['1.000.000 VND / thành viên', 'Kỷ niệm chương "The Constellations"', 'Dải băng (Sash), Bảng giải thưởng & Hoa', 'Quà tặng đặc biệt từ Nhà tài trợ', 'Certificate of Achievement'].map((item, i) => (
+              {['1,000,000 VND / member', 'The Constellations commemorative medal', 'Sash, Award board & Flowers', 'Exclusive gifts from Sponsors', 'Certificate of Achievement'].map((item, i) => (
                 <li key={i} className="font-body text-sm flex items-start gap-3">
                   <Sparkles className="w-4 h-4 text-secondary shrink-0 mt-0.5" />
                   {item}
@@ -282,15 +282,15 @@ export function Vote() {
               <Trophy className="w-10 h-10 text-tertiary" />
               <div>
                 <h3 className="font-display text-2xl md:text-3xl font-black uppercase tracking-tight">Most Inspiring Duo</h3>
-                <p className="font-display text-xs font-bold uppercase tracking-widest text-on-surface-variant">Cặp đôi truyền cảm hứng nhất</p>
+                <p className="font-display text-xs font-bold uppercase tracking-widest text-on-surface-variant">Most Inspiring Duo</p>
               </div>
             </div>
             <div className="bg-secondary/20 p-6 border-2 border-primary">
-              <span className="font-display text-3xl md:text-4xl font-black tracking-tighter">1.000.000 VND</span>
-              <span className="font-display text-sm font-bold uppercase tracking-wider ml-3">/ cặp</span>
+              <span className="font-display text-3xl md:text-4xl font-black tracking-tighter">1,000,000 VND</span>
+              <span className="font-display text-sm font-bold uppercase tracking-wider ml-3">/ duo</span>
             </div>
             <ul className="mt-6 space-y-3">
-              {['500.000 VND / thành viên', 'Kỷ niệm chương "Most Inspiring Duo"', 'Bảng giải thưởng, Hoa & Quà tài trợ', 'Certificate of Achievement'].map((item, i) => (
+              {['500,000 VND / member', 'Most Inspiring Duo commemorative medal', 'Award board, Flowers & Sponsor gifts', 'Certificate of Achievement'].map((item, i) => (
                 <li key={i} className="font-body text-sm flex items-start gap-3">
                   <Sparkles className="w-4 h-4 text-tertiary shrink-0 mt-0.5" />
                   {item}
@@ -300,11 +300,11 @@ export function Vote() {
           </div>
 
           <div className="border-4 border-primary bg-primary-container p-6 text-center">
-            <h3 className="font-display text-xl font-extrabold uppercase mb-3">Quyền lợi khác cho Top 8</h3>
+            <h3 className="font-display text-xl font-extrabold uppercase mb-3">Other Benefits for Top 8</h3>
             <div className="flex flex-wrap justify-center gap-6 font-body text-sm font-medium text-on-surface-variant">
-              <span>📸 Bộ ảnh concept "Kaleidoscope"</span>
-              <span>🎤 Sân khấu chính (Top 4)</span>
-              <span>📣 Shout-out từ BTC</span>
+              <span>\uD83D\uDCF8 Kaleidoscope concept photoshoot</span>
+              <span>\uD83C\uDFA4 Main stage (Top 4)</span>
+              <span>\uD83D\uDCE3 Shout-out from organizers</span>
             </div>
           </div>
         </div>
@@ -379,15 +379,15 @@ export function Vote() {
             <div className="flex justify-center gap-4 flex-wrap">
               <div className="bg-primary-container border-2 border-outline-variant px-6 py-3 text-center">
                 <span className="block font-display text-xs font-bold uppercase tracking-widest text-on-surface-variant">1 Like</span>
-                <span className="font-display text-xl font-black text-secondary">3 điểm</span>
+                <span className="font-display text-xl font-black text-secondary">3 points</span>
               </div>
               <div className="bg-primary-container border-2 border-outline-variant px-6 py-3 text-center">
                 <span className="block font-display text-xs font-bold uppercase tracking-widest text-on-surface-variant">1 Comment</span>
-                <span className="font-display text-xl font-black text-tertiary">1 điểm</span>
+                <span className="font-display text-xl font-black text-tertiary">1 point</span>
               </div>
               <div className="bg-primary-container border-2 border-outline-variant px-6 py-3 text-center">
                 <span className="block font-display text-xs font-bold uppercase tracking-widest text-on-surface-variant">1 Share</span>
-                <span className="font-display text-xl font-black text-tertiary">5 điểm</span>
+                <span className="font-display text-xl font-black text-tertiary">5 points</span>
               </div>
             </div>
           </div>
@@ -415,7 +415,7 @@ export function Vote() {
         </div>
         <div className="text-right">
           <p className="font-display text-xs font-bold uppercase tracking-widest text-on-surface-variant">
-            📋 Thể lệ chi tiết tại Notion BTC & Fanpage VinUni Student Council
+            \uD83D\uDCCB Full rules on Notion & VinUni Student Council Fanpage
           </p>
         </div>
       </div>
