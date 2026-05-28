@@ -682,8 +682,16 @@ app.post('/api/tickets', publicWriteLimiter, async (req, res) => {
       : false;
     const normalizedApplicationId = normalizedUpcomingStudent ? cleanText(applicationId, 120) : '';
 
-    if (!normalizedFullName || !isValidEmail(normalizedEmail) || !isValidPhone(normalizedPhone)) {
-      res.status(400).json({ error: 'Invalid buyer information' });
+    if (!normalizedFullName) {
+      res.status(400).json({ error: 'Invalid buyer full name' });
+      return;
+    }
+    if (!isValidEmail(normalizedEmail)) {
+      res.status(400).json({ error: 'Invalid buyer email' });
+      return;
+    }
+    if (!isValidPhone(normalizedPhone)) {
+      res.status(400).json({ error: 'Invalid buyer phone number' });
       return;
     }
 
