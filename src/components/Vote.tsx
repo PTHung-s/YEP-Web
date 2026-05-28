@@ -126,8 +126,8 @@ export function Vote() {
   return (
     <div className="w-full max-w-7xl mx-auto px-6 md:px-12 py-12 md:py-16">
       {/* Header */}
-      <section className="mb-12 md:mb-16 relative">
-        <div className="border-4 border-primary p-6 md:p-10 bg-primary text-white neo-shadow relative overflow-hidden min-h-[360px] flex items-end">
+      <section className="mb-10 md:mb-16 relative">
+        <div className="border-4 border-primary p-4 sm:p-6 md:p-10 bg-primary text-white neo-shadow relative overflow-hidden min-h-[280px] sm:min-h-[320px] md:min-h-[360px] flex items-end">
           <img
             src={yepAsset('background-stage-light.webp')}
             alt=""
@@ -136,11 +136,11 @@ export function Vote() {
           />
           <div className="absolute inset-0 bg-primary/55" />
           <div className="relative z-10">
-            <h2 className="font-display text-5xl md:text-7xl lg:text-[8rem] font-black uppercase leading-[0.8] tracking-tighter text-white">
+            <h2 className="font-display text-3xl sm:text-5xl md:text-7xl lg:text-[8rem] font-black uppercase leading-[0.85] tracking-tighter text-white">
               YEP ICONS<br />THE CONSTELLATIONS
             </h2>
-            <div className="mt-6 md:mt-8 border-l-8 border-primary-container pl-4 md:pl-6">
-              <p className="font-display text-lg md:text-xl font-bold max-w-2xl text-white/85 uppercase leading-tight">
+            <div className="mt-4 sm:mt-6 md:mt-8 border-l-8 border-primary-container pl-4 md:pl-6">
+              <p className="font-display text-sm sm:text-lg md:text-xl font-bold max-w-2xl text-white/85 uppercase leading-tight">
                 THE JOURNEY TO FIND THE MOST RADIANT DUO AT VINUNI 2026
               </p>
             </div>
@@ -200,17 +200,17 @@ export function Vote() {
           {/* Overview */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-0 border-2 border-outline-variant mb-12">
             <div className="border-b-2 md:border-b-0 md:border-r-2 border-outline-variant p-6 text-center bg-surface-container-high">
-              <span className="text-4xl mb-3 block">\uD83D\uDC65</span>
+              <span className="text-4xl mb-3 block">👥</span>
               <h4 className="font-display text-lg font-extrabold uppercase mb-1">Join as a Duo</h4>
               <p className="font-body text-xs text-on-surface font-medium">M x F, F x F, M x M — every combination is welcome.</p>
             </div>
             <div className="border-b-2 md:border-b-0 md:border-r-2 border-outline-variant p-6 text-center bg-surface-container-high">
-              <span className="text-4xl mb-3 block">\uD83C\uDFAF</span>
+              <span className="text-4xl mb-3 block">🎯</span>
               <h4 className="font-display text-lg font-extrabold uppercase mb-1">3 Rounds</h4>
-              <p className="font-body text-xs text-on-surface font-medium">Selection \u2192 Campaign \u2192 Live Final on D-Day.</p>
+              <p className="font-body text-xs text-on-surface font-medium">Selection → Campaign → Live Final on D-Day.</p>
             </div>
             <div className="p-6 text-center bg-surface-container-high">
-              <span className="text-4xl mb-3 block">\uD83D\uDC8E</span>
+              <span className="text-4xl mb-3 block">💎</span>
               <h4 className="font-display text-lg font-extrabold uppercase mb-1">Valuable Prizes</h4>
               <p className="font-body text-xs text-on-surface font-medium">Total 3,000,000 VND + gifts from sponsors.</p>
             </div>
@@ -302,9 +302,9 @@ export function Vote() {
           <div className="border-4 border-primary bg-primary-container p-6 text-center">
             <h3 className="font-display text-xl font-extrabold uppercase mb-3">Other Benefits for Top 8</h3>
             <div className="flex flex-wrap justify-center gap-6 font-body text-sm font-medium text-on-surface-variant">
-              <span>\uD83D\uDCF8 Kaleidoscope concept photoshoot</span>
-              <span>\uD83C\uDFA4 Main stage (Top 4)</span>
-              <span>\uD83D\uDCE3 Shout-out from organizers</span>
+              <span>📸 Kaleidoscope concept photoshoot</span>
+              <span>🎤 Main stage (Top 4)</span>
+              <span>📣 Shout-out from organizers</span>
             </div>
           </div>
         </div>
@@ -415,7 +415,7 @@ export function Vote() {
         </div>
         <div className="text-right">
           <p className="font-display text-xs font-bold uppercase tracking-widest text-on-surface-variant">
-            \uD83D\uDCCB Full rules on Notion & VinUni Student Council Fanpage
+            📋 Full rules on Notion & VinUni Student Council Fanpage
           </p>
         </div>
       </div>

@@ -4,7 +4,7 @@
 - **Tên sự kiện:** YEP 2026
 - **Tagline:** Born to Bloom Different
 - **Mô tả vibe:** A night of blooming colors and fearless souls. Where every reflection tells a story worth celebrating.
-- **Thời gian – địa điểm:** 27/06/2026 | Amphitheatre - VinUni Campus
+- **Thời gian – địa điểm:** 25/06/2026 | Amphitheatre - VinUni Campus
 - **CTA Button text:** Choose Your King & Queen / Starting voting King & Queen
 
 ---
@@ -106,7 +106,7 @@ Hành trình trở thành YEP ICON được quyết định bởi sự kết h�
 ---
 
 # 6) Timeline/event schedule
-- **D-Day:** June 27, 2026
+- **D-Day:** June 25, 2026
 - **Location:** Amphitheatre - VinUni Campus
 
 | Time | Activity |
