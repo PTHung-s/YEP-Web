@@ -72,7 +72,7 @@ const top8Data: Top8Entry[] = [
     id: '2',
     name: 'T\u00ean c\u1eb7p \u0111\u00f4i 2',
     subtitle: 'CLASS OF 2026',
-    description: '"From late-night study sessions to all-nighter projects \u2014 we have always stood by each other."',
+    description: '"From late-night study sessions to all-nighter projects — we have always stood by each other."',
     imageUrl: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=400&h=400&fit=crop',
   },
   {
@@ -86,14 +86,14 @@ const top8Data: Top8Entry[] = [
     id: '4',
     name: 'T\u00ean c\u1eb7p \u0111\u00f4i 4',
     subtitle: 'CLASS OF 2025',
-    description: '"The energy of youth, the passion of art \u2014 we bring it all to the YEP stage."',
+    description: '"The energy of youth, the passion of art — we bring it all to the YEP stage."',
     imageUrl: 'https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e?w=400&h=400&fit=crop',
   },
   {
     id: '5',
     name: 'T\u00ean c\u1eb7p \u0111\u00f4i 5',
     subtitle: 'CLASS OF 2026',
-    description: '"More than classmates, we are soulmates \u2014 where every moment becomes a cherished memory."',
+    description: '"More than classmates, we are soulmates — where every moment becomes a cherished memory."',
     imageUrl: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=400&h=400&fit=crop',
   },
   {
@@ -114,7 +114,7 @@ const top8Data: Top8Entry[] = [
     id: '8',
     name: 'T\u00ean c\u1eb7p \u0111\u00f4i 8',
     subtitle: 'CLASS OF 2026',
-    description: '"From our first steps at VinUni to the YEP stage \u2014 this journey is ours."',
+    description: '"From our first steps at VinUni to the YEP stage — this journey is ours."',
     imageUrl: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=400&h=400&fit=crop',
   },
 ];
@@ -202,7 +202,7 @@ export function Vote() {
             <div className="border-b-2 md:border-b-0 md:border-r-2 border-outline-variant p-6 text-center bg-surface-container-high">
               <span className="text-4xl mb-3 block">\uD83D\uDC65</span>
               <h4 className="font-display text-lg font-extrabold uppercase mb-1">Join as a Duo</h4>
-              <p className="font-body text-xs text-on-surface font-medium">M x F, F x F, M x M \u2014 every combination is welcome.</p>
+              <p className="font-body text-xs text-on-surface font-medium">M x F, F x F, M x M — every combination is welcome.</p>
             </div>
             <div className="border-b-2 md:border-b-0 md:border-r-2 border-outline-variant p-6 text-center bg-surface-container-high">
               <span className="text-4xl mb-3 block">\uD83C\uDFAF</span>
@@ -226,7 +226,7 @@ export function Vote() {
                   </div>
                   <div>
                     <span className="font-display text-xs font-bold uppercase tracking-widest text-secondary">{r.period}</span>
-                    <h3 className="font-display text-2xl md:text-3xl font-black uppercase tracking-tight">{r.phase} \u2014 {r.subtitle}</h3>
+                    <h3 className="font-display text-2xl md:text-3xl font-black uppercase tracking-tight">{r.phase} — {r.subtitle}</h3>
                   </div>
                 </div>
                 <div className="p-6">
@@ -259,7 +259,7 @@ export function Vote() {
             <div className="flex items-center gap-4 mb-6">
               <Trophy className="w-10 h-10 text-secondary" />
               <div>
-                <h3 className="font-display text-2xl md:text-3xl font-black uppercase tracking-tight">YEP ICONS \u2014 The Constellations</h3>
+                <h3 className="font-display text-2xl md:text-3xl font-black uppercase tracking-tight">YEP ICONS — The Constellations</h3>
                 <p className="font-display text-xs font-bold uppercase tracking-widest text-on-surface-variant">Champion</p>
               </div>
             </div>
