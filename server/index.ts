@@ -923,6 +923,182 @@ app.post('/api/tickets', publicWriteLimiter, async (req, res) => {
   }
 });
 
+// POST /api/admin/manual-ticket - Create ticket manually (admin override, no PayOS)
+app.post('/api/admin/manual-ticket', requireAdmin, async (req, res) => {
+  try {
+    const {
+      fullName, email, phone, userType, userCategory,
+      studentId, workplace, upcomingStudent, applicationId,
+      ticketQuantity, merchItems, merchTotal,
+      skipEmail, customPaymentMethod,
+    } = req.body;
+
+    if (!fullName || !email || !phone || !userType || ticketQuantity === undefined || ticketQuantity === null) {
+      res.status(400).json({ error: 'Missing required fields' });
+      return;
+    }
+
+    const normalizedFullName = cleanText(fullName, 120);
+    const normalizedEmail = cleanText(email, 254).toLowerCase();
+    const normalizedPhone = cleanText(phone, 24);
+    const normalizedUserType = cleanText(userType, 32);
+    const normalizedUserCategory = cleanText(userCategory, 80);
+    const normalizedStudentId = cleanText(studentId, 80);
+    const normalizedWorkplace = cleanText(workplace, 120);
+    const normalizedUpcomingStudent = normalizedUserType === 'non-vinnunian'
+      ? req.body?.upcomingStudent === true || String(req.body?.upcomingStudent).toLowerCase() === 'true'
+      : false;
+    const normalizedApplicationId = normalizedUpcomingStudent ? cleanText(applicationId, 120) : '';
+
+    if (!normalizedFullName) {
+      res.status(400).json({ error: 'Invalid buyer full name' });
+      return;
+    }
+    if (!isValidEmail(normalizedEmail)) {
+      res.status(400).json({ error: 'Invalid buyer email' });
+      return;
+    }
+    if (!isValidPhone(normalizedPhone)) {
+      res.status(400).json({ error: 'Invalid buyer phone number' });
+      return;
+    }
+    if (!['vinnunian', 'non-vinnunian'].includes(normalizedUserType)) {
+      res.status(400).json({ error: 'Invalid ticket type' });
+      return;
+    }
+
+    const config = await readConfig();
+    const normalizedTicketQuantity = Math.min(MAX_TICKETS_PER_ORDER, Math.max(0, Math.floor(Number(ticketQuantity) || 0)));
+    const normalizedTicketPrice = normalizedUserType === 'vinnunian'
+      ? (config.earlyBirdEnabled ? config.prices.earlyBird : config.prices.vinnunian)
+      : config.prices.guest;
+    const normalizedMerchTotal = Math.max(0, Number(merchTotal) || 0);
+    const normalizedMerchItems = cleanText(
+      typeof merchItems === 'string' ? merchItems : JSON.stringify(merchItems || []),
+      2000,
+    );
+    const ticketSubtotal = normalizedTicketPrice * normalizedTicketQuantity;
+    const subtotal = ticketSubtotal + normalizedMerchTotal;
+    const serviceFee = calculateServiceFee(config, subtotal);
+    const isEarlyBirdOrder = normalizedUserType === 'vinnunian' && config.earlyBirdEnabled;
+    const ticketBulkDiscount = isEarlyBirdOrder
+      ? 0
+      : calculateTicketBulkDiscount(config, ticketSubtotal, normalizedTicketQuantity);
+    const merchBulkDiscount = calculateMerchBundleDiscount(config, normalizedMerchTotal, normalizedTicketQuantity);
+    const totalAmount = Math.max(0, subtotal + serviceFee - ticketBulkDiscount - merchBulkDiscount);
+
+    if (normalizedTicketQuantity < 1 && normalizedMerchTotal < 1) {
+      res.status(400).json({ error: 'Please select at least one ticket or one merch item' });
+      return;
+    }
+
+    const paymentMethod = cleanText(customPaymentMethod, 40) || 'manual';
+    const record = {
+      id: generateId(),
+      timestamp: nowVN(),
+      fullName: normalizedFullName,
+      email: normalizedEmail,
+      phone: normalizedPhone,
+      userType: normalizedUserType,
+      userCategory: normalizedUserCategory,
+      studentId: normalizedStudentId,
+      workplace: normalizedWorkplace,
+      upcomingStudent: normalizedUpcomingStudent,
+      applicationId: normalizedApplicationId,
+      ticketQuantity: String(normalizedTicketQuantity),
+      ticketPrice: String(normalizedTicketPrice),
+      merchItems: normalizedMerchItems,
+      discountCode: 'AUTO',
+      discountAmount: String(ticketBulkDiscount + merchBulkDiscount),
+      totalAmount: String(totalAmount),
+      paymentMethod,
+    };
+
+    const ticketType = getTicketTypeLabel(normalizedUserType, config.earlyBirdEnabled);
+    const ticketItems: TicketItemRow[] = Array.from({ length: normalizedTicketQuantity }, (_, index) => ({
+      ticketCode: generateTicketCode(),
+      orderId: record.id,
+      timestamp: record.timestamp,
+      buyerName: normalizedFullName,
+      email: normalizedEmail,
+      phone: normalizedPhone,
+      ticketType,
+      ticketNo: String(index + 1),
+      orderTicketQuantity: String(normalizedTicketQuantity),
+    }));
+    const merchClaims: MerchClaimRow[] = hasMerchOrder(normalizedMerchItems, normalizedMerchTotal)
+      ? [{
+          merchClaimCode: generateMerchClaimCode(),
+          orderId: record.id,
+          buyerName: normalizedFullName,
+          email: normalizedEmail,
+          phone: normalizedPhone,
+          merchItems: normalizedMerchItems,
+          claimedAt: '',
+          claimedBy: '',
+        }]
+      : [];
+
+    const sheetOk = await appendTicketRow(record);
+    const itemSheetOk = await appendTicketItemRows(ticketItems);
+    const merchSheetOk = await appendMerchClaimRows(merchClaims);
+
+    if (!sheetOk) {
+      await saveTicketCSV({
+        ...record,
+        ticketQuantity: Number(record.ticketQuantity),
+        ticketPrice: Number(record.ticketPrice),
+        discountAmount: Number(record.discountAmount),
+        totalAmount: Number(record.totalAmount),
+      } as any);
+      console.log('[CSV] Manual ticket saved locally:', record.id);
+    }
+    if (!itemSheetOk) {
+      await saveTicketItemsCSV(ticketItems);
+      console.log('[CSV] Manual ticket items saved locally:', ticketItems.length);
+    }
+    if (merchClaims.length > 0 && !merchSheetOk) {
+      await saveMerchClaimsCSV(merchClaims);
+      console.log('[CSV] Manual merch claim saved locally:', merchClaims[0].merchClaimCode);
+    }
+
+    let emailResult;
+    if (!skipEmail) {
+      emailResult = await sendTicketEmail({
+        to: normalizedEmail,
+        buyerName: normalizedFullName,
+        orderId: record.id,
+        totalAmount: record.totalAmount,
+        paymentMethod: record.paymentMethod,
+        ticketItems,
+        merchItems: normalizedMerchItems,
+        merchClaims,
+      });
+      if (!emailResult.sent) {
+        console.log('[Email] Manual ticket email not sent:', emailResult.error || 'not configured');
+      } else {
+        console.log('[Email] Manual ticket email sent:', normalizedEmail, emailResult.messageId || '');
+      }
+    } else {
+      emailResult = { configured: false, sent: false, error: 'Skipped by admin' };
+    }
+
+    res.status(201).json({
+      success: true,
+      ticketId: record.id,
+      ticketCodes: ticketItems.map(item => item.ticketCode),
+      storedIn: sheetOk ? 'sheets' : 'csv',
+      email: emailResult,
+      message: sheetOk
+        ? 'Ticket saved to Google Sheets'
+        : 'Ticket saved locally (CSV). Configure Google Sheets credentials for cloud storage.',
+    });
+  } catch (err) {
+    console.error('[Admin] Error creating manual ticket:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // POST /api/payos/webhook - PayOS payment webhook
 app.post('/api/payos/webhook', async (req, res) => {
   try {

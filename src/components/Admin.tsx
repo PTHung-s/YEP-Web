@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Download, Lock, Plus, RefreshCw, Save, Trash2 } from 'lucide-react';
+import { Download, Lock, Plus, RefreshCw, Save, Ticket, Trash2, Minus } from 'lucide-react';
 import { defaultEventConfig, type EventConfigState, type TicketBulkDiscountTier } from '../store/EventConfigContext';
 import { cn } from './Layout';
 
@@ -49,6 +49,29 @@ export function Admin() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [savedMessage, setSavedMessage] = useState('');
+
+  const [manualForm, setManualForm] = useState({
+    fullName: '',
+    email: '',
+    phone: '',
+    userType: 'vinnunian' as 'vinnunian' | 'non-vinnunian',
+    userCategory: '',
+    studentId: '',
+    workplace: '',
+    upcomingStudent: false,
+    applicationId: '',
+    ticketQuantity: 1,
+    lanyardYoyoQty: 0,
+    badanaQty: 0,
+    skipEmail: false,
+    customPaymentMethod: '',
+  });
+  const [manualSubmitting, setManualSubmitting] = useState(false);
+  const [manualResult, setManualResult] = useState<{ success?: boolean; message?: string }>({});
+
+  const updateManualForm = (patch: Partial<typeof manualForm>) => {
+    setManualForm(prev => ({ ...prev, ...patch }));
+  };
 
   const authHeaders = token ? { Authorization: `Bearer ${token}` } : {};
 
@@ -193,6 +216,54 @@ export function Admin() {
         },
       },
     }));
+  };
+
+  const submitManualOrder = async () => {
+    setManualSubmitting(true);
+    setManualResult({});
+    try {
+      const merchParts: string[] = [];
+      if (manualForm.lanyardYoyoQty > 0) {
+        merchParts.push(`${manualForm.lanyardYoyoQty}x Combo Lanyard + Yoyo Kaleido`);
+      }
+      if (manualForm.badanaQty > 0) {
+        merchParts.push(`${manualForm.badanaQty}x Badana Kaleido`);
+      }
+      const merchItems = merchParts.join('; ');
+      const lanyardPrice = 69000;
+      const badanaPrice = 129000;
+      const merchTotal = (manualForm.lanyardYoyoQty * lanyardPrice) + (manualForm.badanaQty * badanaPrice);
+
+      const res = await fetch('/api/admin/manual-ticket', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...authHeaders },
+        body: JSON.stringify({
+          fullName: manualForm.fullName,
+          email: manualForm.email,
+          phone: manualForm.phone,
+          userType: manualForm.userType,
+          userCategory: manualForm.userType === 'vinnunian' ? manualForm.userCategory : '',
+          studentId: manualForm.userType === 'vinnunian' ? manualForm.studentId : '',
+          workplace: manualForm.userType === 'non-vinnunian' ? manualForm.workplace : '',
+          upcomingStudent: manualForm.userType === 'non-vinnunian' ? manualForm.upcomingStudent : false,
+          applicationId: manualForm.upcomingStudent ? manualForm.applicationId : '',
+          ticketQuantity: manualForm.ticketQuantity,
+          merchItems: merchItems || undefined,
+          merchTotal: merchTotal || 0,
+          skipEmail: manualForm.skipEmail,
+          customPaymentMethod: manualForm.customPaymentMethod || 'manual',
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to create order');
+      setManualResult({ success: true, message: `Order #${data.ticketId} created. Codes: ${data.ticketCodes.join(', ')} ${data.email?.sent ? 'Email sent.' : data.email?.error || ''}` });
+      loadAdminData();
+    } catch (err: any) {
+      setManualResult({ success: false, message: err.message || 'Failed to create manual order' });
+    } finally {
+      setManualSubmitting(false);
+    }
   };
 
   if (!token) {
@@ -434,6 +505,167 @@ export function Admin() {
           </div>
         </section>
       </div>
+
+      <section className="bg-surface border-4 border-primary p-6 md:p-8 space-y-6 mt-8">
+        <div className="flex items-center gap-3">
+          <Ticket className="w-7 h-7" />
+          <h2 className="font-display text-2xl font-black uppercase tracking-tight">Manual Order</h2>
+          <span className="font-display text-xs font-bold uppercase tracking-widest text-on-surface-variant">Create ticket / merch without payment</span>
+        </div>
+
+        {manualResult.message && (
+          <div className={cn('border-4 border-primary p-4 font-display font-black uppercase tracking-wider', manualResult.success ? 'bg-primary-container' : 'bg-secondary text-white')}>
+            {manualResult.message}
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="space-y-4">
+            <label className="space-y-1">
+              <span className="font-display text-xs font-black uppercase tracking-widest">Full Name *</span>
+              <input type="text" value={manualForm.fullName} onChange={e => updateManualForm({ fullName: e.target.value })} className="w-full bg-white text-background border-2 border-primary px-3 py-3 font-display font-black" />
+            </label>
+            <div className="grid grid-cols-2 gap-3">
+              <label className="space-y-1">
+                <span className="font-display text-xs font-black uppercase tracking-widest">Email *</span>
+                <input type="email" value={manualForm.email} onChange={e => updateManualForm({ email: e.target.value })} className="w-full bg-white text-background border-2 border-primary px-3 py-3 font-display font-black" />
+              </label>
+              <label className="space-y-1">
+                <span className="font-display text-xs font-black uppercase tracking-widest">Phone *</span>
+                <input type="text" value={manualForm.phone} onChange={e => updateManualForm({ phone: e.target.value })} className="w-full bg-white text-background border-2 border-primary px-3 py-3 font-display font-black" />
+              </label>
+            </div>
+            <label className="space-y-1">
+              <span className="font-display text-xs font-black uppercase tracking-widest">User Type *</span>
+              <div className="grid grid-cols-2 border-4 border-primary">
+                {[
+                  ['vinnunian', 'VinUnian'],
+                  ['non-vinnunian', 'Non-VinUnian'],
+                ].map(([value, label]) => (
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() => updateManualForm({ userType: value as 'vinnunian' | 'non-vinnunian', userCategory: '', studentId: '', workplace: '', upcomingStudent: false, applicationId: '' })}
+                    className={cn('py-3 font-display text-xs font-black uppercase tracking-widest border-r-4 border-primary last:border-r-0', manualForm.userType === value ? 'bg-primary text-white' : 'bg-background')}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </label>
+
+            {manualForm.userType === 'vinnunian' && (
+              <>
+                <label className="space-y-1">
+                  <span className="font-display text-xs font-black uppercase tracking-widest">Category</span>
+                  <select value={manualForm.userCategory} onChange={e => updateManualForm({ userCategory: e.target.value })} className="w-full bg-white text-background border-2 border-primary px-3 py-3 font-display font-black">
+                    <option value="">-- Select --</option>
+                    {['student', 'faculty', 'staff', 'alumni'].map(cat => (
+                      <option key={cat} value={cat}>{cat.charAt(0).toUpperCase() + cat.slice(1)}</option>
+                    ))}
+                  </select>
+                </label>
+                <label className="space-y-1">
+                  <span className="font-display text-xs font-black uppercase tracking-widest">Student ID</span>
+                  <input type="text" value={manualForm.studentId} onChange={e => updateManualForm({ studentId: e.target.value })} className="w-full bg-white text-background border-2 border-primary px-3 py-3 font-display font-black" />
+                </label>
+              </>
+            )}
+
+            {manualForm.userType === 'non-vinnunian' && (
+              <>
+                <label className="space-y-1">
+                  <span className="font-display text-xs font-black uppercase tracking-widest">Workplace / Address</span>
+                  <input type="text" value={manualForm.workplace} onChange={e => updateManualForm({ workplace: e.target.value })} className="w-full bg-white text-background border-2 border-primary px-3 py-3 font-display font-black" />
+                </label>
+                <label className="flex items-center justify-between gap-4 border-2 border-primary p-4">
+                  <span className="font-display font-black uppercase tracking-widest text-sm">Upcoming Student</span>
+                  <Toggle checked={manualForm.upcomingStudent} onChange={upcomingStudent => updateManualForm({ upcomingStudent, applicationId: upcomingStudent ? manualForm.applicationId : '' })} />
+                </label>
+                {manualForm.upcomingStudent && (
+                  <label className="space-y-1">
+                    <span className="font-display text-xs font-black uppercase tracking-widest">Application ID *</span>
+                    <input type="text" value={manualForm.applicationId} onChange={e => updateManualForm({ applicationId: e.target.value })} className="w-full bg-white text-background border-2 border-primary px-3 py-3 font-display font-black" />
+                  </label>
+                )}
+              </>
+            )}
+          </div>
+
+          <div className="space-y-6">
+            <div className="border-2 border-primary p-4 space-y-3">
+              <h3 className="font-display font-black uppercase tracking-widest">Ticket Quantity</h3>
+              <div className="flex items-center justify-center gap-4">
+                <button
+                  type="button"
+                  onClick={() => updateManualForm({ ticketQuantity: Math.max(0, manualForm.ticketQuantity - 1) })}
+                  className="w-12 h-12 border-2 border-primary bg-background flex items-center justify-center font-display font-black text-xl"
+                >
+                  <Minus className="w-5 h-5" />
+                </button>
+                <span className="font-display text-3xl font-black w-12 text-center">{manualForm.ticketQuantity}</span>
+                <button
+                  type="button"
+                  onClick={() => updateManualForm({ ticketQuantity: Math.min(10, manualForm.ticketQuantity + 1) })}
+                  className="w-12 h-12 border-2 border-primary bg-background flex items-center justify-center font-display font-black text-xl"
+                >
+                  <Plus className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            <div className="border-2 border-primary p-4 space-y-3">
+              <h3 className="font-display font-black uppercase tracking-widest">Merch</h3>
+              <div className="space-y-3">
+                {[
+                  ['lanyardYoyoQty', 'Combo Lanyard + Yoyo Kaleido', '69,000 VND'],
+                  ['badanaQty', 'Badana Kaleido', '129,000 VND'],
+                ].map(([key, label, priceHint]) => (
+                  <div key={key} className="flex items-center justify-between gap-3">
+                    <span className="font-body text-xs font-bold text-on-surface-variant flex-1">{label}<br /><span className="text-on-surface/50">{priceHint}</span></span>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => updateManualForm({ [key]: Math.max(0, manualForm[key as keyof typeof manualForm] as number - 1) } as any)}
+                        className="w-8 h-8 border-2 border-primary bg-background flex items-center justify-center"
+                      >
+                        <Minus className="w-3 h-3" />
+                      </button>
+                      <span className="font-display font-black w-6 text-center text-sm">{String(manualForm[key as keyof typeof manualForm])}</span>
+                      <button
+                        type="button"
+                        onClick={() => updateManualForm({ [key]: Math.min(99, (manualForm[key as keyof typeof manualForm] as number) + 1) } as any)}
+                        className="w-8 h-8 border-2 border-primary bg-background flex items-center justify-center"
+                      >
+                        <Plus className="w-3 h-3" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <label className="space-y-1">
+                <span className="font-display text-xs font-black uppercase tracking-widest">Payment Method</span>
+                <input type="text" value={manualForm.customPaymentMethod} onChange={e => updateManualForm({ customPaymentMethod: e.target.value })} placeholder="cash / bank transfer" className="w-full bg-white text-background border-2 border-primary px-3 py-3 font-display font-black placeholder:text-on-surface/30" />
+              </label>
+              <label className="flex items-center justify-between gap-4 border-2 border-primary p-4">
+                <span className="font-display font-black uppercase tracking-widest text-sm">Skip Email</span>
+                <Toggle checked={manualForm.skipEmail} onChange={skipEmail => updateManualForm({ skipEmail })} />
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <button
+          onClick={submitManualOrder}
+          disabled={manualSubmitting || !manualForm.fullName || !manualForm.email || !manualForm.phone || (manualForm.ticketQuantity < 1 && manualForm.lanyardYoyoQty < 1 && manualForm.badanaQty < 1)}
+          className="w-full bg-primary text-white border-4 border-primary py-4 font-display font-black text-lg uppercase tracking-widest disabled:bg-surface-dim disabled:text-on-surface-variant disabled:border-outline-variant"
+        >
+          {manualSubmitting ? 'CREATING...' : 'CREATE ORDER'}
+        </button>
+      </section>
     </div>
   );
 }
