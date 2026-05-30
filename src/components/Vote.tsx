@@ -4,7 +4,7 @@ import { cn } from './Layout';
 import { yepAsset } from '../lib/assets';
 import { useEventConfig } from '../store/EventConfigContext';
 
-const REGISTRATION_LINK = ''; // Set to actual Google Form URL when registration opens
+const REGISTRATION_LINK = 'https://forms.office.com/pages/responsepage.aspx?id=iSf4WJVmSk-r2zV2aNVc_7piQs8SyDVLv38cAsrkapVURDVPQ1QwQVpOR1FaQVRUWURTTEoxNDBCOS4u&route=shorturl';
 const VOTE_URL = ''; // Set to Google Form voting URL when voting opens
 
 const rounds = [
