@@ -98,36 +98,6 @@ function RevealedArtistCard({ artist, index }: { artist: Artist; index: number }
   const cardRef = useRef<HTMLElement>(null);
   const hasAutoPlayedRef = useRef(false);
 
-  // Auto-play first song when card scrolls into view, pause when leaving
-  useEffect(() => {
-    const el = cardRef.current;
-    if (!el) return;
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting && entry.intersectionRatio >= 0.5) {
-            // Card scrolled into view — auto-play first song
-            if (!hasAutoPlayedRef.current && songs.length > 0 && songs[0]?.audioUrl) {
-              hasAutoPlayedRef.current = true;
-              // Small delay so scroll finishes before audio starts
-              setTimeout(() => togglePlay(0), 300);
-            }
-          } else if (!entry.isIntersecting) {
-            // Card scrolled out of view — pause if playing
-            if (isPlaying && playingSongIdx !== null) {
-              audioRef.current?.pause();
-            }
-          }
-        });
-      },
-      { threshold: [0, 0.5] }
-    );
-
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, [songs, isPlaying, playingSongIdx, togglePlay]);
-
   // Draw real-time waveform on active song's canvas
   const drawWaveform = useCallback(() => {
     const analyser = analyserRef.current;
@@ -236,6 +206,33 @@ function RevealedArtistCard({ artist, index }: { artist: Artist; index: number }
 
     setupAudio();
   }, [songs, playingSongIdx, isPlaying]);
+
+  // Auto-play first song when card scrolls into view, pause when leaving
+  useEffect(() => {
+    const el = cardRef.current;
+    if (!el) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting && entry.intersectionRatio >= 0.5) {
+            if (!hasAutoPlayedRef.current && songs.length > 0 && songs[0]?.audioUrl) {
+              hasAutoPlayedRef.current = true;
+              setTimeout(() => togglePlay(0), 300);
+            }
+          } else if (!entry.isIntersecting) {
+            if (isPlaying && playingSongIdx !== null) {
+              audioRef.current?.pause();
+            }
+          }
+        });
+      },
+      { threshold: [0, 0.5] }
+    );
+
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [songs, isPlaying, playingSongIdx, togglePlay]);
 
   const handleSongScroll = useCallback(() => {
     const el = songScrollRef.current;
