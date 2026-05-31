@@ -97,6 +97,11 @@ function RevealedArtistCard({ artist, index }: { artist: Artist; index: number }
   const isFirstRevealed = artist.id === firstRevealedId;
   const cardRef = useRef<HTMLElement>(null);
   const hasAutoPlayedRef = useRef(false);
+  // Refs for latest state (avoid stale closure in IntersectionObserver)
+  const isPlayingRef = useRef(isPlaying);
+  isPlayingRef.current = isPlaying;
+  const playingSongIdxRef = useRef(playingSongIdx);
+  playingSongIdxRef.current = playingSongIdx;
 
   // Draw real-time waveform on active song's canvas
   const drawWaveform = useCallback(() => {
@@ -221,7 +226,7 @@ function RevealedArtistCard({ artist, index }: { artist: Artist; index: number }
               setTimeout(() => togglePlay(0), 300);
             }
           } else if (!entry.isIntersecting) {
-            if (isPlaying && playingSongIdx !== null) {
+            if (isPlayingRef.current && playingSongIdxRef.current !== null) {
               audioRef.current?.pause();
             }
           }
@@ -232,7 +237,7 @@ function RevealedArtistCard({ artist, index }: { artist: Artist; index: number }
 
     observer.observe(el);
     return () => observer.disconnect();
-  }, [songs, isPlaying, playingSongIdx, togglePlay]);
+  }, [songs, togglePlay]);
 
   const handleSongScroll = useCallback(() => {
     const el = songScrollRef.current;
