@@ -225,13 +225,6 @@ function RevealedArtistCard({ artist, index }: { artist: Artist; index: number }
               hasAutoPlayedRef.current = true;
               setTimeout(() => togglePlay(0), 300);
             }
-          } else {
-            // Pause when card is not 50%+ visible
-            if (isPlayingRef.current && playingSongIdxRef.current !== null) {
-              audioRef.current?.pause();
-              setIsPlaying(false);
-              setPlayingSongIdx(null);
-            }
           }
         });
       },
