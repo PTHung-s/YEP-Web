@@ -43,13 +43,13 @@ const artists: Artist[] = [
   },
   {
     id: 2,
-    name: 'MYSTERY ACT 02',
-    genre: 'MYSTERY PERFORMER',
+    name: 'RIO',
+    genre: 'SINGER-SONGWRITER / PRODUCER',
     time: 'TBA',
     stage: 'MAIN STAGE',
-    description: 'This artist will be revealed soon. Read the clues and keep guessing.',
-    img: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=1200',
-    revealed: false,
+    description: 'Singer-songwriter and producer Do Viet Tien, formerly known from P336/T-Up, brings a polished pop sensibility shaped by vocals, production, and arrangement craft.',
+    img: yepAsset('RIO.webp'),
+    revealed: true,
     hintTags: ['C\u1ef1u th\u00e0nh vi\u00ean P336', 'T\u1ed1t nghi\u1ec7p Ng\u00f4n ng\u1eef Anh \u0110HKHXH&NV', '\u0110\u1ed7 Vi\u1ec7t Ti\u1ebfn', 'T-up', 'Ho\u00e0 \u00e2m ph\u1ed1i kh\u00ed trong 5 ng\u00e0y', 'boygroup roots'],
   },
   {
@@ -78,7 +78,7 @@ const artists: Artist[] = [
 
 const revealedCount = artists.filter(a => a.revealed).length;
 const totalCount = artists.length;
-const firstRevealedId = artists.find(a => a.revealed)?.id;
+const latestRevealedId = [...artists].reverse().find(a => a.revealed)?.id;
 
 /* ─────── Revealed Artist Card (has its own hooks) ─────── */
 function RevealedArtistCard({ artist, index }: { artist: Artist; index: number }) {
@@ -94,7 +94,7 @@ function RevealedArtistCard({ artist, index }: { artist: Artist; index: number }
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const songs = artist.songs || [];
-  const isFirstRevealed = artist.id === firstRevealedId;
+  const isLatestRevealed = artist.id === latestRevealedId;
   const cardRef = useRef<HTMLElement>(null);
   const hasAutoPlayedRef = useRef(false);
   // Refs for latest state (avoid stale closure in IntersectionObserver)
@@ -254,7 +254,7 @@ function RevealedArtistCard({ artist, index }: { artist: Artist; index: number }
       ref={cardRef}
       className={cn(
         'border-4 border-primary bg-surface overflow-hidden neo-shadow-sm',
-        isFirstRevealed && 'animate-reveal-glow'
+        isLatestRevealed && 'animate-reveal-glow'
       )}
     >
       {/* Main content: 40% square image | 60% info + songs */}
@@ -280,7 +280,7 @@ function RevealedArtistCard({ artist, index }: { artist: Artist; index: number }
             <p className="font-display text-xs font-bold uppercase tracking-widest text-tertiary">
               ARTIST #{String(index + 1).padStart(2, '0')}
             </p>
-            {isFirstRevealed && (
+            {isLatestRevealed && (
               <span className="inline-flex items-center gap-1.5 font-display text-[10px] font-black uppercase tracking-[0.2em] text-white bg-secondary border-2 border-secondary px-3 py-1.5 animate-kaleido-pulse">
                 <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
                 JUST ANNOUNCED
