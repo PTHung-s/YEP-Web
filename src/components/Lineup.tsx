@@ -107,6 +107,35 @@ function RevealedArtistCard({ artist, index }: { artist: Artist; index: number }
   const playingSongIdxRef = useRef(playingSongIdx);
   playingSongIdxRef.current = playingSongIdx;
 
+  const stopAudio = useCallback((resetTrack = false) => {
+    cancelAnimationFrame(animFrameRef.current);
+
+    const audio = audioRef.current;
+    if (audio) {
+      audio.pause();
+      if (resetTrack) {
+        audio.removeAttribute('src');
+        audio.load();
+        audioRef.current = null;
+      }
+    }
+
+    if (resetTrack) {
+      audioCtxRef.current?.close().catch(() => {});
+      audioCtxRef.current = null;
+      analyserRef.current = null;
+    } else if (audioCtxRef.current?.state === 'running') {
+      audioCtxRef.current.suspend().catch(() => {});
+    }
+
+    setIsPlaying(false);
+    if (resetTrack) {
+      setPlayingSongIdx(null);
+      setCurrentTime(0);
+      setDuration(0);
+    }
+  }, []);
+
   // Draw real-time waveform on active song's canvas
   const drawWaveform = useCallback(() => {
     const analyser = analyserRef.current;
@@ -162,6 +191,22 @@ function RevealedArtistCard({ artist, index }: { artist: Artist; index: number }
   useEffect(() => {
     canvasRefs.current = canvasRefs.current.slice(0, songs.length);
   }, [songs.length]);
+
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.hidden) stopAudio(false);
+    };
+    const handlePageHide = () => stopAudio(true);
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('pagehide', handlePageHide);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('pagehide', handlePageHide);
+      stopAudio(true);
+    };
+  }, [stopAudio]);
 
   const togglePlay = useCallback((sIdx: number) => {
     const song = songs[sIdx];
@@ -229,6 +274,8 @@ function RevealedArtistCard({ artist, index }: { artist: Artist; index: number }
               hasAutoPlayedRef.current = true;
               setTimeout(() => togglePlay(0), 300);
             }
+          } else if (isPlayingRef.current) {
+            stopAudio(false);
           }
         });
       },
@@ -237,7 +284,7 @@ function RevealedArtistCard({ artist, index }: { artist: Artist; index: number }
 
     observer.observe(el);
     return () => observer.disconnect();
-  }, [songs, togglePlay]);
+  }, [songs, stopAudio, togglePlay]);
 
   const handleSongScroll = useCallback(() => {
     const el = songScrollRef.current;
