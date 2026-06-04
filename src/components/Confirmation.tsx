@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ArrowLeft, ArrowRight, CheckCircle, Ticket, Loader2 } from 'lucide-react';
+import { ArrowLeft, ArrowRight, CheckCircle, Ticket, Loader2, Tag, X } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useCart } from '../store/CartContext';
 import { cn } from './Layout';
@@ -9,16 +9,21 @@ function formatVND(amount: number): string {
 }
 
 export function Confirmation() {
-  const { state, getTicketPrice, getServiceFee, getTotal, getTicketBulkDiscount, getMerchBulkDiscount } = useCart();
+  const { state, dispatch, getTicketPrice, getServiceFee, getTotal, getTicketBulkDiscount, getTicketDiscount, getMerchBulkDiscount } = useCart();
   const navigate = useNavigate();
   const [emailConfirm, setEmailConfirm] = useState(state.email);
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState('');
+  const [discountInput, setDiscountInput] = useState(state.appliedDiscount?.code || '');
+  const [discountLoading, setDiscountLoading] = useState(false);
+  const [discountMessage, setDiscountMessage] = useState('');
+  const [discountToast, setDiscountToast] = useState('');
 
   const ticketPrice = getTicketPrice();
   const serviceFee = getServiceFee();
   const total = getTotal();
   const ticketBulkDiscount = getTicketBulkDiscount();
+  const ticketDiscount = getTicketDiscount();
   const merchBulkDiscount = getMerchBulkDiscount();
   const merchTotal = state.merch.reduce((sum, m) => sum + m.price * m.quantity, 0);
   const hasPurchases = state.ticketQuantity > 0 || merchTotal > 0;
@@ -63,7 +68,9 @@ export function Confirmation() {
           merchTotal,
           totalAmount: total,
           ticketBulkDiscount,
+          ticketDiscount,
           merchBulkDiscount,
+          discountCode: state.appliedDiscount?.code || '',
           appUrl: window.location.origin,
         }),
       });
@@ -85,6 +92,55 @@ export function Confirmation() {
     } catch (err: any) {
       setError(err.message || 'Cannot connect to server.');
       setProcessing(false);
+    }
+  };
+
+  const handleApplyDiscount = async () => {
+    const code = discountInput.trim().toUpperCase();
+    setDiscountMessage('');
+    setDiscountToast('');
+
+    if (!code) {
+      dispatch({ type: 'SET_APPLIED_DISCOUNT', payload: null });
+      setDiscountMessage('Discount code removed.');
+      return;
+    }
+
+    setDiscountLoading(true);
+    try {
+      const res = await fetch('/api/discount/preview', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          discountCode: code,
+          userType: state.userType,
+          ticketQuantity: state.ticketQuantity,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.valid) {
+        throw new Error(data.message || data.error || 'Invalid discount code');
+      }
+
+      dispatch({
+        type: 'SET_APPLIED_DISCOUNT',
+        payload: {
+          code: data.code,
+          name: data.name,
+          type: data.type,
+          rate: Number(data.rate) || 0,
+        },
+      });
+      setDiscountInput(data.code);
+      setDiscountMessage(data.message || 'Discount code applied.');
+      if (data.capped) {
+        setDiscountToast('Discount applied, but total ticket discount cannot exceed 15%.');
+      }
+    } catch (err: any) {
+      dispatch({ type: 'SET_APPLIED_DISCOUNT', payload: null });
+      setDiscountMessage(err.message || 'Invalid discount code');
+    } finally {
+      setDiscountLoading(false);
     }
   };
 
@@ -159,9 +215,66 @@ export function Confirmation() {
                 )}
                 {state.merch.filter(m => m.quantity > 0).map(m => <div key={m.id} className="flex justify-between text-sm font-display font-bold"><span className="uppercase tracking-wider">{m.name} ×{m.quantity}</span><span>{formatVND(m.price * m.quantity)}</span></div>)}
                 {serviceFee > 0 && <div className="border-t-2 border-primary pt-3 flex justify-between text-xs font-display font-bold uppercase tracking-widest text-on-surface-variant"><span>SERVICE FEE (3%)</span><span>{formatVND(serviceFee)}</span></div>}
-                {ticketBulkDiscount > 0 && <div className="flex justify-between text-xs font-display font-bold uppercase tracking-widest text-secondary"><span>TICKET BULK DISCOUNT</span><span>-{formatVND(ticketBulkDiscount)}</span></div>}
+                {ticketDiscount > 0 && <div className="flex justify-between text-xs font-display font-bold uppercase tracking-widest text-secondary"><span>{state.appliedDiscount ? 'TICKET DISCOUNT' : 'TICKET BULK DISCOUNT'}</span><span>-{formatVND(ticketDiscount)}</span></div>}
                 {merchBulkDiscount > 0 && <div className="flex justify-between text-xs font-display font-bold uppercase tracking-widest text-secondary"><span>MERCH BUNDLE DISCOUNT</span><span>-{formatVND(merchBulkDiscount)}</span></div>}
               </div>
+
+              <div className="mb-6 border-4 border-primary bg-primary-container p-4">
+                <label className="mb-3 flex items-center gap-2 font-display text-xs font-black uppercase tracking-widest text-on-surface-variant">
+                  <Tag className="h-4 w-4" />
+                  Discount / referral code
+                </label>
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  <input
+                    value={discountInput}
+                    onChange={event => setDiscountInput(event.target.value.toUpperCase())}
+                    placeholder="YEPD5-XXXXXX"
+                    className="min-w-0 flex-1 border-2 border-primary bg-white px-3 py-3 font-display text-sm font-black uppercase tracking-widest text-background focus:outline-none focus:border-secondary"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleApplyDiscount}
+                    disabled={discountLoading}
+                    className="border-2 border-primary bg-primary px-4 py-3 font-display text-xs font-black uppercase tracking-widest text-white transition-colors hover:bg-secondary disabled:opacity-60"
+                  >
+                    {discountLoading ? 'Checking...' : 'Apply'}
+                  </button>
+                  {state.appliedDiscount && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        dispatch({ type: 'SET_APPLIED_DISCOUNT', payload: null });
+                        setDiscountInput('');
+                        setDiscountMessage('Discount code removed.');
+                        setDiscountToast('');
+                      }}
+                      className="border-2 border-primary bg-surface px-3 py-3 text-primary transition-colors hover:bg-white"
+                      aria-label="Remove discount code"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  )}
+                </div>
+                {discountMessage && (
+                  <p className="mt-3 font-body text-xs font-bold uppercase tracking-wider text-on-surface-variant">
+                    {discountMessage}
+                  </p>
+                )}
+                {state.appliedDiscount && (
+                  <p className="mt-2 font-body text-xs font-bold uppercase tracking-wider text-secondary">
+                    Applied: {state.appliedDiscount.code} {state.appliedDiscount.rate > 0 ? `(${Math.round(state.appliedDiscount.rate * 100)}%)` : '(tracking only)'}
+                  </p>
+                )}
+              </div>
+
+              {discountToast && (
+                <div className="mb-6 border-4 border-secondary bg-secondary/10 p-4">
+                  <p className="font-body text-xs font-black uppercase tracking-wider text-secondary">
+                    {discountToast}
+                  </p>
+                </div>
+              )}
+
               <div className="bg-primary-container border-4 border-primary p-4 flex justify-between items-end mb-6"><span className="font-display font-black text-lg uppercase tracking-widest">TOTAL DUE</span><span className="font-display text-2xl md:text-3xl font-black tracking-tighter">{formatVND(total)}</span></div>
               {error && <div className="bg-secondary/10 border-4 border-secondary p-4 mb-4 flex items-start gap-3"><p className="font-body text-xs font-bold uppercase tracking-wider text-secondary leading-relaxed">{error}</p></div>}
               <button onClick={handleProceed} disabled={!canProceed} className={cn('w-full flex items-center justify-center gap-2 border-4 border-primary py-4 font-display font-black text-xl uppercase tracking-widest transition-all mb-4', canProceed ? 'bg-tertiary text-background hover:bg-primary hover:text-white neo-shadow-sm active:translate-y-1 active:shadow-none' : 'bg-surface-dim text-on-surface-variant cursor-not-allowed')}>

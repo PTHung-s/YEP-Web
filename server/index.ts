@@ -14,11 +14,16 @@ import {
   findCheckinByCode,
   findMerchClaimByCode,
   findTicketItemByCode,
+  findDiscountCode,
   getRecentCheckins,
+  getDiscountCodeRows,
   getSheetSummary,
   getTicketRows,
+  appendDiscountCodeRows,
+  incrementDiscountCodeUsage,
   markMerchClaimedByCode,
   type CheckinRow,
+  type DiscountCodeRow,
   type MerchClaimRow,
   type TicketItemRow,
 } from './sheets';
@@ -154,6 +159,7 @@ function createRateLimiter(options: { windowMs: number; max: number; scope?: str
 
 const adminLoginLimiter = createRateLimiter({ windowMs: 60 * 1000, max: 5, scope: 'admin-login' });
 const publicWriteLimiter = createRateLimiter({ windowMs: 60 * 1000, max: 12, scope: 'public-write' });
+const discountPreviewLimiter = createRateLimiter({ windowMs: 60 * 1000, max: 30, scope: 'discount-preview' });
 const paymentStatusLimiter = createRateLimiter({ windowMs: 60 * 1000, max: 10, scope: 'payos-status' });
 const adminExportLimiter = createRateLimiter({ windowMs: 60 * 60 * 1000, max: 3, scope: 'admin-ticket-export' });
 
@@ -318,6 +324,178 @@ async function getMerchLimitError(config: Awaited<ReturnType<typeof readConfig>>
   }
 
   return '';
+}
+
+type DiscountCodeType = DiscountCodeRow['type'];
+
+interface DiscountValidationResult {
+  valid: boolean;
+  code: string;
+  name: string;
+  type: DiscountCodeType | '';
+  rate: number;
+  message: string;
+}
+
+interface TicketDiscountResult {
+  discountCode: string;
+  ticketDiscount: number;
+  capped: boolean;
+  appliedCodeDiscount: number;
+  message: string;
+}
+
+function normalizeDiscountCode(value: unknown): string {
+  return cleanText(value, 40).replace(/\s+/g, '').toUpperCase();
+}
+
+function generateDiscountCode(prefix: 'YEPD5' | 'YEPD10' | 'YEPD20', existing: Set<string>): string {
+  const alphabet = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
+  let code = '';
+  do {
+    const body = Array.from(crypto.randomBytes(6), byte => alphabet[byte % alphabet.length]).join('');
+    code = `${prefix}-${body}`;
+  } while (existing.has(code));
+
+  existing.add(code);
+  return code;
+}
+
+async function validateDiscountCode(rawCode: unknown): Promise<DiscountValidationResult> {
+  const code = normalizeDiscountCode(rawCode);
+  if (!code) {
+    return { valid: false, code: '', name: '', type: '', rate: 0, message: 'Enter a discount code.' };
+  }
+
+  const found = await findDiscountCode(code);
+  if (!found) {
+    return { valid: false, code, name: '', type: '', rate: 0, message: 'Discount code not found.' };
+  }
+
+  const row = found.row;
+  if (!row.active) {
+    return { valid: false, code, name: row.name, type: row.type, rate: row.rate, message: 'Discount code is inactive.' };
+  }
+
+  if (row.maxUses > 0 && row.usedCount >= row.maxUses) {
+    return { valid: false, code, name: row.name, type: row.type, rate: row.rate, message: 'Discount code has already been used.' };
+  }
+
+  return {
+    valid: true,
+    code: row.code,
+    name: row.name,
+    type: row.type,
+    rate: row.rate,
+    message: row.rate > 0 ? `${Math.round(row.rate * 100)}% discount applied.` : 'Referral code applied for tracking.',
+  };
+}
+
+function calculateTicketDiscountWithCode(
+  ticketSubtotal: number,
+  ticketBulkDiscount: number,
+  discount: DiscountValidationResult,
+): TicketDiscountResult {
+  if (!discount.valid || ticketSubtotal <= 0) {
+    return {
+      discountCode: '',
+      ticketDiscount: ticketBulkDiscount,
+      capped: false,
+      appliedCodeDiscount: 0,
+      message: '',
+    };
+  }
+
+  if (discount.type === 'REFERRAL') {
+    return {
+      discountCode: discount.code,
+      ticketDiscount: ticketBulkDiscount,
+      capped: false,
+      appliedCodeDiscount: 0,
+      message: 'Referral code applied for tracking.',
+    };
+  }
+
+  if (discount.type === 'VIP_20') {
+    const ticketDiscount = Math.round(ticketSubtotal * discount.rate);
+    return {
+      discountCode: discount.code,
+      ticketDiscount,
+      capped: false,
+      appliedCodeDiscount: ticketDiscount,
+      message: '20% discount applied. Bulk discount is not combined with this code.',
+    };
+  }
+
+  const bulkRate = ticketBulkDiscount / ticketSubtotal;
+  const uncappedRate = bulkRate + discount.rate;
+  const finalRate = Math.min(0.15, uncappedRate);
+  const ticketDiscount = Math.round(ticketSubtotal * finalRate);
+  const capped = uncappedRate > 0.15;
+
+  return {
+    discountCode: discount.code,
+    ticketDiscount,
+    capped,
+    appliedCodeDiscount: Math.max(0, ticketDiscount - ticketBulkDiscount),
+    message: capped
+      ? 'Discount applied, but total ticket discount is capped at 15%.'
+      : `${Math.round(discount.rate * 100)}% discount applied.`,
+  };
+}
+
+async function seedDefaultDiscountCodes(): Promise<{ created: number; skipped: number }> {
+  const existingRows = await getDiscountCodeRows();
+  if (!existingRows) throw new Error('Google Sheets is not configured');
+
+  const existing = new Set(existingRows.map(row => row.code));
+  const now = nowVN();
+  const rows: DiscountCodeRow[] = [];
+
+  const addRows = (targetCount: number, prefix: 'YEPD5' | 'YEPD10' | 'YEPD20', name: string, type: DiscountCodeType, rate: number) => {
+    const currentCount = existingRows.filter(row => row.type === type && row.code.startsWith(`${prefix}-`)).length;
+    const missingCount = Math.max(0, targetCount - currentCount);
+    for (let i = 0; i < missingCount; i += 1) {
+      rows.push({
+        code: generateDiscountCode(prefix, existing),
+        name,
+        type,
+        rate,
+        maxUses: 1,
+        usedCount: 0,
+        active: true,
+        owner: '',
+        notes: 'Generated by admin',
+        createdAt: now,
+        lastUsedAt: '',
+      });
+    }
+  };
+
+  addRows(100, 'YEPD5', 'Booth Game 5%', 'GAME_5', 0.05);
+  addRows(100, 'YEPD10', 'Booth Game 10%', 'GAME_10', 0.1);
+  addRows(20, 'YEPD20', 'Booth Game 20%', 'VIP_20', 0.2);
+
+  if (!existing.has('NGOCYEP26')) {
+    rows.push({
+      code: 'NGOCYEP26',
+      name: 'Ngoc Referral Tracking',
+      type: 'REFERRAL',
+      rate: 0,
+      maxUses: 999999,
+      usedCount: 0,
+      active: true,
+      owner: 'Ngoc',
+      notes: 'Referral tracking only',
+      createdAt: now,
+      lastUsedAt: '',
+    });
+  }
+
+  const ok = await appendDiscountCodeRows(rows);
+  if (!ok) throw new Error('Failed to append discount codes');
+
+  return { created: rows.length, skipped: existingRows.length };
 }
 
 function extractTicketCode(input: string): string {
@@ -518,6 +696,49 @@ app.put('/api/admin/config', requireAdmin, async (req, res) => {
   }
 });
 
+app.post('/api/admin/discount-codes/generate', requireAdmin, async (_req, res) => {
+  try {
+    const result = await seedDefaultDiscountCodes();
+    await writeAdminAuditLog(_req, 'discount_codes_generated', result);
+    res.status(201).json({ success: true, ...result });
+  } catch (err: any) {
+    console.error('[Admin] Error generating discount codes:', err);
+    res.status(500).json({ error: err.message || 'Failed to generate discount codes' });
+  }
+});
+
+app.post('/api/discount/preview', discountPreviewLimiter, async (req, res) => {
+  try {
+    const validation = await validateDiscountCode(req.body?.discountCode);
+    if (!validation.valid) {
+      res.status(404).json(validation);
+      return;
+    }
+
+    const config = await readConfig();
+    const userType = cleanText(req.body?.userType, 32);
+    const ticketQuantity = Math.min(MAX_TICKETS_PER_ORDER, Math.max(0, Math.floor(Number(req.body?.ticketQuantity) || 0)));
+    const ticketPrice = getTicketPriceForUser(config, userType);
+    const ticketSubtotal = ticketPrice * ticketQuantity;
+    const isEarlyBirdOrder = userType === 'vinnunian' && config.earlyBirdEnabled;
+    const ticketBulkDiscount = isEarlyBirdOrder
+      ? 0
+      : calculateTicketBulkDiscount(config, ticketSubtotal, ticketQuantity);
+    const ticketDiscount = calculateTicketDiscountWithCode(ticketSubtotal, ticketBulkDiscount, validation);
+
+    res.json({
+      ...validation,
+      ticketDiscount: ticketDiscount.ticketDiscount,
+      appliedCodeDiscount: ticketDiscount.appliedCodeDiscount,
+      capped: ticketDiscount.capped,
+      message: ticketDiscount.message || validation.message,
+    });
+  } catch (err) {
+    console.error('[API] Error previewing discount:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 app.get('/api/checkin/search', requireAdmin, async (req, res) => {
   try {
     const ticketCode = extractTicketCode(String(req.query.q || req.query.ticket || ''));
@@ -663,7 +884,7 @@ app.post('/api/tickets', publicWriteLimiter, async (req, res) => {
     const {
       fullName, email, phone, userType, userCategory,
       studentId, workplace, upcomingStudent, applicationId, ticketQuantity, ticketPrice,
-      merchItems, merchTotal,
+      merchItems, merchTotal, discountCode,
     } = req.body;
 
     if (!fullName || !email || !phone || !userType || ticketQuantity === undefined || ticketQuantity === null) {
@@ -736,8 +957,17 @@ app.post('/api/tickets', publicWriteLimiter, async (req, res) => {
     const ticketBulkDiscount = isEarlyBirdOrder
       ? 0
       : calculateTicketBulkDiscount(config, ticketSubtotal, normalizedTicketQuantity);
+    const normalizedDiscountCode = normalizeDiscountCode(discountCode);
+    const discountValidation = normalizedDiscountCode
+      ? await validateDiscountCode(normalizedDiscountCode)
+      : { valid: false, code: '', name: '', type: '' as const, rate: 0, message: '' };
+    if (normalizedDiscountCode && !discountValidation.valid) {
+      res.status(400).json({ error: discountValidation.message || 'Invalid discount code' });
+      return;
+    }
+    const ticketDiscountResult = calculateTicketDiscountWithCode(ticketSubtotal, ticketBulkDiscount, discountValidation);
     const merchBulkDiscount = calculateMerchBundleDiscount(config, normalizedMerchTotal, normalizedTicketQuantity);
-    const totalAmount = Math.max(0, subtotal + serviceFee - ticketBulkDiscount - merchBulkDiscount);
+    const totalAmount = Math.max(0, subtotal + serviceFee - ticketDiscountResult.ticketDiscount - merchBulkDiscount);
 
     if (normalizedTicketQuantity < 1 && normalizedMerchTotal < 1) {
       res.status(400).json({ error: 'Please select at least one ticket or one merch item' });
@@ -795,7 +1025,9 @@ app.post('/api/tickets', publicWriteLimiter, async (req, res) => {
         merchTotal: normalizedMerchTotal,
         totalAmount,
         ticketBulkDiscount,
+        ticketDiscount: ticketDiscountResult.ticketDiscount,
         merchBulkDiscount,
+        discountCode: ticketDiscountResult.discountCode,
         paymentMethod: 'payos',
       };
 
@@ -835,8 +1067,8 @@ app.post('/api/tickets', publicWriteLimiter, async (req, res) => {
       ticketQuantity: String(normalizedTicketQuantity),
       ticketPrice: String(normalizedTicketPrice || ticketPrice),
       merchItems: normalizedMerchItems,
-      discountCode: 'AUTO',
-      discountAmount: String(ticketBulkDiscount + merchBulkDiscount),
+      discountCode: ticketDiscountResult.discountCode,
+      discountAmount: String(ticketDiscountResult.ticketDiscount + merchBulkDiscount),
       totalAmount: String(totalAmount),
       paymentMethod: 'payos',
     };
@@ -890,6 +1122,10 @@ app.post('/api/tickets', publicWriteLimiter, async (req, res) => {
     if (merchClaims.length > 0 && !merchSheetOk) {
       await saveMerchClaimsCSV(merchClaims);
       console.log('[CSV] Merch claim saved locally:', merchClaims[0].merchClaimCode);
+    }
+
+    if (record.discountCode) {
+      await incrementDiscountCodeUsage(record.discountCode);
     }
 
     const emailResult = await sendTicketEmail({
@@ -1009,7 +1245,7 @@ app.post('/api/admin/manual-ticket', requireAdmin, async (req, res) => {
       ticketQuantity: String(normalizedTicketQuantity),
       ticketPrice: String(normalizedTicketPrice),
       merchItems: normalizedMerchItems,
-      discountCode: 'AUTO',
+      discountCode: '',
       discountAmount: String(ticketBulkDiscount + merchBulkDiscount),
       totalAmount: String(totalAmount),
       paymentMethod,
@@ -1137,8 +1373,8 @@ app.post('/api/payos/webhook', async (req, res) => {
       ticketQuantity: String(orderData.ticketQuantity),
       ticketPrice: String(orderData.ticketPrice),
       merchItems: orderData.merchItems,
-      discountCode: 'AUTO',
-      discountAmount: String(orderData.ticketBulkDiscount + orderData.merchBulkDiscount),
+      discountCode: orderData.discountCode || '',
+      discountAmount: String((orderData.ticketDiscount ?? orderData.ticketBulkDiscount) + orderData.merchBulkDiscount),
       totalAmount: String(orderData.totalAmount),
       paymentMethod: orderData.paymentMethod,
     };
@@ -1168,6 +1404,10 @@ app.post('/api/payos/webhook', async (req, res) => {
     if (pendingMerchClaims.length > 0 && !merchSheetOk) {
       await saveMerchClaimsCSV(pendingMerchClaims);
       console.log('[CSV] PayOS merch claim saved locally:', pendingMerchClaims[0].merchClaimCode);
+    }
+
+    if (record.discountCode) {
+      await incrementDiscountCodeUsage(record.discountCode);
     }
 
     const emailResult = await sendTicketEmail({
@@ -1257,8 +1497,8 @@ app.get('/api/payos/status/:orderCode', paymentStatusLimiter, async (req, res) =
       ticketQuantity: String(orderData.ticketQuantity),
       ticketPrice: String(orderData.ticketPrice),
       merchItems: orderData.merchItems,
-      discountCode: 'AUTO',
-      discountAmount: String(orderData.ticketBulkDiscount + orderData.merchBulkDiscount),
+      discountCode: orderData.discountCode || '',
+      discountAmount: String((orderData.ticketDiscount ?? orderData.ticketBulkDiscount) + orderData.merchBulkDiscount),
       totalAmount: String(orderData.totalAmount),
       paymentMethod: orderData.paymentMethod,
     };
@@ -1288,6 +1528,10 @@ app.get('/api/payos/status/:orderCode', paymentStatusLimiter, async (req, res) =
     if (pendingMerchClaims.length > 0 && !merchSheetOk) {
       await saveMerchClaimsCSV(pendingMerchClaims);
       console.log('[CSV] PayOS merch claim saved locally (status check):', pendingMerchClaims[0].merchClaimCode);
+    }
+
+    if (record.discountCode) {
+      await incrementDiscountCodeUsage(record.discountCode);
     }
 
     const emailResult = await sendTicketEmail({
@@ -1451,8 +1695,8 @@ async function runPayOSRecovery() {
         ticketQuantity: String(orderData.ticketQuantity),
         ticketPrice: String(orderData.ticketPrice),
         merchItems: orderData.merchItems,
-        discountCode: 'AUTO',
-        discountAmount: String(orderData.ticketBulkDiscount + orderData.merchBulkDiscount),
+        discountCode: orderData.discountCode || '',
+        discountAmount: String((orderData.ticketDiscount ?? orderData.ticketBulkDiscount) + orderData.merchBulkDiscount),
         totalAmount: String(orderData.totalAmount),
         paymentMethod: orderData.paymentMethod,
       };
@@ -1473,6 +1717,10 @@ async function runPayOSRecovery() {
       if (pendingMerchClaims.length > 0 && !merchSheetOk) {
         await saveMerchClaimsCSV(pendingMerchClaims);
         console.log('[CSV] Recovery merch saved:', pendingMerchClaims[0].merchClaimCode);
+      }
+
+      if (record.discountCode) {
+        await incrementDiscountCodeUsage(record.discountCode);
       }
 
       const emailResult = await sendTicketEmail({
@@ -1537,4 +1785,3 @@ app.listen(PORT, () => {
     setInterval(runPayOSRecovery, PAYOS_RECOVERY_INTERVAL_MS);
   }
 });
-

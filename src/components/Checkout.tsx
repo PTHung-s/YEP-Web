@@ -9,7 +9,7 @@ function formatVND(amount: number): string {
 }
 
 export function Checkout() {
-  const { state, dispatch, getTicketPrice, getMerchTotal, getServiceFee, getTotal, getTicketBulkDiscount, getMerchBulkDiscount } = useCart();
+  const { state, dispatch, getTicketPrice, getMerchTotal, getServiceFee, getTotal, getTicketBulkDiscount, getTicketDiscount, getMerchBulkDiscount } = useCart();
   const navigate = useNavigate();
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState('');
@@ -20,6 +20,7 @@ export function Checkout() {
   const total = getTotal();
   const merchTotal = getMerchTotal();
   const ticketBulkDiscount = getTicketBulkDiscount();
+  const ticketDiscount = getTicketDiscount();
   const merchBulkDiscount = getMerchBulkDiscount();
 
   const rememberPayOSStatusKey = () => {
@@ -54,7 +55,9 @@ export function Checkout() {
         merchTotal,
         totalAmount: total,
         ticketBulkDiscount,
+        ticketDiscount,
         merchBulkDiscount,
+        discountCode: state.appliedDiscount?.code || '',
         paymentMethod: state.paymentMethod,
       };
 
@@ -241,10 +244,10 @@ export function Checkout() {
                   </div>
                 )}
 
-                {ticketBulkDiscount > 0 && (
+                {ticketDiscount > 0 && (
                   <div className="flex justify-between text-xs font-display font-bold uppercase tracking-widest text-secondary">
-                    <span>TICKET BULK DISCOUNT</span>
-                    <span>-{formatVND(ticketBulkDiscount)}</span>
+                    <span>{state.appliedDiscount ? 'TICKET DISCOUNT' : 'TICKET BULK DISCOUNT'}</span>
+                    <span>-{formatVND(ticketDiscount)}</span>
                   </div>
                 )}
 
