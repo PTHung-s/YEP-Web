@@ -38,7 +38,9 @@ export interface PayOSOrderData {
   merchTotal: number;
   totalAmount: number;
   ticketBulkDiscount: number;
+  ticketDiscount: number;
   merchBulkDiscount: number;
+  discountCode: string;
   paymentMethod: string;
 }
 
@@ -228,4 +230,56 @@ export async function confirmWebhook(appUrl: string): Promise<boolean> {
 
 export function isPayOSConfigured(): boolean {
   return getPayOS() !== null;
+}
+
+export function getAllPendingOrders(): Array<{ orderCode: number; order: PendingOrder }> {
+  const result: Array<{ orderCode: number; order: PendingOrder }> = [];
+  for (const [orderCode, order] of pendingOrders) {
+    if (order.status === 'pending') {
+      result.push({ orderCode: Number(orderCode), order });
+    }
+  }
+  return result;
+}
+
+export async function recoverPaidOrders(
+  onPaidOrder: (orderCode: number, order: PendingOrder) => Promise<void>,
+): Promise<{ checked: number; recovered: number }> {
+  const payos = getPayOS();
+  if (!payos) {
+    console.log('[PayOS Recovery] PayOS not configured, skipping');
+    return { checked: 0, recovered: 0 };
+  }
+
+  const pending = getAllPendingOrders();
+  if (pending.length === 0) return { checked: 0, recovered: 0 };
+
+  console.log(`[PayOS Recovery] Checking ${pending.length} pending orders...`);
+  let recovered = 0;
+
+  for (const { orderCode, order } of pending) {
+    try {
+      const paymentLink = await payos.paymentRequests.get(orderCode);
+      if (paymentLink.status === 'PAID') {
+        console.log(`[PayOS Recovery] Found PAID order: ${orderCode} — ${order.data.fullName} (${order.data.totalAmount.toLocaleString()}đ)`);
+        await onPaidOrder(orderCode, order);
+        recovered++;
+      }
+      // Small delay to avoid rate limits
+      await new Promise(r => setTimeout(r, 200));
+    } catch (err: any) {
+      // Skip orders that can't be checked (expired, etc.)
+      if (err?.message?.includes('not found') || err?.message?.includes('expired')) {
+        // Order no longer exists in PayOS — mark as expired
+        pendingOrders.delete(orderCode);
+        console.log(`[PayOS Recovery] Removed expired order: ${orderCode}`);
+      }
+    }
+  }
+
+  if (recovered > 0) {
+    persistOrderState();
+  }
+
+  return { checked: pending.length, recovered };
 }

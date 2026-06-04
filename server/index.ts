@@ -61,6 +61,7 @@ import {
   checkPaymentStatus,
   isPayOSConfigured,
   confirmWebhook,
+  recoverPaidOrders,
   type PayOSOrderData,
 } from './payos';
 
@@ -1425,6 +1426,90 @@ if (process.env.NODE_ENV === 'production') {
   });
 }
 
+// ─────── PayOS Auto-Recovery ───────
+// Every 5 minutes, check pending orders against PayOS and auto-process paid ones
+// This catches webhooks missed during server restart/deploy
+
+async function runPayOSRecovery() {
+  if (!isPayOSConfigured()) return;
+
+  try {
+    const result = await recoverPaidOrders(async (orderCode, pending) => {
+      const orderData = pending.data;
+      const record = {
+        id: pending.orderId,
+        timestamp: pending.ticketItems[0]?.timestamp || nowVN(),
+        fullName: orderData.fullName,
+        email: orderData.email,
+        phone: orderData.phone,
+        userType: orderData.userType,
+        userCategory: orderData.userCategory || '',
+        studentId: orderData.studentId || '',
+        workplace: orderData.workplace || '',
+        upcomingStudent: Boolean(orderData.upcomingStudent),
+        applicationId: orderData.applicationId || '',
+        ticketQuantity: String(orderData.ticketQuantity),
+        ticketPrice: String(orderData.ticketPrice),
+        merchItems: orderData.merchItems,
+        discountCode: 'AUTO',
+        discountAmount: String(orderData.ticketBulkDiscount + orderData.merchBulkDiscount),
+        totalAmount: String(orderData.totalAmount),
+        paymentMethod: orderData.paymentMethod,
+      };
+
+      const sheetOk = await appendTicketRow(record);
+      const itemSheetOk = await appendTicketItemRows(pending.ticketItems);
+      const pendingMerchClaims = pending.merchClaims || [];
+      const merchSheetOk = await appendMerchClaimRows(pendingMerchClaims);
+
+      if (!sheetOk) {
+        await saveTicketCSV({ ...record, ticketQuantity: Number(record.ticketQuantity), ticketPrice: Number(record.ticketPrice), discountAmount: Number(record.discountAmount), totalAmount: Number(record.totalAmount), timestamp: nowVN() } as any);
+        console.log('[CSV] Recovery ticket saved:', record.id);
+      }
+      if (!itemSheetOk) {
+        await saveTicketItemsCSV(pending.ticketItems);
+        console.log('[CSV] Recovery items saved:', pending.ticketItems.length);
+      }
+      if (pendingMerchClaims.length > 0 && !merchSheetOk) {
+        await saveMerchClaimsCSV(pendingMerchClaims);
+        console.log('[CSV] Recovery merch saved:', pendingMerchClaims[0].merchClaimCode);
+      }
+
+      const emailResult = await sendTicketEmail({
+        to: orderData.email,
+        buyerName: orderData.fullName,
+        orderId: pending.orderId,
+        totalAmount: record.totalAmount,
+        paymentMethod: record.paymentMethod,
+        ticketItems: pending.ticketItems,
+        merchItems: orderData.merchItems,
+        merchClaims: pendingMerchClaims,
+      });
+      if (!emailResult.sent) {
+        console.log('[Email] Recovery email not sent:', emailResult.error || 'not configured');
+      } else {
+        console.log('[Email] Recovery email sent:', orderData.email);
+      }
+
+      markOrderPaid(orderCode);
+      storePaidResult(orderCode, {
+        ticketId: pending.orderId,
+        ticketCodes: pending.ticketItems.map((item: any) => item.ticketCode),
+        storedIn: sheetOk ? 'sheets' : 'csv',
+        statusKey: pending.statusKey,
+      });
+    });
+
+    if (result.checked > 0) {
+      console.log(`[PayOS Recovery] Checked ${result.checked} pending, recovered ${result.recovered}`);
+    }
+  } catch (err) {
+    console.error('[PayOS Recovery] Error:', err);
+  }
+}
+
+const PAYOS_RECOVERY_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
+
 app.listen(PORT, () => {
   console.log(`[Server] Running at http://localhost:${PORT} (${process.env.NODE_ENV || 'development'})`);
   console.log('[Server] Endpoints:');
@@ -1445,6 +1530,11 @@ app.listen(PORT, () => {
   } else {
     const appUrl = process.env.APP_URL || `http://localhost:${PORT}`;
     confirmWebhook(appUrl);
+
+    // Start auto-recovery: run immediately, then every 5 minutes
+    console.log(`[PayOS Recovery] Auto-recovery enabled (every ${PAYOS_RECOVERY_INTERVAL_MS / 60000} min)`);
+    runPayOSRecovery();
+    setInterval(runPayOSRecovery, PAYOS_RECOVERY_INTERVAL_MS);
   }
 });
 

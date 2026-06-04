@@ -101,6 +101,20 @@ const MERCH_CLAIM_HEADERS = [
   'Claimed By',
 ];
 
+const DISCOUNT_CODE_HEADERS = [
+  'Code',
+  'Name',
+  'Type',
+  'Rate',
+  'Max Uses',
+  'Used Count',
+  'Active',
+  'Owner',
+  'Notes',
+  'Created At',
+  'Last Used At',
+];
+
 async function ensureHeaders(sheetName: string, headers: string[]): Promise<void> {
   const sheets = getSheetsClient();
   const spreadsheetId = getSpreadsheetId();
@@ -247,6 +261,172 @@ export async function getTicketRows(): Promise<TicketRow[] | null> {
   } catch (err) {
     console.error('[Sheets] Failed to get ticket rows:', err);
     return null;
+  }
+}
+
+export interface DiscountCodeRow {
+  code: string;
+  name: string;
+  type: 'GAME_5' | 'GAME_10' | 'VIP_20' | 'KPI' | 'REFERRAL';
+  rate: number;
+  maxUses: number;
+  usedCount: number;
+  active: boolean;
+  owner: string;
+  notes: string;
+  createdAt: string;
+  lastUsedAt: string;
+}
+
+export interface DiscountCodeLookupResult {
+  row: DiscountCodeRow;
+  rowNumber: number;
+}
+
+function parseDiscountType(value: unknown): DiscountCodeRow['type'] {
+  const type = String(value || '').trim().toUpperCase();
+  if (['GAME_5', 'GAME_10', 'VIP_20', 'KPI', 'REFERRAL'].includes(type)) {
+    return type as DiscountCodeRow['type'];
+  }
+  return 'REFERRAL';
+}
+
+function parseBoolean(value: unknown): boolean {
+  const text = String(value || '').trim().toLowerCase();
+  return ['true', 'yes', '1', 'active'].includes(text);
+}
+
+function normalizeDiscountRow(row: any[]): DiscountCodeRow {
+  return {
+    code: String(row[0] || '').trim().toUpperCase(),
+    name: String(row[1] || '').trim(),
+    type: parseDiscountType(row[2]),
+    rate: Number(row[3]) || 0,
+    maxUses: Number(row[4]) || 0,
+    usedCount: Number(row[5]) || 0,
+    active: parseBoolean(row[6]),
+    owner: String(row[7] || '').trim(),
+    notes: String(row[8] || '').trim(),
+    createdAt: String(row[9] || '').trim(),
+    lastUsedAt: String(row[10] || '').trim(),
+  };
+}
+
+export async function getDiscountCodeRows(): Promise<DiscountCodeRow[] | null> {
+  const sheets = getSheetsClient();
+  const spreadsheetId = getSpreadsheetId();
+
+  if (!sheets || !spreadsheetId) return null;
+
+  try {
+    await ensureHeaders('DiscountCodes', DISCOUNT_CODE_HEADERS);
+    const res = await sheets.spreadsheets.values.get({
+      spreadsheetId,
+      range: 'DiscountCodes!A2:K',
+    });
+
+    return (res.data.values || [])
+      .map(normalizeDiscountRow)
+      .filter(row => row.code);
+  } catch (err) {
+    console.error('[Sheets] Failed to get discount codes:', err);
+    return null;
+  }
+}
+
+export async function findDiscountCode(code: string): Promise<DiscountCodeLookupResult | null> {
+  const sheets = getSheetsClient();
+  const spreadsheetId = getSpreadsheetId();
+
+  if (!sheets || !spreadsheetId) return null;
+
+  try {
+    await ensureHeaders('DiscountCodes', DISCOUNT_CODE_HEADERS);
+    const res = await sheets.spreadsheets.values.get({
+      spreadsheetId,
+      range: 'DiscountCodes!A2:K',
+    });
+    const normalizedCode = code.trim().toUpperCase();
+    const rows = res.data.values || [];
+    const index = rows.findIndex(row => String(row[0] || '').trim().toUpperCase() === normalizedCode);
+    if (index < 0) return null;
+
+    return {
+      row: normalizeDiscountRow(rows[index]),
+      rowNumber: index + 2,
+    };
+  } catch (err) {
+    console.error('[Sheets] Failed to find discount code:', err);
+    return null;
+  }
+}
+
+export async function appendDiscountCodeRows(rows: DiscountCodeRow[]): Promise<boolean> {
+  const sheets = getSheetsClient();
+  const spreadsheetId = getSpreadsheetId();
+
+  if (!sheets || !spreadsheetId || rows.length === 0) return false;
+
+  try {
+    await ensureHeaders('DiscountCodes', DISCOUNT_CODE_HEADERS);
+    await sheets.spreadsheets.values.append({
+      spreadsheetId,
+      range: 'DiscountCodes!A1',
+      valueInputOption: 'USER_ENTERED',
+      requestBody: {
+        values: rows.map(row => [
+          row.code,
+          row.name,
+          row.type,
+          row.rate,
+          row.maxUses,
+          row.usedCount,
+          row.active ? 'TRUE' : 'FALSE',
+          row.owner,
+          row.notes,
+          row.createdAt,
+          row.lastUsedAt,
+        ]),
+      },
+    });
+    console.log('[Sheets] Discount codes appended:', rows.length);
+    return true;
+  } catch (err) {
+    console.error('[Sheets] Failed to append discount codes:', err);
+    return false;
+  }
+}
+
+export async function incrementDiscountCodeUsage(code: string): Promise<boolean> {
+  const sheets = getSheetsClient();
+  const spreadsheetId = getSpreadsheetId();
+
+  if (!sheets || !spreadsheetId) return false;
+
+  try {
+    const found = await findDiscountCode(code);
+    if (!found) return false;
+
+    await sheets.spreadsheets.values.update({
+      spreadsheetId,
+      range: `DiscountCodes!F${found.rowNumber}:K${found.rowNumber}`,
+      valueInputOption: 'USER_ENTERED',
+      requestBody: {
+        values: [[
+          found.row.usedCount + 1,
+          found.row.active ? 'TRUE' : 'FALSE',
+          found.row.owner,
+          found.row.notes,
+          found.row.createdAt,
+          formatTimestampVN(),
+        ]],
+      },
+    });
+    console.log('[Sheets] Discount code usage updated:', code);
+    return true;
+  } catch (err) {
+    console.error('[Sheets] Failed to update discount code usage:', err);
+    return false;
   }
 }
 
