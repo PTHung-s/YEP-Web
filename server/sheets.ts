@@ -296,12 +296,27 @@ function parseBoolean(value: unknown): boolean {
   return ['true', 'yes', '1', 'active'].includes(text);
 }
 
+function parseDiscountRate(value: unknown): number {
+  if (typeof value === 'number') {
+    return value > 1 ? value / 100 : value;
+  }
+
+  const text = String(value || '').trim();
+  if (!text) return 0;
+
+  const normalized = text.replace(',', '.').replace('%', '').trim();
+  const rate = Number(normalized);
+  if (!Number.isFinite(rate)) return 0;
+
+  return text.includes('%') || rate > 1 ? rate / 100 : rate;
+}
+
 function normalizeDiscountRow(row: any[]): DiscountCodeRow {
   return {
     code: String(row[0] || '').trim().toUpperCase(),
     name: String(row[1] || '').trim(),
     type: parseDiscountType(row[2]),
-    rate: Number(row[3]) || 0,
+    rate: parseDiscountRate(row[3]),
     maxUses: Number(row[4]) || 0,
     usedCount: Number(row[5]) || 0,
     active: parseBoolean(row[6]),
