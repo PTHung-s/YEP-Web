@@ -43,6 +43,21 @@ const artists: Artist[] = [
   },
   {
     id: 2,
+    name: '2PILLZ',
+    genre: 'PRODUCER / DJ / HITMAKER',
+    time: 'TBA',
+    stage: 'MAIN STAGE',
+    description: 'Producer/DJ Phạm Phú Nguyên mang tới một thế giới âm thanh sắc màu giữa rap, pop và electronic, ghi dấu qua những sản phẩm cùng tlinh, GDUCKY, HIEUTHUHAI, GREY D và Wren Evans.',
+    img: yepAsset('2pillz.webp'),
+    revealed: true,
+    hintTags: ['We go hard', 'Rap Việt producer', 'HIEUTHUHAI', 'tlinh', 'GREY D', 'Wren Evans', 'Dám rực rỡ'],
+    songs: [
+      { title: 'Đưa Em Vào Tròng', vibe: '2Pillz x GDUCKY x tlinh', accent: '#1ecfff', coverUrl: yepAsset('covers/dua-em-vao-trong.jpg'), audioUrl: yepAsset('audio/dua-em-vao-trong-2pillz-gducky-tlinh.mp3') },
+      { title: 'Đến Lúc Này Thì...', vibe: '2Pillz x tlinh', accent: '#ff2ea6', coverUrl: yepAsset('covers/den-luc-nay-thi.jpg'), audioUrl: yepAsset('audio/den-luc-nay-thi-2pillz-tlinh.mp3') },
+    ],
+  },
+  {
+    id: 3,
     name: 'MYSTERY ACT 02',
     genre: 'MYSTERY PERFORMER',
     time: 'TBA',
@@ -53,7 +68,7 @@ const artists: Artist[] = [
     hintTags: ['C\u1ef1u th\u00e0nh vi\u00ean P336', 'T\u1ed1t nghi\u1ec7p Ng\u00f4n ng\u1eef Anh \u0110HKHXH&NV', '\u0110\u1ed7 Vi\u1ec7t Ti\u1ebfn', 'T-up', 'Ho\u00e0 \u00e2m ph\u1ed1i kh\u00ed trong 5 ng\u00e0y', 'boygroup roots'],
   },
   {
-    id: 3,
+    id: 4,
     name: 'MYSTERY ACT 03',
     genre: 'MYSTERY SINGER',
     time: 'TBA',
@@ -63,22 +78,11 @@ const artists: Artist[] = [
     revealed: false,
     hintTags: ['"Ng\u1ed3i \u0111\u1ee3i bi\u1ebft bao m\u00f9a..."', 'Billie Eilish Vi\u1ec7t Nam', 'Em Xinh Say Hi', 'not a pitbull', 'alt-pop energy', 'soft whale frequency'],
   },
-  {
-    id: 4,
-    name: 'MYSTERY ACT 04',
-    genre: 'MYSTERY PRODUCER',
-    time: 'TBA',
-    stage: 'MAIN STAGE',
-    description: 'This artist will be revealed soon. Read the clues and keep guessing.',
-    img: 'https://images.unsplash.com/photo-1510915361894-db8b60106cb1?auto=format&fit=crop&q=80&w=1200',
-    revealed: false,
-    hintTags: ['We go hard', '(Nh\u00e0 s\u1ea3n xu\u1ea5t) Rap Vi\u1ec7t', 'D\u00e1m r\u1ef1c r\u1ee1', 'HIEUTHUHAI', 'tlinh', 'GREY D', 'Wren Evans'],
-  },
 ];
 
 const revealedCount = artists.filter(a => a.revealed).length;
 const totalCount = artists.length;
-const firstRevealedId = artists.find(a => a.revealed)?.id;
+const latestRevealedId = [...artists].reverse().find(a => a.revealed)?.id;
 
 /* ─────── Revealed Artist Card (has its own hooks) ─────── */
 function RevealedArtistCard({ artist, index }: { artist: Artist; index: number }) {
@@ -94,7 +98,7 @@ function RevealedArtistCard({ artist, index }: { artist: Artist; index: number }
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const songs = artist.songs || [];
-  const isFirstRevealed = artist.id === firstRevealedId;
+  const isLatestRevealed = artist.id === latestRevealedId;
   const cardRef = useRef<HTMLElement>(null);
   const hasAutoPlayedRef = useRef(false);
   // Refs for latest state (avoid stale closure in IntersectionObserver)
@@ -254,7 +258,7 @@ function RevealedArtistCard({ artist, index }: { artist: Artist; index: number }
       ref={cardRef}
       className={cn(
         'border-4 border-primary bg-surface overflow-hidden neo-shadow-sm',
-        isFirstRevealed && 'animate-reveal-glow'
+        isLatestRevealed && 'animate-reveal-glow'
       )}
     >
       {/* Main content: 40% square image | 60% info + songs */}
@@ -280,7 +284,7 @@ function RevealedArtistCard({ artist, index }: { artist: Artist; index: number }
             <p className="font-display text-xs font-bold uppercase tracking-widest text-tertiary">
               ARTIST #{String(index + 1).padStart(2, '0')}
             </p>
-            {isFirstRevealed && (
+            {isLatestRevealed && (
               <span className="inline-flex items-center gap-1.5 font-display text-[10px] font-black uppercase tracking-[0.2em] text-white bg-secondary border-2 border-secondary px-3 py-1.5 animate-kaleido-pulse">
                 <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
                 JUST ANNOUNCED
