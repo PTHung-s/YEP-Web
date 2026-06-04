@@ -83,6 +83,7 @@ const artists: Artist[] = [
 const revealedCount = artists.filter(a => a.revealed).length;
 const totalCount = artists.length;
 const latestRevealedId = [...artists].reverse().find(a => a.revealed)?.id;
+const LINEUP_AUDIO_PLAY_EVENT = 'yep-lineup-audio-play';
 
 /* ─────── Revealed Artist Card (has its own hooks) ─────── */
 function RevealedArtistCard({ artist, index }: { artist: Artist; index: number }) {
@@ -101,6 +102,7 @@ function RevealedArtistCard({ artist, index }: { artist: Artist; index: number }
   const isLatestRevealed = artist.id === latestRevealedId;
   const cardRef = useRef<HTMLElement>(null);
   const hasAutoPlayedRef = useRef(false);
+  const audioOwnerId = useRef(`artist-${artist.id}`);
   // Refs for latest state (avoid stale closure in IntersectionObserver)
   const isPlayingRef = useRef(isPlaying);
   isPlayingRef.current = isPlaying;
@@ -197,13 +199,21 @@ function RevealedArtistCard({ artist, index }: { artist: Artist; index: number }
       if (document.hidden) stopAudio(false);
     };
     const handlePageHide = () => stopAudio(true);
+    const handleLineupAudioPlay = (event: Event) => {
+      const ownerId = (event as CustomEvent<{ ownerId?: string }>).detail?.ownerId;
+      if (ownerId && ownerId !== audioOwnerId.current) {
+        stopAudio(false);
+      }
+    };
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
     window.addEventListener('pagehide', handlePageHide);
+    window.addEventListener(LINEUP_AUDIO_PLAY_EVENT, handleLineupAudioPlay);
 
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('pagehide', handlePageHide);
+      window.removeEventListener(LINEUP_AUDIO_PLAY_EVENT, handleLineupAudioPlay);
       stopAudio(true);
     };
   }, [stopAudio]);
@@ -250,6 +260,10 @@ function RevealedArtistCard({ artist, index }: { artist: Artist; index: number }
       if (audioCtxRef.current.state === 'suspended') {
         await audioCtxRef.current.resume();
       }
+
+      window.dispatchEvent(new CustomEvent(LINEUP_AUDIO_PLAY_EVENT, {
+        detail: { ownerId: audioOwnerId.current },
+      }));
 
       audioRef.current.src = song.audioUrl;
       setCurrentTime(0);
