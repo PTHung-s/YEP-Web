@@ -43,6 +43,7 @@ export function Checkout() {
         fullName: state.fullName,
         email: state.email,
         phone: state.phone,
+        ageConfirmed: state.ageConfirmed,
         userType: state.userType,
         userCategory: state.userCategory,
         studentId: state.studentId,

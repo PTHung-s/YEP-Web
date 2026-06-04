@@ -25,6 +25,7 @@ export interface CartState {
   fullName: string;
   email: string;
   phone: string;
+  ageConfirmed: boolean;
   studentId: string;
   workplace: string;
   upcomingStudent: boolean;
@@ -46,6 +47,7 @@ const initialState: CartState = {
   fullName: '',
   email: '',
   phone: '',
+  ageConfirmed: false,
   studentId: '',
   workplace: '',
   upcomingStudent: false,
@@ -60,6 +62,7 @@ type CartAction =
   | { type: 'SET_USER_TYPE'; payload: UserType }
   | { type: 'SET_USER_CATEGORY'; payload: UserCategory }
   | { type: 'SET_FIELD'; field: keyof CartState; value: string }
+  | { type: 'SET_AGE_CONFIRMED'; payload: boolean }
   | { type: 'SET_UPCOMING_STUDENT'; payload: boolean }
   | { type: 'SET_TICKET_QUANTITY'; payload: number }
   | { type: 'SET_MERCH_QUANTITY'; id: string; quantity: number }
@@ -83,6 +86,8 @@ function cartReducer(state: CartState, action: CartAction): CartState {
       return { ...state, userCategory: action.payload };
     case 'SET_FIELD':
       return { ...state, [action.field]: action.value };
+    case 'SET_AGE_CONFIRMED':
+      return { ...state, ageConfirmed: action.payload };
     case 'SET_UPCOMING_STUDENT':
       return {
         ...state,

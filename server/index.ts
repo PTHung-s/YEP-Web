@@ -387,7 +387,7 @@ async function validateDiscountCode(rawCode: unknown): Promise<DiscountValidatio
     name: row.name,
     type: row.type,
     rate: row.rate,
-    message: row.rate > 0 ? `${Math.round(row.rate * 100)}% discount applied.` : 'Referral code applied for tracking.',
+    message: row.rate > 0 ? `${Math.round(row.rate * 100)}% discount applied.` : 'Code applied.',
   };
 }
 
@@ -412,7 +412,7 @@ function calculateTicketDiscountWithCode(
       ticketDiscount: ticketBulkDiscount,
       capped: false,
       appliedCodeDiscount: 0,
-      message: 'Referral code applied for tracking.',
+      message: 'Code applied.',
     };
   }
 
@@ -884,7 +884,7 @@ app.post('/api/tickets', publicWriteLimiter, async (req, res) => {
     const {
       fullName, email, phone, userType, userCategory,
       studentId, workplace, upcomingStudent, applicationId, ticketQuantity, ticketPrice,
-      merchItems, merchTotal, discountCode,
+      merchItems, merchTotal, discountCode, ageConfirmed,
     } = req.body;
 
     if (!fullName || !email || !phone || !userType || ticketQuantity === undefined || ticketQuantity === null) {
@@ -903,9 +903,14 @@ app.post('/api/tickets', publicWriteLimiter, async (req, res) => {
       ? req.body?.upcomingStudent === true || String(req.body?.upcomingStudent).toLowerCase() === 'true'
       : false;
     const normalizedApplicationId = normalizedUpcomingStudent ? cleanText(applicationId, 120) : '';
+    const normalizedAgeConfirmed = ageConfirmed === true || String(ageConfirmed).toLowerCase() === 'true';
 
     if (!normalizedFullName) {
       res.status(400).json({ error: 'Invalid buyer full name' });
+      return;
+    }
+    if (!normalizedAgeConfirmed) {
+      res.status(400).json({ error: 'Please confirm that you are at least 18 years old' });
       return;
     }
     if (!isValidEmail(normalizedEmail)) {

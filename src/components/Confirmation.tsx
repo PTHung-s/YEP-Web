@@ -34,6 +34,7 @@ export function Confirmation() {
     && state.fullName.trim()
     && state.email.trim()
     && state.phone.trim()
+    && state.ageConfirmed
     && hasPurchases
     && !(state.userType === 'non-vinnunian' && state.upcomingStudent && !state.applicationId.trim())
     && !emailMismatch
@@ -56,6 +57,7 @@ export function Confirmation() {
           fullName: state.fullName,
           email: state.email,
           phone: state.phone,
+          ageConfirmed: state.ageConfirmed,
           userType: state.userType,
           userCategory: state.userCategory,
           studentId: state.studentId,
@@ -262,7 +264,7 @@ export function Confirmation() {
                 )}
                 {state.appliedDiscount && (
                   <p className="mt-2 font-body text-xs font-bold uppercase tracking-wider text-secondary">
-                    Applied: {state.appliedDiscount.code} {state.appliedDiscount.rate > 0 ? `(${Math.round(state.appliedDiscount.rate * 100)}%)` : '(tracking only)'}
+                    Applied: {state.appliedDiscount.code}{state.appliedDiscount.rate > 0 ? ` (${Math.round(state.appliedDiscount.rate * 100)}%)` : ''}
                   </p>
                 )}
               </div>

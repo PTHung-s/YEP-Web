@@ -63,6 +63,7 @@ export function Tickets() {
   const canNextStep2 = (() => {
     if (isLocked) return false;
     if (!state.fullName.trim() || !state.email.trim() || !state.phone.trim()) return false;
+    if (!state.ageConfirmed) return false;
     if (state.userType === 'vinnunian') {
       if (!state.userCategory) return false;
       if (!state.email.toLowerCase().endsWith('@vinuni.edu.vn')) return false;
@@ -389,6 +390,23 @@ export function Tickets() {
                     )}
                   </div>
                 )}
+
+                <label className="flex items-start gap-3 border-2 border-primary p-3 bg-surface">
+                  <input
+                    type="checkbox"
+                    checked={state.ageConfirmed}
+                    onChange={e => dispatch({ type: 'SET_AGE_CONFIRMED', payload: e.target.checked })}
+                    className="mt-0.5 h-5 w-5 shrink-0 accent-primary"
+                  />
+                  <span>
+                    <span className="block font-display text-xs md:text-sm font-black uppercase tracking-widest text-on-surface-variant">
+                      I confirm that I am at least 18 years old *
+                    </span>
+                    <span className="mt-1 block font-body text-[11px] md:text-xs font-bold leading-relaxed text-on-surface-variant">
+                      This confirmation is required to purchase YEP'26 tickets or merch.
+                    </span>
+                  </span>
+                </label>
 
                 <div className="bg-primary-container border-4 border-primary p-4 flex items-start gap-3">
                   <CheckCircle className="w-5 h-5 shrink-0 mt-0.5 text-primary" />
