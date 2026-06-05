@@ -57,7 +57,10 @@ interface PendingOrder {
   orderId: string;
   statusKey: string;
   createdAt: number;
-  status: 'pending' | 'paid';
+  status: 'pending' | 'processing' | 'paid';
+  processingStartedAt?: number;
+  processedAt?: number;
+  emailSent?: boolean;
 }
 
 interface PaidOrderResult {
@@ -71,6 +74,7 @@ const pendingOrders = new Map<number, PendingOrder>();
 const paidOrders = new Map<number, PaidOrderResult>();
 const DATA_DIR = path.resolve('server', 'data');
 const PAYOS_STATE_PATH = path.join(DATA_DIR, 'payos-orders.json');
+const PROCESSING_STALE_MS = 10 * 60 * 1000;
 
 function loadOrderState() {
   try {
@@ -127,10 +131,46 @@ export function getPendingOrder(orderCode: number): PendingOrder | undefined {
   return pendingOrders.get(orderCode);
 }
 
-export function markOrderPaid(orderCode: number) {
+export function beginOrderProcessing(orderCode: number): PendingOrder | null {
+  const order = pendingOrders.get(orderCode);
+  if (!order || order.status === 'paid') return null;
+  if (
+    order.status === 'processing'
+    && order.processingStartedAt
+    && Date.now() - order.processingStartedAt < PROCESSING_STALE_MS
+  ) {
+    return null;
+  }
+  order.status = 'processing';
+  order.processingStartedAt = Date.now();
+  persistOrderState();
+  return order;
+}
+
+export function releaseOrderProcessing(orderCode: number) {
+  const order = pendingOrders.get(orderCode);
+  if (order && order.status === 'processing') {
+    order.status = 'pending';
+    order.processingStartedAt = undefined;
+    persistOrderState();
+  }
+}
+
+export function markOrderPaid(orderCode: number, emailSent = false) {
   const order = pendingOrders.get(orderCode);
   if (order) {
     order.status = 'paid';
+    order.processedAt = Date.now();
+    order.emailSent = emailSent;
+    order.processingStartedAt = undefined;
+    persistOrderState();
+  }
+}
+
+export function markOrderEmailSent(orderCode: number) {
+  const order = pendingOrders.get(orderCode);
+  if (order) {
+    order.emailSent = true;
     persistOrderState();
   }
 }
@@ -241,7 +281,19 @@ export function isPayOSConfigured(): boolean {
 export function getAllPendingOrders(): Array<{ orderCode: number; order: PendingOrder }> {
   const result: Array<{ orderCode: number; order: PendingOrder }> = [];
   for (const [orderCode, order] of pendingOrders) {
-    if (order.status === 'pending') {
+    const isStaleProcessing = order.status === 'processing'
+      && (!order.processingStartedAt || Date.now() - order.processingStartedAt >= PROCESSING_STALE_MS);
+    if (order.status === 'pending' || isStaleProcessing) {
+      result.push({ orderCode: Number(orderCode), order });
+    }
+  }
+  return result;
+}
+
+export function getPaidOrdersNeedingEmail(): Array<{ orderCode: number; order: PendingOrder }> {
+  const result: Array<{ orderCode: number; order: PendingOrder }> = [];
+  for (const [orderCode, order] of pendingOrders) {
+    if (order.status === 'paid' && order.emailSent !== true) {
       result.push({ orderCode: Number(orderCode), order });
     }
   }

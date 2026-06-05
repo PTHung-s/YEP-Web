@@ -277,6 +277,30 @@ export async function getTicketRows(): Promise<TicketRow[] | null> {
   }
 }
 
+async function orderIdExistsInSheet(sheetName: string, headers: string[], orderIdColumn: string, orderId: string): Promise<boolean | null> {
+  const sheets = getSheetsClient();
+  const spreadsheetId = getSpreadsheetId();
+
+  if (!sheets || !spreadsheetId || !orderId) return null;
+
+  try {
+    await ensureHeaders(sheetName, headers);
+    const res = await sheets.spreadsheets.values.get({
+      spreadsheetId,
+      range: `${sheetName}!${orderIdColumn}2:${orderIdColumn}`,
+    });
+
+    return (res.data.values || []).some(row => String(row[0] || '') === orderId);
+  } catch (err) {
+    console.error(`[Sheets] Failed to check order ID in "${sheetName}":`, err);
+    return null;
+  }
+}
+
+export async function ticketOrderExists(orderId: string): Promise<boolean | null> {
+  return orderIdExistsInSheet('Tickets', TICKET_HEADERS, 'A', orderId);
+}
+
 export interface DiscountCodeRow {
   code: string;
   name: string;
@@ -473,6 +497,10 @@ export async function appendDiscountCodeUseRows(rows: DiscountCodeUseRow[]): Pro
   }
 }
 
+export async function discountCodeUsesExistForOrder(orderId: string): Promise<boolean | null> {
+  return orderIdExistsInSheet('DiscountCodeUses', DISCOUNT_CODE_USE_HEADERS, 'B', orderId);
+}
+
 export async function incrementDiscountCodeUsage(code: string): Promise<boolean> {
   const sheets = getSheetsClient();
   const spreadsheetId = getSpreadsheetId();
@@ -609,6 +637,10 @@ export async function appendTicketItemRows(rows: TicketItemRow[]): Promise<boole
   }
 }
 
+export async function ticketItemsExistForOrder(orderId: string): Promise<boolean | null> {
+  return orderIdExistsInSheet('TicketItems', TICKET_ITEM_HEADERS, 'B', orderId);
+}
+
 export async function appendMerchClaimRows(rows: MerchClaimRow[]): Promise<boolean> {
   const sheets = getSheetsClient();
   const spreadsheetId = getSpreadsheetId();
@@ -641,6 +673,10 @@ export async function appendMerchClaimRows(rows: MerchClaimRow[]): Promise<boole
     console.error('[Sheets] Failed to append merch claims:', err);
     return false;
   }
+}
+
+export async function merchClaimsExistForOrder(orderId: string): Promise<boolean | null> {
+  return orderIdExistsInSheet('MerchClaims', MERCH_CLAIM_HEADERS, 'B', orderId);
 }
 
 export async function findTicketItemByCode(ticketCode: string): Promise<TicketItemRow | null> {

@@ -21,8 +21,12 @@ import {
   getTicketRows,
   appendDiscountCodeUseRows,
   appendDiscountCodeRows,
+  discountCodeUsesExistForOrder,
   incrementDiscountCodeUsage,
+  merchClaimsExistForOrder,
   markMerchClaimedByCode,
+  ticketItemsExistForOrder,
+  ticketOrderExists,
   type CheckinRow,
   type DiscountCodeRow,
   type MerchClaimRow,
@@ -61,9 +65,13 @@ import {
   verifyWebhook,
   storePendingOrder,
   getPendingOrder,
+  beginOrderProcessing,
+  releaseOrderProcessing,
   markOrderPaid,
+  markOrderEmailSent,
   storePaidResult,
   getPaidResult,
+  getPaidOrdersNeedingEmail,
   checkPaymentStatus,
   isPayOSConfigured,
   confirmWebhook,
@@ -528,11 +536,18 @@ async function recordDiscountCodeUsage(params: Parameters<typeof buildDiscountUs
   const rows = buildDiscountUseRows(params);
   if (rows.length === 0) return;
 
+  const alreadyRecorded = await discountCodeUsesExistForOrder(params.orderId);
+  if (alreadyRecorded) {
+    console.log('[Sheets] Discount code uses already recorded:', params.orderId);
+    return;
+  }
+
+  const appended = await appendDiscountCodeUseRows(rows);
+  if (!appended) return;
+
   for (const row of rows) {
     await incrementDiscountCodeUsage(row.code);
   }
-
-  await appendDiscountCodeUseRows(rows);
 }
 
 function getStoredDiscountResult(orderData: PayOSOrderData): TicketDiscountResult {
@@ -555,6 +570,203 @@ function getStoredDiscountResult(orderData: PayOSOrderData): TicketDiscountResul
     message: '',
     appliedDiscounts: discounts,
   };
+}
+
+type StoredPayOSOrder = NonNullable<ReturnType<typeof getPendingOrder>>;
+
+async function appendPaidOrderArtifacts(
+  record: {
+    id: string;
+    timestamp: string;
+    fullName: string;
+    email: string;
+    phone: string;
+    userType: string;
+    userCategory: string;
+    studentId: string;
+    workplace: string;
+    upcomingStudent: boolean;
+    applicationId: string;
+    ticketQuantity: string;
+    ticketPrice: string;
+    merchItems: string;
+    discountCode: string;
+    discountAmount: string;
+    totalAmount: string;
+    paymentMethod: string;
+  },
+  pending: StoredPayOSOrder,
+  source: string,
+) {
+  const ticketAlreadyExists = await ticketOrderExists(record.id);
+  const sheetOk = ticketAlreadyExists === true ? true : await appendTicketRow(record);
+  if (ticketAlreadyExists === true) {
+    console.log(`[PayOS] Ticket row already exists (${source}):`, record.id);
+  }
+
+  const itemsAlreadyExist = pending.ticketItems.length > 0
+    ? await ticketItemsExistForOrder(record.id)
+    : true;
+  const itemSheetOk = itemsAlreadyExist === true ? true : await appendTicketItemRows(pending.ticketItems);
+  if (pending.ticketItems.length > 0 && itemsAlreadyExist === true) {
+    console.log(`[PayOS] Ticket items already exist (${source}):`, record.id);
+  }
+
+  const pendingMerchClaims = pending.merchClaims || [];
+  const merchAlreadyExists = pendingMerchClaims.length > 0
+    ? await merchClaimsExistForOrder(record.id)
+    : true;
+  const merchSheetOk = merchAlreadyExists === true ? true : await appendMerchClaimRows(pendingMerchClaims);
+  if (pendingMerchClaims.length > 0 && merchAlreadyExists === true) {
+    console.log(`[PayOS] Merch claim already exists (${source}):`, record.id);
+  }
+
+  if (!sheetOk) {
+    await saveTicketCSV({
+      ...record,
+      ticketQuantity: Number(record.ticketQuantity),
+      ticketPrice: Number(record.ticketPrice),
+      discountAmount: Number(record.discountAmount),
+      totalAmount: Number(record.totalAmount),
+      timestamp: nowVN(),
+    } as any);
+    console.log(`[CSV] PayOS ticket saved locally (${source}):`, record.id);
+  }
+
+  if (pending.ticketItems.length > 0 && !itemSheetOk) {
+    await saveTicketItemsCSV(pending.ticketItems);
+    console.log(`[CSV] PayOS ticket items saved locally (${source}):`, pending.ticketItems.length);
+  }
+
+  if (pendingMerchClaims.length > 0 && !merchSheetOk) {
+    await saveMerchClaimsCSV(pendingMerchClaims);
+    console.log(`[CSV] PayOS merch claim saved locally (${source}):`, pendingMerchClaims[0].merchClaimCode);
+  }
+
+  return {
+    sheetOk,
+    itemSheetOk,
+    merchSheetOk,
+    pendingMerchClaims,
+  };
+}
+
+async function resendPayOSOrderEmail(orderCode: number, pending: StoredPayOSOrder, source: string) {
+  const orderData = pending.data;
+  const recordTotalAmount = String(orderData.totalAmount);
+  const emailResult = await sendTicketEmail({
+    to: orderData.email,
+    buyerName: orderData.fullName,
+    orderId: pending.orderId,
+    totalAmount: recordTotalAmount,
+    paymentMethod: orderData.paymentMethod,
+    ticketItems: pending.ticketItems,
+    merchItems: orderData.merchItems,
+    merchClaims: pending.merchClaims || [],
+  });
+
+  if (emailResult.sent) {
+    markOrderEmailSent(orderCode);
+    console.log(`[Email] PayOS ticket email sent (${source}):`, orderData.email, emailResult.messageId || '');
+  } else {
+    console.log(`[Email] PayOS ticket email not sent (${source}):`, emailResult.error || 'not configured');
+  }
+
+  return emailResult;
+}
+
+async function processPaidPayOSOrder(orderCode: number, source: string) {
+  const existingResult = getPaidResult(orderCode);
+  if (existingResult) {
+    return { result: existingResult, alreadyProcessed: true, emailSent: true };
+  }
+
+  const storedOrder = getPendingOrder(orderCode);
+  if (storedOrder?.status === 'paid') {
+    const result = {
+      ticketId: storedOrder.orderId,
+      ticketCodes: storedOrder.ticketItems.map(item => item.ticketCode),
+      storedIn: 'sheets',
+      statusKey: storedOrder.statusKey,
+    };
+    storePaidResult(orderCode, result);
+    return { result, alreadyProcessed: true, emailSent: storedOrder.emailSent === true };
+  }
+
+  const pending = beginOrderProcessing(orderCode);
+  if (!pending) {
+    return { result: null, alreadyProcessing: true, emailSent: false };
+  }
+
+  try {
+    const orderData = pending.data;
+    const record = {
+      id: pending.orderId,
+      timestamp: pending.ticketItems[0]?.timestamp || nowVN(),
+      fullName: orderData.fullName,
+      email: orderData.email,
+      phone: orderData.phone,
+      userType: orderData.userType,
+      userCategory: orderData.userCategory || '',
+      studentId: orderData.studentId || '',
+      workplace: orderData.workplace || '',
+      upcomingStudent: Boolean(orderData.upcomingStudent),
+      applicationId: orderData.applicationId || '',
+      ticketQuantity: String(orderData.ticketQuantity),
+      ticketPrice: String(orderData.ticketPrice),
+      merchItems: orderData.merchItems,
+      discountCode: orderData.discountCode || '',
+      discountAmount: String((orderData.ticketDiscount ?? orderData.ticketBulkDiscount) + orderData.merchBulkDiscount),
+      totalAmount: String(orderData.totalAmount),
+      paymentMethod: orderData.paymentMethod,
+    };
+
+    const { sheetOk, pendingMerchClaims } = await appendPaidOrderArtifacts(record, pending, source);
+
+    await recordDiscountCodeUsage({
+      orderId: record.id,
+      timestamp: record.timestamp,
+      buyerName: record.fullName,
+      email: record.email,
+      phone: record.phone,
+      ticketQuantity: record.ticketQuantity,
+      ticketSubtotal: Number(orderData.ticketPrice) * Number(orderData.ticketQuantity),
+      ticketBulkDiscount: Number(orderData.ticketBulkDiscount) || 0,
+      discountResult: getStoredDiscountResult(orderData),
+    });
+
+    const emailResult = await sendTicketEmail({
+      to: orderData.email,
+      buyerName: orderData.fullName,
+      orderId: pending.orderId,
+      totalAmount: record.totalAmount,
+      paymentMethod: record.paymentMethod,
+      ticketItems: pending.ticketItems,
+      merchItems: orderData.merchItems,
+      merchClaims: pendingMerchClaims,
+    });
+
+    if (!emailResult.sent) {
+      console.log(`[Email] PayOS ticket email not sent (${source}):`, emailResult.error || 'not configured');
+    } else {
+      console.log(`[Email] PayOS ticket email sent (${source}):`, orderData.email, emailResult.messageId || '');
+    }
+
+    const result = {
+      ticketId: pending.orderId,
+      ticketCodes: pending.ticketItems.map(item => item.ticketCode),
+      storedIn: sheetOk ? 'sheets' : 'csv',
+      statusKey: pending.statusKey,
+    };
+
+    markOrderPaid(orderCode, emailResult.sent);
+    storePaidResult(orderCode, result);
+
+    return { result, alreadyProcessed: false, emailSent: emailResult.sent };
+  } catch (err) {
+    releaseOrderProcessing(orderCode);
+    throw err;
+  }
 }
 
 async function seedDefaultDiscountCodes(): Promise<{ created: number; skipped: number }> {
@@ -1506,93 +1718,17 @@ app.post('/api/payos/webhook', async (req, res) => {
       return;
     }
 
-    const orderData = pending.data;
-    const record = {
-      id: pending.orderId,
-      timestamp: pending.ticketItems[0]?.timestamp || nowVN(),
-      fullName: orderData.fullName,
-      email: orderData.email,
-      phone: orderData.phone,
-      userType: orderData.userType,
-      userCategory: orderData.userCategory || '',
-      studentId: orderData.studentId || '',
-      workplace: orderData.workplace || '',
-      upcomingStudent: Boolean(orderData.upcomingStudent),
-      applicationId: orderData.applicationId || '',
-      ticketQuantity: String(orderData.ticketQuantity),
-      ticketPrice: String(orderData.ticketPrice),
-      merchItems: orderData.merchItems,
-      discountCode: orderData.discountCode || '',
-      discountAmount: String((orderData.ticketDiscount ?? orderData.ticketBulkDiscount) + orderData.merchBulkDiscount),
-      totalAmount: String(orderData.totalAmount),
-      paymentMethod: orderData.paymentMethod,
-    };
-
-    const sheetOk = await appendTicketRow(record);
-    const itemSheetOk = await appendTicketItemRows(pending.ticketItems);
-    const pendingMerchClaims = pending.merchClaims || [];
-    const merchSheetOk = await appendMerchClaimRows(pendingMerchClaims);
-
-    if (!sheetOk) {
-      await saveTicketCSV({
-        ...record,
-        ticketQuantity: Number(record.ticketQuantity),
-        ticketPrice: Number(record.ticketPrice),
-        discountAmount: Number(record.discountAmount),
-        totalAmount: Number(record.totalAmount),
-        timestamp: nowVN(),
-      } as any);
-      console.log('[CSV] PayOS ticket saved locally:', record.id);
+    const processed = await processPaidPayOSOrder(orderCode, 'webhook');
+    if (processed.alreadyProcessing) {
+      res.status(202).json({ success: true, message: 'Order is already being processed' });
+      return;
+    }
+    if (!processed.result) {
+      res.status(500).json({ error: 'Unable to process order' });
+      return;
     }
 
-    if (!itemSheetOk) {
-      await saveTicketItemsCSV(pending.ticketItems);
-      console.log('[CSV] PayOS ticket items saved locally:', pending.ticketItems.length);
-    }
-
-    if (pendingMerchClaims.length > 0 && !merchSheetOk) {
-      await saveMerchClaimsCSV(pendingMerchClaims);
-      console.log('[CSV] PayOS merch claim saved locally:', pendingMerchClaims[0].merchClaimCode);
-    }
-
-    await recordDiscountCodeUsage({
-      orderId: record.id,
-      timestamp: record.timestamp,
-      buyerName: record.fullName,
-      email: record.email,
-      phone: record.phone,
-      ticketQuantity: record.ticketQuantity,
-      ticketSubtotal: Number(orderData.ticketPrice) * Number(orderData.ticketQuantity),
-      ticketBulkDiscount: Number(orderData.ticketBulkDiscount) || 0,
-      discountResult: getStoredDiscountResult(orderData),
-    });
-
-    const emailResult = await sendTicketEmail({
-      to: orderData.email,
-      buyerName: orderData.fullName,
-      orderId: pending.orderId,
-      totalAmount: record.totalAmount,
-      paymentMethod: record.paymentMethod,
-      ticketItems: pending.ticketItems,
-      merchItems: orderData.merchItems,
-      merchClaims: pendingMerchClaims,
-    });
-    if (!emailResult.sent) {
-      console.log('[Email] PayOS ticket email not sent:', emailResult.error || 'not configured');
-    } else {
-      console.log('[Email] PayOS ticket email sent:', orderData.email, emailResult.messageId || '');
-    }
-
-    const result = {
-      ticketId: pending.orderId,
-      ticketCodes: pending.ticketItems.map(item => item.ticketCode),
-      storedIn: sheetOk ? 'sheets' : 'csv',
-      statusKey: pending.statusKey,
-    };
-    markOrderPaid(orderCode);
-    storePaidResult(orderCode, result);
-
-    res.status(200).json({ success: true, message: 'Payment processed', ...result });
+    res.status(200).json({ success: true, message: 'Payment processed', ...processed.result });
   } catch (err) {
     console.error('[PayOS] Webhook error:', err);
     res.status(500).json({ error: 'Internal server error' });
@@ -1638,91 +1774,17 @@ app.get('/api/payos/status/:orderCode', paymentStatusLimiter, async (req, res) =
       return;
     }
 
-    const orderData = pending.data;
-    const record = {
-      id: pending.orderId,
-      timestamp: pending.ticketItems[0]?.timestamp || nowVN(),
-      fullName: orderData.fullName,
-      email: orderData.email,
-      phone: orderData.phone,
-      userType: orderData.userType,
-      userCategory: orderData.userCategory || '',
-      studentId: orderData.studentId || '',
-      workplace: orderData.workplace || '',
-      upcomingStudent: Boolean(orderData.upcomingStudent),
-      applicationId: orderData.applicationId || '',
-      ticketQuantity: String(orderData.ticketQuantity),
-      ticketPrice: String(orderData.ticketPrice),
-      merchItems: orderData.merchItems,
-      discountCode: orderData.discountCode || '',
-      discountAmount: String((orderData.ticketDiscount ?? orderData.ticketBulkDiscount) + orderData.merchBulkDiscount),
-      totalAmount: String(orderData.totalAmount),
-      paymentMethod: orderData.paymentMethod,
-    };
-
-    const sheetOk = await appendTicketRow(record);
-    const itemSheetOk = await appendTicketItemRows(pending.ticketItems);
-    const pendingMerchClaims = pending.merchClaims || [];
-    const merchSheetOk = await appendMerchClaimRows(pendingMerchClaims);
-
-    if (!sheetOk) {
-      await saveTicketCSV({
-        ...record,
-        ticketQuantity: Number(record.ticketQuantity),
-        ticketPrice: Number(record.ticketPrice),
-        discountAmount: Number(record.discountAmount),
-        totalAmount: Number(record.totalAmount),
-        timestamp: nowVN(),
-      } as any);
-      console.log('[CSV] PayOS ticket saved locally (status check):', record.id);
+    const processed = await processPaidPayOSOrder(orderCode, 'status check');
+    if (processed.alreadyProcessing) {
+      res.json({ status: 'processing' });
+      return;
+    }
+    if (!processed.result) {
+      res.status(500).json({ error: 'Unable to process payment' });
+      return;
     }
 
-    if (!itemSheetOk) {
-      await saveTicketItemsCSV(pending.ticketItems);
-      console.log('[CSV] PayOS ticket items saved locally (status check):', pending.ticketItems.length);
-    }
-
-    if (pendingMerchClaims.length > 0 && !merchSheetOk) {
-      await saveMerchClaimsCSV(pendingMerchClaims);
-      console.log('[CSV] PayOS merch claim saved locally (status check):', pendingMerchClaims[0].merchClaimCode);
-    }
-
-    await recordDiscountCodeUsage({
-      orderId: record.id,
-      timestamp: record.timestamp,
-      buyerName: record.fullName,
-      email: record.email,
-      phone: record.phone,
-      ticketQuantity: record.ticketQuantity,
-      ticketSubtotal: Number(orderData.ticketPrice) * Number(orderData.ticketQuantity),
-      ticketBulkDiscount: Number(orderData.ticketBulkDiscount) || 0,
-      discountResult: getStoredDiscountResult(orderData),
-    });
-
-    const emailResult = await sendTicketEmail({
-      to: orderData.email,
-      buyerName: orderData.fullName,
-      orderId: pending.orderId,
-      totalAmount: record.totalAmount,
-      paymentMethod: record.paymentMethod,
-      ticketItems: pending.ticketItems,
-      merchItems: orderData.merchItems,
-      merchClaims: pendingMerchClaims,
-    });
-    if (!emailResult.sent) {
-      console.log('[Email] PayOS ticket email not sent (status check):', emailResult.error || 'not configured');
-    }
-
-    const result = {
-      ticketId: pending.orderId,
-      ticketCodes: pending.ticketItems.map(item => item.ticketCode),
-      storedIn: sheetOk ? 'sheets' : 'csv',
-      statusKey: pending.statusKey,
-    };
-    markOrderPaid(orderCode);
-    storePaidResult(orderCode, result);
-
-    res.json({ status: 'paid', ...result });
+    res.json({ status: 'paid', ...processed.result });
   } catch (err) {
     console.error('[PayOS] Status check error:', err);
     res.status(500).json({ error: 'Internal server error' });
@@ -1844,85 +1906,20 @@ async function runPayOSRecovery() {
 
   try {
     const result = await recoverPaidOrders(async (orderCode, pending) => {
-      const orderData = pending.data;
-      const record = {
-        id: pending.orderId,
-        timestamp: pending.ticketItems[0]?.timestamp || nowVN(),
-        fullName: orderData.fullName,
-        email: orderData.email,
-        phone: orderData.phone,
-        userType: orderData.userType,
-        userCategory: orderData.userCategory || '',
-        studentId: orderData.studentId || '',
-        workplace: orderData.workplace || '',
-        upcomingStudent: Boolean(orderData.upcomingStudent),
-        applicationId: orderData.applicationId || '',
-        ticketQuantity: String(orderData.ticketQuantity),
-        ticketPrice: String(orderData.ticketPrice),
-        merchItems: orderData.merchItems,
-        discountCode: orderData.discountCode || '',
-        discountAmount: String((orderData.ticketDiscount ?? orderData.ticketBulkDiscount) + orderData.merchBulkDiscount),
-        totalAmount: String(orderData.totalAmount),
-        paymentMethod: orderData.paymentMethod,
-      };
-
-      const sheetOk = await appendTicketRow(record);
-      const itemSheetOk = await appendTicketItemRows(pending.ticketItems);
-      const pendingMerchClaims = pending.merchClaims || [];
-      const merchSheetOk = await appendMerchClaimRows(pendingMerchClaims);
-
-      if (!sheetOk) {
-        await saveTicketCSV({ ...record, ticketQuantity: Number(record.ticketQuantity), ticketPrice: Number(record.ticketPrice), discountAmount: Number(record.discountAmount), totalAmount: Number(record.totalAmount), timestamp: nowVN() } as any);
-        console.log('[CSV] Recovery ticket saved:', record.id);
-      }
-      if (!itemSheetOk) {
-        await saveTicketItemsCSV(pending.ticketItems);
-        console.log('[CSV] Recovery items saved:', pending.ticketItems.length);
-      }
-      if (pendingMerchClaims.length > 0 && !merchSheetOk) {
-        await saveMerchClaimsCSV(pendingMerchClaims);
-        console.log('[CSV] Recovery merch saved:', pendingMerchClaims[0].merchClaimCode);
-      }
-
-      await recordDiscountCodeUsage({
-        orderId: record.id,
-        timestamp: record.timestamp,
-        buyerName: record.fullName,
-        email: record.email,
-        phone: record.phone,
-        ticketQuantity: record.ticketQuantity,
-        ticketSubtotal: Number(orderData.ticketPrice) * Number(orderData.ticketQuantity),
-        ticketBulkDiscount: Number(orderData.ticketBulkDiscount) || 0,
-        discountResult: getStoredDiscountResult(orderData),
-      });
-
-      const emailResult = await sendTicketEmail({
-        to: orderData.email,
-        buyerName: orderData.fullName,
-        orderId: pending.orderId,
-        totalAmount: record.totalAmount,
-        paymentMethod: record.paymentMethod,
-        ticketItems: pending.ticketItems,
-        merchItems: orderData.merchItems,
-        merchClaims: pendingMerchClaims,
-      });
-      if (!emailResult.sent) {
-        console.log('[Email] Recovery email not sent:', emailResult.error || 'not configured');
-      } else {
-        console.log('[Email] Recovery email sent:', orderData.email);
-      }
-
-      markOrderPaid(orderCode);
-      storePaidResult(orderCode, {
-        ticketId: pending.orderId,
-        ticketCodes: pending.ticketItems.map((item: any) => item.ticketCode),
-        storedIn: sheetOk ? 'sheets' : 'csv',
-        statusKey: pending.statusKey,
-      });
+      await processPaidPayOSOrder(orderCode, 'recovery');
     });
 
     if (result.checked > 0) {
       console.log(`[PayOS Recovery] Checked ${result.checked} pending, recovered ${result.recovered}`);
+    }
+
+    const emailRetryOrders = getPaidOrdersNeedingEmail();
+    for (const { orderCode, order } of emailRetryOrders) {
+      await resendPayOSOrderEmail(orderCode, order, 'email retry');
+      await new Promise(r => setTimeout(r, 200));
+    }
+    if (emailRetryOrders.length > 0) {
+      console.log(`[PayOS Recovery] Retried ${emailRetryOrders.length} paid order emails`);
     }
   } catch (err) {
     console.error('[PayOS Recovery] Error:', err);
