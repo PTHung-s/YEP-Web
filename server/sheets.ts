@@ -115,6 +115,19 @@ const DISCOUNT_CODE_HEADERS = [
   'Last Used At',
 ];
 
+const DISCOUNT_CODE_USE_HEADERS = [
+  'Timestamp',
+  'Order ID',
+  'Code',
+  'Code Type',
+  'Rate',
+  'Buyer Name',
+  'Email',
+  'Phone',
+  'Ticket Quantity',
+  'Discount Applied (VND)',
+];
+
 async function ensureHeaders(sheetName: string, headers: string[]): Promise<void> {
   const sheets = getSheetsClient();
   const spreadsheetId = getSpreadsheetId();
@@ -283,6 +296,19 @@ export interface DiscountCodeLookupResult {
   rowNumber: number;
 }
 
+export interface DiscountCodeUseRow {
+  timestamp: string;
+  orderId: string;
+  code: string;
+  type: DiscountCodeRow['type'];
+  rate: number;
+  buyerName: string;
+  email: string;
+  phone: string;
+  ticketQuantity: string;
+  discountApplied: string;
+}
+
 function parseDiscountType(value: unknown): DiscountCodeRow['type'] {
   const type = String(value || '').trim().toUpperCase();
   if (['GAME_5', 'GAME_10', 'VIP_20', 'KPI', 'REFERRAL'].includes(type)) {
@@ -408,6 +434,41 @@ export async function appendDiscountCodeRows(rows: DiscountCodeRow[]): Promise<b
     return true;
   } catch (err) {
     console.error('[Sheets] Failed to append discount codes:', err);
+    return false;
+  }
+}
+
+export async function appendDiscountCodeUseRows(rows: DiscountCodeUseRow[]): Promise<boolean> {
+  const sheets = getSheetsClient();
+  const spreadsheetId = getSpreadsheetId();
+
+  if (!sheets || !spreadsheetId || rows.length === 0) return false;
+
+  try {
+    await ensureHeaders('DiscountCodeUses', DISCOUNT_CODE_USE_HEADERS);
+    await sheets.spreadsheets.values.append({
+      spreadsheetId,
+      range: 'DiscountCodeUses!A1',
+      valueInputOption: 'USER_ENTERED',
+      requestBody: {
+        values: rows.map(row => [
+          row.timestamp,
+          row.orderId,
+          row.code,
+          row.type,
+          row.rate,
+          row.buyerName,
+          row.email,
+          row.phone,
+          row.ticketQuantity,
+          row.discountApplied,
+        ]),
+      },
+    });
+    console.log('[Sheets] Discount code uses appended:', rows.length);
+    return true;
+  } catch (err) {
+    console.error('[Sheets] Failed to append discount code uses:', err);
     return false;
   }
 }

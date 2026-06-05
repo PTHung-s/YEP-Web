@@ -33,7 +33,7 @@ export interface CartState {
   ticketQuantity: number;
   merch: MerchItem[];
   paymentMethod: 'credit' | 'bank' | 'payos' | null;
-  appliedDiscount: AppliedDiscount | null;
+  appliedDiscounts: AppliedDiscount[];
 }
 
 const INITIAL_MERCH: MerchItem[] = [
@@ -55,7 +55,7 @@ const initialState: CartState = {
   ticketQuantity: 1,
   merch: INITIAL_MERCH,
   paymentMethod: null,
-  appliedDiscount: null,
+  appliedDiscounts: [],
 };
 
 type CartAction =
@@ -67,7 +67,9 @@ type CartAction =
   | { type: 'SET_TICKET_QUANTITY'; payload: number }
   | { type: 'SET_MERCH_QUANTITY'; id: string; quantity: number }
   | { type: 'SET_PAYMENT_METHOD'; payload: 'credit' | 'bank' | 'payos' }
-  | { type: 'SET_APPLIED_DISCOUNT'; payload: AppliedDiscount | null }
+  | { type: 'ADD_APPLIED_DISCOUNT'; payload: AppliedDiscount }
+  | { type: 'REMOVE_APPLIED_DISCOUNT'; payload: string }
+  | { type: 'CLEAR_APPLIED_DISCOUNTS' }
   | { type: 'RESET' };
 
 function cartReducer(state: CartState, action: CartAction): CartState {
@@ -103,8 +105,21 @@ function cartReducer(state: CartState, action: CartAction): CartState {
       };
     case 'SET_PAYMENT_METHOD':
       return { ...state, paymentMethod: action.payload };
-    case 'SET_APPLIED_DISCOUNT':
-      return { ...state, appliedDiscount: action.payload };
+    case 'ADD_APPLIED_DISCOUNT':
+      return {
+        ...state,
+        appliedDiscounts: [
+          ...state.appliedDiscounts.filter(item => item.code !== action.payload.code),
+          action.payload,
+        ],
+      };
+    case 'REMOVE_APPLIED_DISCOUNT':
+      return {
+        ...state,
+        appliedDiscounts: state.appliedDiscounts.filter(item => item.code !== action.payload),
+      };
+    case 'CLEAR_APPLIED_DISCOUNTS':
+      return { ...state, appliedDiscounts: [] };
     case 'RESET':
       return initialState;
     default:
@@ -138,23 +153,29 @@ function getTicketDiscount(state: CartState, config: EventConfigState): number {
   if (ticketSubtotal <= 0) return 0;
 
   const bulkDiscount = getTicketBulkDiscount(state, config);
-  const applied = state.appliedDiscount;
-  if (!applied) return bulkDiscount;
+  const applied = state.appliedDiscounts;
+  if (applied.length === 0) return bulkDiscount;
 
-  if (applied.type === 'REFERRAL') return bulkDiscount;
-  if (applied.type === 'VIP_20') return Math.round(ticketSubtotal * applied.rate);
+  const vipCode = applied.find(item => item.type === 'VIP_20');
+  if (vipCode) return Math.round(ticketSubtotal * vipCode.rate);
 
   const bulkRate = bulkDiscount / ticketSubtotal;
-  const finalRate = Math.min(0.15, bulkRate + applied.rate);
+  const codeRate = applied
+    .filter(item => item.type !== 'REFERRAL')
+    .reduce((sum, item) => sum + item.rate, 0);
+  const finalRate = Math.min(0.15, bulkRate + codeRate);
   return Math.round(ticketSubtotal * finalRate);
 }
 
 function isDiscountCapped(state: CartState, config: EventConfigState): boolean {
   const ticketSubtotal = getTicketPrice(state, config) * state.ticketQuantity;
-  const applied = state.appliedDiscount;
-  if (!applied || ticketSubtotal <= 0 || applied.type === 'REFERRAL' || applied.type === 'VIP_20') return false;
+  const applied = state.appliedDiscounts;
+  if (applied.length === 0 || ticketSubtotal <= 0 || applied.some(item => item.type === 'VIP_20')) return false;
 
-  return (getTicketBulkDiscount(state, config) / ticketSubtotal) + applied.rate > 0.15;
+  const codeRate = applied
+    .filter(item => item.type !== 'REFERRAL')
+    .reduce((sum, item) => sum + item.rate, 0);
+  return (getTicketBulkDiscount(state, config) / ticketSubtotal) + codeRate > 0.15;
 }
 
 function getMerchBulkDiscount(state: CartState, config: EventConfigState): number {

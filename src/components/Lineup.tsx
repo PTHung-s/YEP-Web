@@ -627,7 +627,9 @@ export function Lineup() {
       {/* Artist List */}
       <div className="space-y-6 md:space-y-8">
         {artists.map((artist, index) => artist.revealed ? (
-          <RevealedArtistCard key={artist.id} artist={artist} index={index} />
+          <React.Fragment key={artist.id}>
+            <RevealedArtistCard artist={artist} index={index} />
+          </React.Fragment>
         ) : (
           <section
             key={artist.id}

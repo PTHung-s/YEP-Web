@@ -41,6 +41,12 @@ export interface PayOSOrderData {
   ticketDiscount: number;
   merchBulkDiscount: number;
   discountCode: string;
+  appliedDiscounts?: Array<{
+    code: string;
+    name: string;
+    type: string;
+    rate: number;
+  }>;
   paymentMethod: string;
 }
 

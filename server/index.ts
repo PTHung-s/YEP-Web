@@ -19,6 +19,7 @@ import {
   getDiscountCodeRows,
   getSheetSummary,
   getTicketRows,
+  appendDiscountCodeUseRows,
   appendDiscountCodeRows,
   incrementDiscountCodeUsage,
   markMerchClaimedByCode,
@@ -338,15 +339,26 @@ interface DiscountValidationResult {
 }
 
 interface TicketDiscountResult {
-  discountCode: string;
+  discountCodes: string[];
   ticketDiscount: number;
   capped: boolean;
   appliedCodeDiscount: number;
   message: string;
+  appliedDiscounts: DiscountValidationResult[];
 }
 
 function normalizeDiscountCode(value: unknown): string {
   return cleanText(value, 40).replace(/\s+/g, '').toUpperCase();
+}
+
+function normalizeDiscountCodeList(value: unknown): string[] {
+  const rawCodes = Array.isArray(value)
+    ? value
+    : typeof value === 'string'
+      ? value.split(',')
+      : [];
+
+  return Array.from(new Set(rawCodes.map(normalizeDiscountCode).filter(Boolean)));
 }
 
 function generateDiscountCode(prefix: 'YEPD5' | 'YEPD10' | 'YEPD20', existing: Set<string>): string {
@@ -391,56 +403,157 @@ async function validateDiscountCode(rawCode: unknown): Promise<DiscountValidatio
   };
 }
 
-function calculateTicketDiscountWithCode(
+async function validateDiscountCodeList(rawCodes: unknown): Promise<{ valid: boolean; discounts: DiscountValidationResult[]; message: string }> {
+  const codes = normalizeDiscountCodeList(rawCodes);
+  const discounts: DiscountValidationResult[] = [];
+
+  for (const code of codes) {
+    const validation = await validateDiscountCode(code);
+    if (!validation.valid) {
+      return { valid: false, discounts: [], message: validation.message || 'Invalid discount code' };
+    }
+    discounts.push(validation);
+  }
+
+  const referralCount = discounts.filter(item => item.type === 'REFERRAL').length;
+  if (referralCount > 1) {
+    return { valid: false, discounts: [], message: 'Only one referral code can be applied.' };
+  }
+
+  const vipCount = discounts.filter(item => item.type === 'VIP_20').length;
+  if (vipCount > 1) {
+    return { valid: false, discounts: [], message: 'Only one 20% code can be applied.' };
+  }
+
+  if (vipCount > 0 && discounts.some(item => item.type !== 'VIP_20' && item.type !== 'REFERRAL')) {
+    return { valid: false, discounts: [], message: '20% codes cannot be combined with other discount codes.' };
+  }
+
+  return { valid: true, discounts, message: '' };
+}
+
+function calculateTicketDiscountWithCodes(
   ticketSubtotal: number,
   ticketBulkDiscount: number,
-  discount: DiscountValidationResult,
+  discounts: DiscountValidationResult[],
 ): TicketDiscountResult {
-  if (!discount.valid || ticketSubtotal <= 0) {
+  const validDiscounts = discounts.filter(discount => discount.valid);
+  if (validDiscounts.length === 0 || ticketSubtotal <= 0) {
     return {
-      discountCode: '',
+      discountCodes: [],
       ticketDiscount: ticketBulkDiscount,
       capped: false,
       appliedCodeDiscount: 0,
       message: '',
+      appliedDiscounts: [],
     };
   }
 
-  if (discount.type === 'REFERRAL') {
+  const vipCode = validDiscounts.find(discount => discount.type === 'VIP_20');
+  if (vipCode) {
+    const ticketDiscount = Math.round(ticketSubtotal * vipCode.rate);
     return {
-      discountCode: discount.code,
-      ticketDiscount: ticketBulkDiscount,
-      capped: false,
-      appliedCodeDiscount: 0,
-      message: 'Code applied.',
-    };
-  }
-
-  if (discount.type === 'VIP_20') {
-    const ticketDiscount = Math.round(ticketSubtotal * discount.rate);
-    return {
-      discountCode: discount.code,
+      discountCodes: validDiscounts.map(discount => discount.code),
       ticketDiscount,
       capped: false,
       appliedCodeDiscount: ticketDiscount,
       message: '20% discount applied. Bulk discount is not combined with this code.',
+      appliedDiscounts: validDiscounts,
     };
   }
 
   const bulkRate = ticketBulkDiscount / ticketSubtotal;
-  const uncappedRate = bulkRate + discount.rate;
+  const codeRate = validDiscounts
+    .filter(discount => discount.type !== 'REFERRAL')
+    .reduce((sum, discount) => sum + discount.rate, 0);
+  const uncappedRate = bulkRate + codeRate;
   const finalRate = Math.min(0.15, uncappedRate);
   const ticketDiscount = Math.round(ticketSubtotal * finalRate);
   const capped = uncappedRate > 0.15;
 
   return {
-    discountCode: discount.code,
+    discountCodes: validDiscounts.map(discount => discount.code),
     ticketDiscount,
     capped,
     appliedCodeDiscount: Math.max(0, ticketDiscount - ticketBulkDiscount),
     message: capped
       ? 'Discount applied, but total ticket discount is capped at 15%.'
-      : `${Math.round(discount.rate * 100)}% discount applied.`,
+      : validDiscounts.some(discount => discount.type !== 'REFERRAL')
+        ? 'Discount codes applied.'
+        : 'Code applied.',
+    appliedDiscounts: validDiscounts,
+  };
+}
+
+function buildDiscountUseRows(params: {
+  orderId: string;
+  timestamp: string;
+  buyerName: string;
+  email: string;
+  phone: string;
+  ticketQuantity: string;
+  ticketSubtotal: number;
+  ticketBulkDiscount: number;
+  discountResult: TicketDiscountResult;
+}) {
+  const { discountResult, ticketSubtotal, ticketBulkDiscount } = params;
+  const nonReferralDiscounts = discountResult.appliedDiscounts.filter(discount => discount.type !== 'REFERRAL');
+  const totalNonReferralRate = nonReferralDiscounts.reduce((sum, discount) => sum + discount.rate, 0);
+  const codeDiscountPool = Math.max(0, discountResult.ticketDiscount - (discountResult.appliedDiscounts.some(discount => discount.type === 'VIP_20') ? 0 : ticketBulkDiscount));
+
+  return discountResult.appliedDiscounts.map(discount => {
+    let discountApplied = 0;
+    if (discount.type === 'VIP_20') {
+      discountApplied = Math.round(ticketSubtotal * discount.rate);
+    } else if (discount.type !== 'REFERRAL' && totalNonReferralRate > 0) {
+      discountApplied = Math.round(codeDiscountPool * (discount.rate / totalNonReferralRate));
+    }
+
+    return {
+      timestamp: params.timestamp,
+      orderId: params.orderId,
+      code: discount.code,
+      type: discount.type as DiscountCodeRow['type'],
+      rate: discount.rate,
+      buyerName: params.buyerName,
+      email: params.email,
+      phone: params.phone,
+      ticketQuantity: params.ticketQuantity,
+      discountApplied: String(discountApplied),
+    };
+  });
+}
+
+async function recordDiscountCodeUsage(params: Parameters<typeof buildDiscountUseRows>[0]) {
+  const rows = buildDiscountUseRows(params);
+  if (rows.length === 0) return;
+
+  for (const row of rows) {
+    await incrementDiscountCodeUsage(row.code);
+  }
+
+  await appendDiscountCodeUseRows(rows);
+}
+
+function getStoredDiscountResult(orderData: PayOSOrderData): TicketDiscountResult {
+  const discounts = (orderData.appliedDiscounts || [])
+    .map(discount => ({
+      valid: true,
+      code: discount.code,
+      name: discount.name || '',
+      type: discount.type as DiscountCodeType,
+      rate: Number(discount.rate) || 0,
+      message: '',
+    }))
+    .filter(discount => discount.code);
+
+  return {
+    discountCodes: discounts.map(discount => discount.code),
+    ticketDiscount: Number(orderData.ticketDiscount ?? orderData.ticketBulkDiscount) || 0,
+    capped: false,
+    appliedCodeDiscount: 0,
+    message: '',
+    appliedDiscounts: discounts,
   };
 }
 
@@ -709,9 +822,17 @@ app.post('/api/admin/discount-codes/generate', requireAdmin, async (_req, res) =
 
 app.post('/api/discount/preview', discountPreviewLimiter, async (req, res) => {
   try {
-    const validation = await validateDiscountCode(req.body?.discountCode);
+    const newCode = normalizeDiscountCode(req.body?.discountCode);
+    const existingCodes = normalizeDiscountCodeList(req.body?.discountCodes);
+    const allCodes = [...existingCodes, newCode].filter(Boolean);
+    if (existingCodes.includes(newCode)) {
+      res.status(400).json({ valid: false, message: 'Code already applied.' });
+      return;
+    }
+
+    const validation = await validateDiscountCodeList(allCodes);
     if (!validation.valid) {
-      res.status(404).json(validation);
+      res.status(400).json({ valid: false, message: validation.message });
       return;
     }
 
@@ -724,14 +845,25 @@ app.post('/api/discount/preview', discountPreviewLimiter, async (req, res) => {
     const ticketBulkDiscount = isEarlyBirdOrder
       ? 0
       : calculateTicketBulkDiscount(config, ticketSubtotal, ticketQuantity);
-    const ticketDiscount = calculateTicketDiscountWithCode(ticketSubtotal, ticketBulkDiscount, validation);
+    const ticketDiscount = calculateTicketDiscountWithCodes(ticketSubtotal, ticketBulkDiscount, validation.discounts);
+    const appliedDiscount = validation.discounts.find(item => item.code === newCode) || validation.discounts[validation.discounts.length - 1];
 
     res.json({
-      ...validation,
+      valid: true,
+      code: appliedDiscount.code,
+      name: appliedDiscount.name,
+      type: appliedDiscount.type,
+      rate: appliedDiscount.rate,
+      discounts: ticketDiscount.appliedDiscounts.map(discount => ({
+        code: discount.code,
+        name: discount.name,
+        type: discount.type,
+        rate: discount.rate,
+      })),
       ticketDiscount: ticketDiscount.ticketDiscount,
       appliedCodeDiscount: ticketDiscount.appliedCodeDiscount,
       capped: ticketDiscount.capped,
-      message: ticketDiscount.message || validation.message,
+      message: ticketDiscount.message || appliedDiscount.message,
     });
   } catch (err) {
     console.error('[API] Error previewing discount:', err);
@@ -884,7 +1016,7 @@ app.post('/api/tickets', publicWriteLimiter, async (req, res) => {
     const {
       fullName, email, phone, userType, userCategory,
       studentId, workplace, upcomingStudent, applicationId, ticketQuantity, ticketPrice,
-      merchItems, merchTotal, discountCode, ageConfirmed,
+      merchItems, merchTotal, discountCode, discountCodes, ageConfirmed,
     } = req.body;
 
     if (!fullName || !email || !phone || !userType || ticketQuantity === undefined || ticketQuantity === null) {
@@ -962,15 +1094,13 @@ app.post('/api/tickets', publicWriteLimiter, async (req, res) => {
     const ticketBulkDiscount = isEarlyBirdOrder
       ? 0
       : calculateTicketBulkDiscount(config, ticketSubtotal, normalizedTicketQuantity);
-    const normalizedDiscountCode = normalizeDiscountCode(discountCode);
-    const discountValidation = normalizedDiscountCode
-      ? await validateDiscountCode(normalizedDiscountCode)
-      : { valid: false, code: '', name: '', type: '' as const, rate: 0, message: '' };
-    if (normalizedDiscountCode && !discountValidation.valid) {
+    const normalizedDiscountCodes = normalizeDiscountCodeList(discountCodes ?? discountCode);
+    const discountValidation = await validateDiscountCodeList(normalizedDiscountCodes);
+    if (normalizedDiscountCodes.length > 0 && !discountValidation.valid) {
       res.status(400).json({ error: discountValidation.message || 'Invalid discount code' });
       return;
     }
-    const ticketDiscountResult = calculateTicketDiscountWithCode(ticketSubtotal, ticketBulkDiscount, discountValidation);
+    const ticketDiscountResult = calculateTicketDiscountWithCodes(ticketSubtotal, ticketBulkDiscount, discountValidation.discounts);
     const merchBulkDiscount = calculateMerchBundleDiscount(config, normalizedMerchTotal, normalizedTicketQuantity);
     const totalAmount = Math.max(0, subtotal + serviceFee - ticketDiscountResult.ticketDiscount - merchBulkDiscount);
 
@@ -1032,7 +1162,13 @@ app.post('/api/tickets', publicWriteLimiter, async (req, res) => {
         ticketBulkDiscount,
         ticketDiscount: ticketDiscountResult.ticketDiscount,
         merchBulkDiscount,
-        discountCode: ticketDiscountResult.discountCode,
+        discountCode: ticketDiscountResult.discountCodes.join(', '),
+        appliedDiscounts: ticketDiscountResult.appliedDiscounts.map(discount => ({
+          code: discount.code,
+          name: discount.name,
+          type: discount.type,
+          rate: discount.rate,
+        })),
         paymentMethod: 'payos',
       };
 
@@ -1072,7 +1208,7 @@ app.post('/api/tickets', publicWriteLimiter, async (req, res) => {
       ticketQuantity: String(normalizedTicketQuantity),
       ticketPrice: String(normalizedTicketPrice || ticketPrice),
       merchItems: normalizedMerchItems,
-      discountCode: ticketDiscountResult.discountCode,
+      discountCode: ticketDiscountResult.discountCodes.join(', '),
       discountAmount: String(ticketDiscountResult.ticketDiscount + merchBulkDiscount),
       totalAmount: String(totalAmount),
       paymentMethod: 'payos',
@@ -1129,9 +1265,17 @@ app.post('/api/tickets', publicWriteLimiter, async (req, res) => {
       console.log('[CSV] Merch claim saved locally:', merchClaims[0].merchClaimCode);
     }
 
-    if (record.discountCode) {
-      await incrementDiscountCodeUsage(record.discountCode);
-    }
+    await recordDiscountCodeUsage({
+      orderId: record.id,
+      timestamp: record.timestamp,
+      buyerName: normalizedFullName,
+      email: normalizedEmail,
+      phone: normalizedPhone,
+      ticketQuantity: String(normalizedTicketQuantity),
+      ticketSubtotal,
+      ticketBulkDiscount,
+      discountResult: ticketDiscountResult,
+    });
 
     const emailResult = await sendTicketEmail({
       to: normalizedEmail,
@@ -1411,9 +1555,17 @@ app.post('/api/payos/webhook', async (req, res) => {
       console.log('[CSV] PayOS merch claim saved locally:', pendingMerchClaims[0].merchClaimCode);
     }
 
-    if (record.discountCode) {
-      await incrementDiscountCodeUsage(record.discountCode);
-    }
+    await recordDiscountCodeUsage({
+      orderId: record.id,
+      timestamp: record.timestamp,
+      buyerName: record.fullName,
+      email: record.email,
+      phone: record.phone,
+      ticketQuantity: record.ticketQuantity,
+      ticketSubtotal: Number(orderData.ticketPrice) * Number(orderData.ticketQuantity),
+      ticketBulkDiscount: Number(orderData.ticketBulkDiscount) || 0,
+      discountResult: getStoredDiscountResult(orderData),
+    });
 
     const emailResult = await sendTicketEmail({
       to: orderData.email,
@@ -1535,9 +1687,17 @@ app.get('/api/payos/status/:orderCode', paymentStatusLimiter, async (req, res) =
       console.log('[CSV] PayOS merch claim saved locally (status check):', pendingMerchClaims[0].merchClaimCode);
     }
 
-    if (record.discountCode) {
-      await incrementDiscountCodeUsage(record.discountCode);
-    }
+    await recordDiscountCodeUsage({
+      orderId: record.id,
+      timestamp: record.timestamp,
+      buyerName: record.fullName,
+      email: record.email,
+      phone: record.phone,
+      ticketQuantity: record.ticketQuantity,
+      ticketSubtotal: Number(orderData.ticketPrice) * Number(orderData.ticketQuantity),
+      ticketBulkDiscount: Number(orderData.ticketBulkDiscount) || 0,
+      discountResult: getStoredDiscountResult(orderData),
+    });
 
     const emailResult = await sendTicketEmail({
       to: orderData.email,
@@ -1724,9 +1884,17 @@ async function runPayOSRecovery() {
         console.log('[CSV] Recovery merch saved:', pendingMerchClaims[0].merchClaimCode);
       }
 
-      if (record.discountCode) {
-        await incrementDiscountCodeUsage(record.discountCode);
-      }
+      await recordDiscountCodeUsage({
+        orderId: record.id,
+        timestamp: record.timestamp,
+        buyerName: record.fullName,
+        email: record.email,
+        phone: record.phone,
+        ticketQuantity: record.ticketQuantity,
+        ticketSubtotal: Number(orderData.ticketPrice) * Number(orderData.ticketQuantity),
+        ticketBulkDiscount: Number(orderData.ticketBulkDiscount) || 0,
+        discountResult: getStoredDiscountResult(orderData),
+      });
 
       const emailResult = await sendTicketEmail({
         to: orderData.email,

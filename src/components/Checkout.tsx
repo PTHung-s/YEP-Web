@@ -58,7 +58,7 @@ export function Checkout() {
         ticketBulkDiscount,
         ticketDiscount,
         merchBulkDiscount,
-        discountCode: state.appliedDiscount?.code || '',
+        discountCodes: state.appliedDiscounts.map(item => item.code),
         paymentMethod: state.paymentMethod,
       };
 
@@ -247,7 +247,7 @@ export function Checkout() {
 
                 {ticketDiscount > 0 && (
                   <div className="flex justify-between text-xs font-display font-bold uppercase tracking-widest text-secondary">
-                    <span>{state.appliedDiscount ? 'TICKET DISCOUNT' : 'TICKET BULK DISCOUNT'}</span>
+                    <span>{state.appliedDiscounts.length > 0 ? 'TICKET DISCOUNT' : 'TICKET BULK DISCOUNT'}</span>
                     <span>-{formatVND(ticketDiscount)}</span>
                   </div>
                 )}

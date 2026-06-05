@@ -14,7 +14,7 @@ export function Confirmation() {
   const [emailConfirm, setEmailConfirm] = useState(state.email);
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState('');
-  const [discountInput, setDiscountInput] = useState(state.appliedDiscount?.code || '');
+  const [discountInput, setDiscountInput] = useState('');
   const [discountLoading, setDiscountLoading] = useState(false);
   const [discountMessage, setDiscountMessage] = useState('');
   const [discountToast, setDiscountToast] = useState('');
@@ -72,7 +72,7 @@ export function Confirmation() {
           ticketBulkDiscount,
           ticketDiscount,
           merchBulkDiscount,
-          discountCode: state.appliedDiscount?.code || '',
+          discountCodes: state.appliedDiscounts.map(item => item.code),
           appUrl: window.location.origin,
         }),
       });
@@ -103,8 +103,12 @@ export function Confirmation() {
     setDiscountToast('');
 
     if (!code) {
-      dispatch({ type: 'SET_APPLIED_DISCOUNT', payload: null });
-      setDiscountMessage('Discount code removed.');
+      setDiscountMessage('Enter a discount code.');
+      return;
+    }
+
+    if (state.appliedDiscounts.some(item => item.code === code)) {
+      setDiscountMessage('Code already applied.');
       return;
     }
 
@@ -115,6 +119,7 @@ export function Confirmation() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           discountCode: code,
+          discountCodes: state.appliedDiscounts.map(item => item.code),
           userType: state.userType,
           ticketQuantity: state.ticketQuantity,
         }),
@@ -125,7 +130,7 @@ export function Confirmation() {
       }
 
       dispatch({
-        type: 'SET_APPLIED_DISCOUNT',
+        type: 'ADD_APPLIED_DISCOUNT',
         payload: {
           code: data.code,
           name: data.name,
@@ -133,13 +138,12 @@ export function Confirmation() {
           rate: Number(data.rate) || 0,
         },
       });
-      setDiscountInput(data.code);
+      setDiscountInput('');
       setDiscountMessage(data.message || 'Discount code applied.');
       if (data.capped) {
         setDiscountToast('Discount applied, but total ticket discount cannot exceed 15%.');
       }
     } catch (err: any) {
-      dispatch({ type: 'SET_APPLIED_DISCOUNT', payload: null });
       setDiscountMessage(err.message || 'Invalid discount code');
     } finally {
       setDiscountLoading(false);
@@ -217,7 +221,7 @@ export function Confirmation() {
                 )}
                 {state.merch.filter(m => m.quantity > 0).map(m => <div key={m.id} className="flex justify-between text-sm font-display font-bold"><span className="uppercase tracking-wider">{m.name} ×{m.quantity}</span><span>{formatVND(m.price * m.quantity)}</span></div>)}
                 {serviceFee > 0 && <div className="border-t-2 border-primary pt-3 flex justify-between text-xs font-display font-bold uppercase tracking-widest text-on-surface-variant"><span>SERVICE FEE (3%)</span><span>{formatVND(serviceFee)}</span></div>}
-                {ticketDiscount > 0 && <div className="flex justify-between text-xs font-display font-bold uppercase tracking-widest text-secondary"><span>{state.appliedDiscount ? 'TICKET DISCOUNT' : 'TICKET BULK DISCOUNT'}</span><span>-{formatVND(ticketDiscount)}</span></div>}
+                {ticketDiscount > 0 && <div className="flex justify-between text-xs font-display font-bold uppercase tracking-widest text-secondary"><span>{state.appliedDiscounts.length > 0 ? 'TICKET DISCOUNT' : 'TICKET BULK DISCOUNT'}</span><span>-{formatVND(ticketDiscount)}</span></div>}
                 {merchBulkDiscount > 0 && <div className="flex justify-between text-xs font-display font-bold uppercase tracking-widest text-secondary"><span>MERCH BUNDLE DISCOUNT</span><span>-{formatVND(merchBulkDiscount)}</span></div>}
               </div>
 
@@ -241,17 +245,17 @@ export function Confirmation() {
                   >
                     {discountLoading ? 'Checking...' : 'Apply'}
                   </button>
-                  {state.appliedDiscount && (
+                  {state.appliedDiscounts.length > 0 && (
                     <button
                       type="button"
                       onClick={() => {
-                        dispatch({ type: 'SET_APPLIED_DISCOUNT', payload: null });
+                        dispatch({ type: 'CLEAR_APPLIED_DISCOUNTS' });
                         setDiscountInput('');
-                        setDiscountMessage('Discount code removed.');
+                        setDiscountMessage('Discount codes removed.');
                         setDiscountToast('');
                       }}
                       className="border-2 border-primary bg-surface px-3 py-3 text-primary transition-colors hover:bg-white"
-                      aria-label="Remove discount code"
+                      aria-label="Remove all discount codes"
                     >
                       <X className="h-4 w-4" />
                     </button>
@@ -262,10 +266,24 @@ export function Confirmation() {
                     {discountMessage}
                   </p>
                 )}
-                {state.appliedDiscount && (
-                  <p className="mt-2 font-body text-xs font-bold uppercase tracking-wider text-secondary">
-                    Applied: {state.appliedDiscount.code}{state.appliedDiscount.rate > 0 ? ` (${Math.round(state.appliedDiscount.rate * 100)}%)` : ''}
-                  </p>
+                {state.appliedDiscounts.length > 0 && (
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {state.appliedDiscounts.map(discount => (
+                      <button
+                        key={discount.code}
+                        type="button"
+                        onClick={() => {
+                          dispatch({ type: 'REMOVE_APPLIED_DISCOUNT', payload: discount.code });
+                          setDiscountMessage(`${discount.code} removed.`);
+                          setDiscountToast('');
+                        }}
+                        className="inline-flex items-center gap-2 border-2 border-secondary bg-secondary/10 px-3 py-2 font-display text-[10px] font-black uppercase tracking-widest text-secondary hover:bg-secondary hover:text-white"
+                      >
+                        {discount.code}{discount.rate > 0 ? ` · ${Math.round(discount.rate * 100)}%` : ''}
+                        <X className="h-3 w-3" />
+                      </button>
+                    ))}
+                  </div>
                 )}
               </div>
 
