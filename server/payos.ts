@@ -293,7 +293,7 @@ export function getAllPendingOrders(): Array<{ orderCode: number; order: Pending
 export function getPaidOrdersNeedingEmail(): Array<{ orderCode: number; order: PendingOrder }> {
   const result: Array<{ orderCode: number; order: PendingOrder }> = [];
   for (const [orderCode, order] of pendingOrders) {
-    if (order.status === 'paid' && order.emailSent !== true) {
+    if (order.status === 'paid' && order.emailSent === false) {
       result.push({ orderCode: Number(orderCode), order });
     }
   }
