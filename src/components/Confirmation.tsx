@@ -234,7 +234,6 @@ export function Confirmation() {
                   <input
                     value={discountInput}
                     onChange={event => setDiscountInput(event.target.value.toUpperCase())}
-                    placeholder="YEPD5-XXXXXX"
                     className="min-w-0 flex-1 border-2 border-primary bg-white px-3 py-3 font-display text-sm font-black uppercase tracking-widest text-background focus:outline-none focus:border-secondary"
                   />
                   <button

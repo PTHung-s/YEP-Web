@@ -415,9 +415,9 @@ async function validateDiscountCodeList(rawCodes: unknown): Promise<{ valid: boo
     discounts.push(validation);
   }
 
-  const referralCount = discounts.filter(item => item.type === 'REFERRAL').length;
-  if (referralCount > 1) {
-    return { valid: false, discounts: [], message: 'Only one referral code can be applied.' };
+  const trackingCodeCount = discounts.filter(item => item.type === 'KPI' || item.type === 'REFERRAL').length;
+  if (trackingCodeCount > 1) {
+    return { valid: false, discounts: [], message: 'Only one KPI or referral code can be applied.' };
   }
 
   const vipCount = discounts.filter(item => item.type === 'VIP_20').length;
