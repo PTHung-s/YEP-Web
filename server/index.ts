@@ -167,6 +167,7 @@ function createRateLimiter(options: { windowMs: number; max: number; scope?: str
 }
 
 const adminLoginLimiter = createRateLimiter({ windowMs: 60 * 1000, max: 5, scope: 'admin-login' });
+const checkinLoginLimiter = createRateLimiter({ windowMs: 60 * 1000, max: 8, scope: 'checkin-login' });
 const publicWriteLimiter = createRateLimiter({ windowMs: 60 * 1000, max: 12, scope: 'public-write' });
 const discountPreviewLimiter = createRateLimiter({ windowMs: 60 * 1000, max: 30, scope: 'discount-preview' });
 const paymentStatusLimiter = createRateLimiter({ windowMs: 60 * 1000, max: 10, scope: 'payos-status' });
@@ -218,6 +219,10 @@ function getAdminPasscode(): string {
   return process.env.ADMIN_PASSCODE || '';
 }
 
+function getCheckinPasscode(): string {
+  return process.env.CHECKIN_PASSCODE || '';
+}
+
 function signAdminToken(payload: string, passcode: string): string {
   return crypto.createHmac('sha256', passcode).update(payload).digest('hex');
 }
@@ -255,6 +260,20 @@ function requireAdmin(req: express.Request, res: express.Response, next: express
   const passcode = getAdminPasscode();
 
   if (!token || (!adminTokens.has(token) && (!passcode || !isSignedAdminTokenValid(token, passcode)))) {
+    res.status(401).json({ error: 'Unauthorized' });
+    return;
+  }
+  next();
+}
+
+const checkinTokens = new Set<string>();
+
+function requireCheckin(req: express.Request, res: express.Response, next: express.NextFunction) {
+  const auth = req.header('authorization') || '';
+  const token = auth.startsWith('Bearer ') ? auth.slice(7) : '';
+  const passcode = getCheckinPasscode();
+
+  if (!token || (!checkinTokens.has(token) && (!passcode || !isSignedAdminTokenValid(token, passcode)))) {
     res.status(401).json({ error: 'Unauthorized' });
     return;
   }
@@ -1002,6 +1021,23 @@ app.post('/api/admin/login', adminLoginLimiter, async (req, res) => {
   res.json({ token });
 });
 
+app.post('/api/checkin/login', checkinLoginLimiter, async (req, res) => {
+  const passcode = getCheckinPasscode();
+  if (!passcode) {
+    res.status(503).json({ error: 'Check-in passcode is not configured' });
+    return;
+  }
+
+  if (req.body?.passcode !== passcode) {
+    res.status(401).json({ error: 'Invalid passcode' });
+    return;
+  }
+
+  const token = createAdminToken(passcode);
+  checkinTokens.add(token);
+  res.json({ token });
+});
+
 app.get('/api/admin/config', requireAdmin, async (_req, res) => {
   try {
     res.json(await readConfig());
@@ -1083,7 +1119,7 @@ app.post('/api/discount/preview', discountPreviewLimiter, async (req, res) => {
   }
 });
 
-app.get('/api/checkin/search', requireAdmin, async (req, res) => {
+app.get('/api/checkin/search', requireCheckin, async (req, res) => {
   try {
     const ticketCode = extractTicketCode(String(req.query.q || req.query.ticket || ''));
     if (!ticketCode) {
@@ -1119,7 +1155,7 @@ app.get('/api/checkin/search', requireAdmin, async (req, res) => {
   }
 });
 
-app.post('/api/checkin', requireAdmin, async (req, res) => {
+app.post('/api/checkin', requireCheckin, async (req, res) => {
   try {
     const ticketCode = extractTicketCode(req.body?.ticketCode || req.body?.q || '');
     const checkedInBy = String(req.body?.checkedInBy || 'Staff').trim() || 'Staff';
@@ -1206,7 +1242,7 @@ app.post('/api/checkin', requireAdmin, async (req, res) => {
   }
 });
 
-app.get('/api/checkin/recent', requireAdmin, async (_req, res) => {
+app.get('/api/checkin/recent', requireCheckin, async (_req, res) => {
   try {
     const sheetCheckins = await getRecentCheckins(20);
     if (sheetCheckins) {

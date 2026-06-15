@@ -75,7 +75,7 @@ function playTone(type: 'success' | 'warning' | 'error') {
 }
 
 export function Checkin() {
-  const [token, setToken] = useState(() => sessionStorage.getItem('yep-admin-token') || '');
+  const [token, setToken] = useState(() => sessionStorage.getItem('yep-checkin-token') || '');
   const [passcode, setPasscode] = useState('');
   const [staffName, setStaffName] = useState(() => sessionStorage.getItem('yep-checkin-staff') || 'Gate Staff');
   const [query, setQuery] = useState(getTicketFromUrl());
@@ -94,10 +94,10 @@ export function Checkin() {
   const authHeaders = token ? { Authorization: `Bearer ${token}` } : {};
 
   const expireSession = () => {
-    sessionStorage.removeItem('yep-admin-token');
+    sessionStorage.removeItem('yep-checkin-token');
     setToken('');
     setResult(null);
-    setMessage('Session expired. Please enter admin passcode again.');
+    setMessage('Session expired. Please enter check-in passcode again.');
   };
 
   const showScanVisual = (state: ScanVisualState) => {
@@ -134,14 +134,14 @@ export function Checkin() {
     setLoading(true);
     setMessage('');
     try {
-      const res = await fetch('/api/admin/login', {
+      const res = await fetch('/api/checkin/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ passcode }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || 'Cannot sign in');
-      sessionStorage.setItem('yep-admin-token', data.token);
+      sessionStorage.setItem('yep-checkin-token', data.token);
       setToken(data.token);
       setPasscode('');
     } catch (err: any) {
@@ -269,7 +269,7 @@ export function Checkin() {
             type="password"
             value={passcode}
             onChange={event => setPasscode(event.target.value)}
-            placeholder="Admin passcode"
+            placeholder="Check-in passcode"
             className="w-full bg-white border-2 border-primary px-4 py-3 font-display font-bold focus:outline-none focus:border-secondary"
           />
           {message && <p className="font-body text-sm font-bold text-secondary">{message}</p>}
