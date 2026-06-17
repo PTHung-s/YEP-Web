@@ -2,6 +2,7 @@ import React from 'react';
 import { ChevronDown, Mail, MapPin, Ticket } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { yepAsset } from '../lib/assets';
+import { useEventConfig } from '../store/EventConfigContext';
 
 const timeline = [
   { time: '17:00 - 18:30', title: 'Check-in & Booth Activities', desc: 'Wristbands, booths, pre-show games' },
@@ -24,9 +25,63 @@ const faqs = [
   { q: 'Can I bring non-VinUni guests?', a: 'Guest ticket availability depends on the ticket sales status announced by the organizers.' },
 ];
 
+function formatCompactVND(amount: number): string {
+  if (amount >= 1000 && amount % 1000 === 0) {
+    return `${amount / 1000}K`;
+  }
+  return `${amount.toLocaleString('vi-VN')} VND`;
+}
+
+const sponsors = ['25', '26', '27', '28', '29', '30', '31', '32'].map((id) => ({
+  id,
+  src: yepAsset(`sponsors/sponsor-${id}.webp`),
+  alt: `YEP'26 sponsor ${id}`,
+}));
+
+function SponsorMarquee() {
+  const sponsorLoop = [...sponsors, ...sponsors, ...sponsors, ...sponsors];
+
+  return (
+    <section className="bg-background border-b-2 border-primary py-7 md:py-9 overflow-hidden">
+      <div className="max-w-7xl mx-auto px-6 md:px-12">
+        <div className="flex items-center gap-4 mb-5">
+          <span className="font-display text-tertiary font-black tracking-[0.28em] uppercase text-[10px] md:text-xs">
+            // Powered By
+          </span>
+          <div className="h-px flex-1 bg-outline-variant" />
+        </div>
+      </div>
+      <div className="relative overflow-hidden">
+        <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-16 md:w-32 bg-gradient-to-r from-background to-transparent" />
+        <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-16 md:w-32 bg-gradient-to-l from-background to-transparent" />
+        <div className="animate-marquee-seamless-reverse flex w-max items-center gap-5 md:gap-8 px-5 md:px-8 hover:[animation-play-state:paused]">
+          {sponsorLoop.map((sponsor, index) => (
+            <div
+              key={`${sponsor.id}-${index}`}
+              className="h-20 w-36 md:h-24 md:w-44 lg:h-28 lg:w-52 shrink-0 border-2 border-outline-variant bg-surface-container/35 p-3 md:p-4 flex items-center justify-center"
+            >
+              <img
+                src={sponsor.src}
+                alt={sponsor.alt}
+                className="max-h-full max-w-full object-contain"
+                loading="lazy"
+              />
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 export function Home() {
+  const { config } = useEventConfig();
   const timelineSplitIndex = Math.ceil(timeline.length / 2);
   const timelineColumns = [timeline.slice(0, timelineSplitIndex), timeline.slice(timelineSplitIndex)];
+  const homeTicketCards = [
+    ['VINUNIAN REGULAR', formatCompactVND(config.prices.vinnunian), 'bg-secondary text-white'],
+    ['NON-VINUNIAN', formatCompactVND(config.prices.guest), 'bg-tertiary text-background'],
+  ];
 
   return (
     <div className="w-full">
@@ -48,7 +103,7 @@ export function Home() {
           <div className="max-w-7xl mx-auto flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6">
             <div className="max-w-xl md:hidden">
               <p className="font-display text-xs md:text-sm font-black uppercase tracking-[0.3em] text-white/85 mb-3 drop-shadow-[0_2px_8px_rgba(0,0,0,0.65)]">
-                June 25, 2026 / Amphitheatre - VinUni Campus
+                June 25, 2026 / Sports Complex - VinUni Campus
               </p>
               <h1 className="md:sr-only font-display text-4xl font-black uppercase tracking-tighter leading-[0.82] mb-4">
                 YEP'26<br />
@@ -92,6 +147,8 @@ export function Home() {
         </div>
       </div>
 
+      <SponsorMarquee />
+
       <section className="py-16 md:py-24 px-6 md:px-12 bg-surface border-b-2 border-primary max-w-7xl mx-auto w-full">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 items-stretch">
           <div>
@@ -134,11 +191,11 @@ export function Home() {
               Timing Is<br /><span className="text-secondary">Everything</span>
             </h2>
             <p className="font-body text-base md:text-lg mb-6 font-medium text-on-surface-variant">
-              June 25, 2026 - Amphitheatre, VinUni Campus.
+              June 25, 2026 - Sports Complex, VinUni Campus.
             </p>
             <div className="bg-tertiary text-background p-4 md:p-5 border-2 border-primary neo-shadow-blue inline-block w-full md:w-auto">
               <p className="font-display font-black text-xl md:text-2xl uppercase tracking-wider mb-1">Main Stage</p>
-              <p className="font-display opacity-90 uppercase tracking-widest text-xs md:text-sm font-bold">The Amphitheatre</p>
+              <p className="font-display opacity-90 uppercase tracking-widest text-xs md:text-sm font-bold">Sports Complex</p>
             </div>
           </div>
 
@@ -204,12 +261,8 @@ export function Home() {
           <h2 className="font-display text-6xl md:text-8xl lg:text-[9rem] font-bold uppercase mb-12 tracking-tighter leading-none">
             Get Your Ticket
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto">
-            {[
-              ['VINUNIANS EARLY', '250K', 'bg-secondary text-white'],
-              ['VINUNIANS REGULAR', '300K', 'bg-primary text-white'],
-              ['GUEST', '400K', 'bg-tertiary text-background'],
-            ].map(([label, price, buttonClass]) => (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-3xl mx-auto">
+            {homeTicketCards.map(([label, price, buttonClass]) => (
               <div key={label} className="bg-surface p-6 border border-outline-variant flex flex-col items-center text-on-surface transition-transform duration-300 hover:-translate-y-2">
                 <span className="font-display text-lg md:text-xl font-bold uppercase mb-3 tracking-widest text-on-surface-variant">{label}</span>
                 <span className="font-display text-4xl md:text-5xl font-black mb-6 tracking-tighter text-white">{price}</span>

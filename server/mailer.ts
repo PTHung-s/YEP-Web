@@ -118,7 +118,7 @@ function buildTicketCardOptions(ticket: TicketItemRow): TicketCardOptions {
     code: ticket.ticketCode,
     kicker: `${Number(ticket.orderTicketQuantity) > 1 ? `Ticket ${ticket.ticketNo}` : 'Your Ticket'} - Check-in Pass`,
     title: 'The Kaleido Soul',
-    subtitle: 'Amphitheatre, VinUniversity - 25/6/2026',
+    subtitle: 'Sports Complex, VinUniversity - 25/6/2026',
     primaryLabel: 'Ticket Type',
     primaryValue: ticket.ticketType,
     secondaryLabel: 'Check-in',
@@ -406,7 +406,7 @@ export function buildTicketEmailHtml(input: TicketEmailInput): string {
               <p style="margin:0 0 10px;color:#1f2937;font-size:15px;line-height:1.75;font-weight:800;">Please arrive on time for the best experience:</p>
               <p style="margin:0;color:#1f2937;font-size:14px;line-height:1.75;"><strong>Date:</strong> Thursday, 25/6/2026</p>
               <p style="margin:0;color:#1f2937;font-size:14px;line-height:1.75;"><strong>Check-in time:</strong> From 17:00 to 19:00</p>
-              <p style="margin:0 0 18px;color:#1f2937;font-size:14px;line-height:1.75;"><strong>Location:</strong> Amphitheatre, VinUniversity, Vinhomes Ocean Park, Hà Nội</p>
+              <p style="margin:0 0 18px;color:#1f2937;font-size:14px;line-height:1.75;"><strong>Location:</strong> Sports Complex, VinUniversity, Vinhomes Ocean Park, Hà Nội</p>
 
               <ul style="margin:0 0 22px;padding-left:20px;color:#1f2937;font-size:14px;line-height:1.8;">
                 <li>Please bring your VinUni student ID for check-in. If you are not a student of VinUniversity, please present your National ID or Passport.</li>
@@ -475,7 +475,7 @@ export function buildTicketEmailText(input: TicketEmailInput): string {
     'Please arrive on time for the best experience:',
     'Date: Thursday, 25/6/2026',
     'Check-in time: From 17:00 to 19:00',
-    'Location: Amphitheatre, VinUniversity, Vinhomes Ocean Park, Hà Nội',
+    'Location: Sports Complex, VinUniversity, Vinhomes Ocean Park, Hà Nội',
     'Please bring your VinUni student ID for check-in. If you are not a student of VinUniversity, please present your National ID or Passport.',
     'This email serves as your ticket. Please present the QR code attached below in this email at the check-in counter.',
     'Tickets are non-refundable and non-transferrable after purchase.',

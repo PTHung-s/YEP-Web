@@ -58,31 +58,83 @@ const artists: Artist[] = [
   },
   {
     id: 3,
-    name: 'MYSTERY ACT 02',
-    genre: 'MYSTERY PERFORMER',
+    name: 'RIO',
+    genre: 'SINGER-SONGWRITER / PRODUCER',
     time: 'TBA',
     stage: 'MAIN STAGE',
-    description: 'This artist will be revealed soon. Read the clues and keep guessing.',
-    img: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=1200',
-    revealed: false,
+    description: 'RIO mang đến màu sắc trẻ trung giữa pop, R&B và những bản phối giàu cảm xúc. Từ nền tảng biểu diễn đến khả năng sản xuất âm nhạc, RIO hứa hẹn tạo nên một set diễn vừa bắt tai vừa rất YEP.',
+    img: yepAsset('rio.png'),
+    revealed: true,
     hintTags: ['C\u1ef1u th\u00e0nh vi\u00ean P336', 'T\u1ed1t nghi\u1ec7p Ng\u00f4n ng\u1eef Anh \u0110HKHXH&NV', '\u0110\u1ed7 Vi\u1ec7t Ti\u1ebfn', 'T-up', 'Ho\u00e0 \u00e2m ph\u1ed1i kh\u00ed trong 5 ng\u00e0y', 'boygroup roots'],
+    songs: [
+      {
+        title: 'Vạn Vật Như Muốn Ta Bên Nhau',
+        vibe: 'RIO',
+        accent: '#1ecfff',
+        coverUrl: 'https://i.ytimg.com/vi/2VMG0ZwNjMg/hqdefault.jpg?sqp=-oaymwEqCKgBEF5IWvKriqkDHQgBFQAAiEIYAdgBAeIBCggYEAIYBjgBQAG4AvcY&rs=AOn4CLChNRut_oCH4IifBPjzJa3XPyIF1Q',
+        audioUrl: yepAsset('audio/van-vat-nhu-muon-ta-ben-nhau-rio.mp3'),
+      },
+      {
+        title: 'Suốt Đêm',
+        vibe: 'RIO ft. 52Hz',
+        accent: '#ff2ea6',
+        coverUrl: 'https://i.ytimg.com/vi/hYQjcDAYyAI/hqdefault.jpg?sqp=-oaymwEqCKgBEF5IWvKriqkDHQgBFQAAiEIYAdgBAeIBCggYEAIYBjgBQAG4AvcY&rs=AOn4CLC6XcMLK3R4FEICcV3tLjpJWeux2A',
+        audioUrl: yepAsset('audio/suot-dem-rio-52hz.mp3'),
+      },
+    ],
   },
   {
     id: 4,
-    name: 'MYSTERY ACT 03',
-    genre: 'MYSTERY SINGER',
+    name: '52HZ',
+    genre: 'ALT-POP / INDIE POP SINGER',
     time: 'TBA',
     stage: 'MAIN STAGE',
-    description: 'This artist will be revealed soon. Read the clues and keep guessing.',
-    img: 'https://images.unsplash.com/photo-1493225457224-eda0e6fdc758?auto=format&fit=crop&q=80&w=1200',
-    revealed: false,
+    description: '52Hz đem tới chất alt-pop mơ màng, gần gũi và rất dễ ngân nga. Với những giai điệu đầy cảm xúc, 52Hz sẽ thêm một sắc màu mềm nhưng sáng cho sân khấu The Kaleido Soul.',
+    img: yepAsset('52hz.png'),
+    revealed: true,
     hintTags: ['"Ng\u1ed3i \u0111\u1ee3i bi\u1ebft bao m\u00f9a..."', 'Billie Eilish Vi\u1ec7t Nam', 'Em Xinh Say Hi', 'not a pitbull', 'alt-pop energy', 'soft whale frequency'],
+    songs: [
+      {
+        title: 'Đợi',
+        vibe: '52Hz prod. RIO',
+        accent: '#ff2ea6',
+        coverUrl: 'https://i.ytimg.com/vi/cizoIav3geY/hqdefault.jpg?sqp=-oaymwEqCKgBEF5IWvKriqkDHQgBFQAAiEIYAdgBAeIBCggYEAIYBjgBQAG4AvcY&rs=AOn4CLC7hHUf6x1wn3DKQiQ6za2M76tDXQ',
+        audioUrl: yepAsset('audio/doi-52hz-prod-rio.mp3'),
+      },
+      {
+        title: 'Mê Cung Tình Yêu',
+        vibe: '52Hz prod. RIO',
+        accent: '#1ecfff',
+        coverUrl: 'https://i.ytimg.com/vi/v3WBg7K-C_s/hqdefault.jpg?sqp=-oaymwEqCKgBEF5IWvKriqkDHQgBFQAAiEIYAdgBAeIBCggYEAIYBjgBQAG4AvcY&rs=AOn4CLDAK4DbTsPIMu_VS6ykbVUxIjgbCA',
+        audioUrl: yepAsset('audio/me-cung-tinh-yeu-52hz-prod-rio.mp3'),
+      },
+    ],
+  },
+  {
+    id: 5,
+    name: 'RUMBO CHEERLEADING SQUAD',
+    genre: 'CHEERLEADING PERFORMANCE',
+    time: 'TBA',
+    stage: 'MAIN STAGE',
+    description: 'Lần đầu tiên tại VinUni, Rumbo Cheerleading Squad chính thức đổ bộ YEP\'26. Với kinh nghiệm thi đấu và những kỹ thuật cheerleading bùng nổ, RUMBO sẽ khuấy động sân khấu bằng năng lượng mạnh, vũ đạo sắc và khoảnh khắc khiến khán phòng phải WOW.',
+    img: yepAsset('rumbo.png'),
+    revealed: true,
+    hintTags: ['First time at VinUni', 'Rumbo Cheerleading Squad', 'high-energy performance', 'power stunts', 'fiery choreography', 'YEP26 stage takeover'],
   },
 ];
 
 const revealedCount = artists.filter(a => a.revealed).length;
 const totalCount = artists.length;
 const latestRevealedId = [...artists].reverse().find(a => a.revealed)?.id;
+const featuredArtistOrder = ['52HZ', 'RIO'];
+const displayedArtists = [...artists].sort((a, b) => {
+  const aIndex = featuredArtistOrder.indexOf(a.name);
+  const bIndex = featuredArtistOrder.indexOf(b.name);
+  if (aIndex >= 0 || bIndex >= 0) {
+    return (aIndex >= 0 ? aIndex : featuredArtistOrder.length) - (bIndex >= 0 ? bIndex : featuredArtistOrder.length);
+  }
+  return artists.indexOf(a) - artists.indexOf(b);
+});
 const LINEUP_AUDIO_PLAY_EVENT = 'yep-lineup-audio-play';
 
 /* ─────── Revealed Artist Card (has its own hooks) ─────── */
@@ -587,29 +639,12 @@ export function Lineup() {
     <div className="w-full max-w-7xl mx-auto px-4 md:px-12 py-10 md:py-16">
       {/* Header */}
       <section className="mb-12 md:mb-16 relative">
-        <div className="border-4 border-primary p-6 md:p-14 bg-primary text-white neo-shadow relative overflow-hidden min-h-[360px] md:min-h-[520px] flex items-center">
+        <div className="border-4 border-primary bg-primary neo-shadow relative overflow-hidden">
           <img
-            src={yepAsset('background-stage-light.webp')}
-            alt=""
-            aria-hidden="true"
-            className="absolute inset-0 h-full w-full object-cover opacity-50"
+            src={yepAsset('lineup-background.webp')}
+            alt="YEP'26 The Kaleido Soul full lineup"
+            className="block w-full h-auto"
           />
-          <div className="absolute inset-0 bg-primary/65" />
-          <div className="relative z-10 max-w-3xl">
-            <span className="inline-block font-display text-on-surface-variant font-bold tracking-widest uppercase text-[10px] md:text-sm mb-4 bg-secondary/10 border-2 border-secondary/30 px-3 py-1">
-              THE COMPLETE LINEUP
-            </span>
-            <h1 className="font-display text-[3.25rem] sm:text-6xl md:text-8xl lg:text-[8rem] font-black uppercase leading-[0.86] tracking-normal md:tracking-tighter break-words">
-              ARTIST<br />
-              <span className="text-tertiary">SHOWCASE</span>
-            </h1>
-            <p className="font-body text-sm md:text-lg text-white/75 max-w-xl leading-relaxed mt-5 md:mt-6">
-              Four mystery acts. One main stage. One unforgettable night at YEP'26: The Kaleido Soul.
-            </p>
-          </div>
-          <div className="absolute -right-20 -bottom-20 opacity-8 pointer-events-none">
-            <div className="w-[400px] h-[400px] md:w-[700px] md:h-[700px] rounded-full border-[60px] md:border-[80px] border-white/10" />
-          </div>
         </div>
       </section>
 
@@ -626,7 +661,7 @@ export function Lineup() {
 
       {/* Artist List */}
       <div className="space-y-6 md:space-y-8">
-        {artists.map((artist, index) => artist.revealed ? (
+        {displayedArtists.map((artist, index) => artist.revealed ? (
           <React.Fragment key={artist.id}>
             <RevealedArtistCard artist={artist} index={index} />
           </React.Fragment>
@@ -699,7 +734,7 @@ export function Lineup() {
       <div className="mt-16 border-t-4 border-primary pt-10 flex flex-col md:flex-row justify-between items-center gap-6">
         <div>
           <p className="font-display text-lg md:text-xl font-black uppercase tracking-wider">READY TO SEE THEM LIVE?</p>
-          <p className="font-body text-sm text-on-surface-variant font-medium">June 25, 2026 at VinUni Amphitheatre</p>
+          <p className="font-body text-sm text-on-surface-variant font-medium">June 25, 2026 at VinUni Sports Complex</p>
         </div>
         <Link
           to="/tickets"

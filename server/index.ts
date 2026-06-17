@@ -947,7 +947,7 @@ app.get('/api/ticket-card/:ticketCode.png', async (req, res) => {
         code: ticket.ticketCode,
         kicker: `${Number(ticket.orderTicketQuantity) > 1 ? `Ticket ${ticket.ticketNo}` : 'Your Ticket'} - Check-in Pass`,
         title: 'The Kaleido Soul',
-        subtitle: 'Amphitheatre, VinUniversity - 25/6/2026',
+        subtitle: 'Sports Complex, VinUniversity - 25/6/2026',
         primaryLabel: 'Ticket Type',
         primaryValue: ticket.ticketType,
         secondaryLabel: 'Check-in',
